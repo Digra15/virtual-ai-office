@@ -1,0 +1,24 @@
+{
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "description": "Shared TypeScript types and Zod schemas for the Virtual AI Office (single source of truth consumed by server and web)",
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "name": "@virtual-ai-office/shared",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "type": "commonjs",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.0"
+}

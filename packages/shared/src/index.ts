@@ -1,0 +1,9 @@
+/**
+ * Public surface of `@virtual-ai-office/shared`.
+ *
+ * Import from the package root only:
+ *   import type { AgentInfo, ServerMessage } from '@virtual-ai-office/shared';
+ *   import { EventPostSchema } from '@virtual-ai-office/shared';
+ */
+export * from './types';
+export * from './schemas';

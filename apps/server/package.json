@@ -1,0 +1,32 @@
+{
+  "dependencies": {
+    "@virtual-ai-office/shared": "*",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "ws": "^8.22.0"
+  },
+  "description": "Monitoring-only backend for the Virtual AI Office: REST API + WebSocket hub for agent status reporting",
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/supertest": "^7.0.0",
+    "@types/ws": "^8.18.0",
+    "supertest": "^7.3.1",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  },
+  "license": "MIT",
+  "name": "@virtual-ai-office/server",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "type": "commonjs",
+  "version": "0.1.0"
+}
