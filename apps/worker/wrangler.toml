@@ -18,6 +18,38 @@ tag = "v1"
 # NOTE: free-plan accounts REQUIRE new_sqlite_classes (error 10097 otherwise)
 new_sqlite_classes = ["AgentRoom"]
 
+# ---------------------------------------------------------------------------
+# Admin panel bindings (D1 + R2). Setup steps:
+#   1. Create the database (pick ONE):
+#        CLI:       npx wrangler d1 create vao-admin
+#        Dashboard: Workers & Pages -> D1 -> Create database -> name "vao-admin"
+#      Then paste the real database_id below (replacing REPLACE_ME_...).
+#   2. Create the bucket (pick ONE):
+#        CLI:       npx wrangler r2 bucket create vao-assets
+#        Dashboard: R2 Object Storage -> Create bucket -> name "vao-assets"
+#   3. Public access for character .glb files (pick ONE), then set
+#      R2_PUBLIC_BASE_URL under [vars] below:
+#        a) R2 dashboard -> bucket -> Settings -> Public access -> Allow
+#           (gives you an https://pub-xxxx.r2.dev URL), or
+#        b) Settings -> Custom Domains -> connect e.g. assets.example.com
+#   4. Secrets (NEVER commit real values — set via CLI or dashboard):
+#        npx wrangler secret put SETUP_TOKEN      # e.g. openssl rand -hex 32
+#        npx wrangler secret put INTERNAL_SECRET  # e.g. openssl rand -hex 32
+#        (Dashboard alternative: Worker -> Settings -> Variables -> Secrets.)
+#   5. npx wrangler d1 migrations apply vao-admin   (add --local for wrangler dev)
+#   6. Deploy, then POST /api/admin/auth/setup ONCE to create the first admin.
+#      Full walkthrough: apps/worker/SETUP.md
+# ---------------------------------------------------------------------------
+[[d1_databases]]
+binding = "DB"
+database_name = "vao-admin"
+# PASTE the real id from `npx wrangler d1 create vao-admin` here.
+database_id = "REPLACE_ME__run_wrangler_d1_create"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "vao-assets"
+
 [vars]
 # "true" = run the clearly-labeled demo simulator (8 demo agents).
 # Set to "false" once real agents report via POST /api/agents/:id/events.
@@ -26,3 +58,15 @@ DEMO_MODE = "true"
 OFFLINE_TIMEOUT_MS = "30000"
 # Max POST /api/agents/:id/events requests per IP per minute.
 RATE_LIMIT_PER_MINUTE = "60"
+# Public base URL of the vao-assets R2 bucket, e.g.
+# "https://pub-xxxx.r2.dev" or "https://assets.example.com".
+# Character-model URLs are built as <base>/characters/<id>.glb.
+# Leave commented out if the bucket is not publicly reachable — uploads still
+# work, but the API returns the R2 key with publicUrlConfigured:false.
+# R2_PUBLIC_BASE_URL = "https://pub-REPLACE_ME.r2.dev"
+# Exact origin of the admin UI (Cloudflare Pages URL). Enables credentialed
+# CORS so the browser sends the HttpOnly session cookie cross-site.
+# Example: ADMIN_ORIGIN = "https://virtual-ai-office.pages.dev"
+# (or `npx wrangler secret put ADMIN_ORIGIN`). Without it, admin login from a
+# browser on a different origin will not work.
+# ADMIN_ORIGIN = "https://REPLACE_ME.pages.dev"

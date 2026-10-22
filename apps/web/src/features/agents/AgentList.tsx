@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAgentStore, type StatusFilter } from "../../stores/useAgentStore";
+import { useOfficeConfigStore } from "../../stores/useOfficeConfigStore";
 import { ALL_STATUSES, STATUS_META } from "../../utils/status";
 import { AgentCard } from "./AgentCard";
 
@@ -15,10 +16,16 @@ export function AgentList() {
   const selectedId = useAgentStore((s) => s.selectedId);
   const select = useAgentStore((s) => s.select);
   const selectFiltered = useAgentStore((s) => s.selectFiltered);
+  // Agents whose worker record is non-public are hidden from the list.
+  // Agents without a worker record stay visible; empty when unconfigured.
+  const hiddenWorkerIds = useOfficeConfigStore((s) => s.hiddenWorkerIds);
 
   const list = useMemo(
-    () => selectFiltered(search, statusFilter),
-    [selectFiltered, search, statusFilter, agents],
+    () =>
+      selectFiltered(search, statusFilter).filter(
+        (a) => !hiddenWorkerIds.includes(a.id),
+      ),
+    [selectFiltered, search, statusFilter, agents, hiddenWorkerIds],
   );
 
   return (

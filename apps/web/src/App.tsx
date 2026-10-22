@@ -12,6 +12,7 @@ import { EventTimeline } from "./features/agents/EventTimeline";
 import { useAgentStore } from "./stores/useAgentStore";
 import { useConnectionStore } from "./stores/useConnectionStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
+import { useOfficeConfigStore } from "./stores/useOfficeConfigStore";
 import { connectSocket } from "./services/socket";
 import { buildLocalDemoAgents, buildStressAgents } from "./services/demoAgents";
 import { backendEnv } from "./env";
@@ -24,7 +25,38 @@ import { useTaskStore } from "./stores/useTaskStore";
 // Code-split the 3D scene: the 2D dashboard stays interactive while three.js loads.
 const OfficeScene = React.lazy(() => import("./world/OfficeScene"));
 
+// The /admin console is a separate app, lazy-loaded so the dashboard bundle
+// stays lean. Served by the SPA fallback (public/_redirects).
+const AdminApp = React.lazy(() => import("./admin/AdminApp"));
+
 const SNAPSHOT_TIMEOUT_MS = 6000;
+const PUBLIC_POLL_MS = 30_000;
+
+/**
+ * Applies the public office configuration (branding, worker visibility,
+ * character overrides) to the dashboard. Fetches once on mount, refetches
+ * on admin WS broadcasts, and polls every 30s as a fallback while the
+ * socket is not live. No-op when no backend is configured (demo mode
+ * keeps behaving exactly as today).
+ */
+function PublicOfficeSync() {
+  const status = useConnectionStore((s) => s.status);
+
+  useEffect(() => {
+    if (!backendEnv.configured) return;
+    void useOfficeConfigStore.getState().fetchPublic(backendEnv.apiUrl);
+  }, []);
+
+  useEffect(() => {
+    if (!backendEnv.configured || status === "live") return;
+    const timer = window.setInterval(() => {
+      void useOfficeConfigStore.getState().fetchPublic(backendEnv.apiUrl);
+    }, PUBLIC_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [status]);
+
+  return null;
+}
 
 function applyStressExtrasIfEnabled() {
   if (useSettingsStore.getState().stressMode) {
@@ -114,6 +146,18 @@ function Dashboard() {
           useConnectionStore.getState().set({ status: "error" });
         }
       },
+      // Admin live updates: refetch the public office config/workers so the
+      // dashboard reflects admin changes without a reload.
+      onConfigUpdate: () => {
+        if (!cancelled && backendEnv.configured) {
+          void useOfficeConfigStore.getState().fetchPublic(backendEnv.apiUrl);
+        }
+      },
+      onWorkersUpdate: () => {
+        if (!cancelled && backendEnv.configured) {
+          void useOfficeConfigStore.getState().fetchPublic(backendEnv.apiUrl);
+        }
+      },
     });
 
     return () => {
@@ -138,6 +182,7 @@ function Dashboard() {
 
   return (
     <div className="app">
+      <PublicOfficeSync />
       <WanderDirector />
       <Header
         onOpenSettings={() => setSettingsOpen(true)}
@@ -179,6 +224,20 @@ function Dashboard() {
 }
 
 export default function App() {
+  // The /admin console is a separate lazy-loaded app. This check runs at
+  // the top of the default export, before any dashboard work.
+  if (
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/admin")
+  ) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingOverlay />}>
+          <AdminApp />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
   return (
     <ErrorBoundary>
       <Dashboard />

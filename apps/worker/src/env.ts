@@ -7,6 +7,39 @@ export interface Env {
   DEMO_MODE?: string;
   OFFLINE_TIMEOUT_MS?: string;
   RATE_LIMIT_PER_MINUTE?: string;
+  /**
+   * D1 database backing the admin panel (workers/services/orders/config/
+   * audit/assets). OPTIONAL: when unbound, /api/admin/* and /api/public/*
+   * answer 503 {error:'admin database not configured'} instead of crashing.
+   */
+  DB?: D1Database;
+  /**
+   * R2 bucket for character asset uploads (.glb/.gltf). OPTIONAL: asset
+   * upload/delete answers 503 when unbound.
+   */
+  ASSETS?: R2Bucket;
+  /**
+   * One-time token authorizing POST /api/admin/auth/setup. Set via
+   * `npx wrangler secret put SETUP_TOKEN`. NEVER commit a real value.
+   */
+  SETUP_TOKEN?: string;
+  /**
+   * Shared secret the Worker uses to call the DO's POST /__internal/publish.
+   * Set via `npx wrangler secret put INTERNAL_SECRET`. NEVER commit a real value.
+   */
+  INTERNAL_SECRET?: string;
+  /**
+   * Public base URL of the ASSETS R2 bucket (e.g. https://pub-xxxx.r2.dev
+   * or a custom domain). Used to build public character-model URLs.
+   */
+  R2_PUBLIC_BASE_URL?: string;
+  /**
+   * Exact origin of the admin UI, e.g. https://virtual-ai-office.pages.dev.
+   * When set and the request Origin matches, the Worker answers with
+   * credentialed CORS (allow-credentials) so the HttpOnly session cookie
+   * is sent cross-site. Set via `wrangler secret put ADMIN_ORIGIN` or [vars].
+   */
+  ADMIN_ORIGIN?: string;
 }
 
 export interface WorkerConfig {

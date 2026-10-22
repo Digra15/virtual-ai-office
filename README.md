@@ -81,18 +81,74 @@ npm workspaces monorepo — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md):
 - `packages/shared` — types + Zod event schemas (single source of truth).
 - `apps/server` — Express + `ws`, in-memory agent registry, demo adapter.
 - `apps/web` — React 19 + Three.js (`@react-three/fiber`/`drei`) + Zustand.
+- `apps/worker` — Cloudflare Worker backend: Durable Object agent registry +
+  D1-backed admin API (workers, services, orders, office config, assets,
+  audit) + R2 character-asset storage.
 
 Deployment (static frontend + persistent Node backend, incl. systemd/pm2 and an
 optional Postgres note): [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 Asset licensing: [`docs/ASSETS.md`](docs/ASSETS.md) (all procedural, MIT).
+
+## Admin panel (`/admin`)
+
+A full administration console at `/admin` (SPA route, served via
+`apps/web/public/_redirects`). It requires the Cloudflare Worker backend with
+D1 + R2 configured — without it, `/admin` shows a setup guide instead of
+mockups.
+
+**What it manages:** worker CRUD (stable ids; renaming never changes the
+integration identity; delete = archive, never terminates an underlying agent),
+character editor with live 3D chibi preview (built on the `CharacterPreset`
+schema; GLB assets via manifest with per-model `supports` flags), office
+configuration (branding, theme, rooms, workstations, assignments, visibility,
+camera defaults — applied to the public 3D scene live, no rebuild), service
+catalog (draft/published, pricing, AI-disclosure), orders (explicit states
+`pending → accepted → queued → in_progress → review → completed`, plus
+`cancelled`/`failed`; `paid` flips only via the verified-payment endpoint),
+asset uploads (.glb/.gltf ≤ 25 MB → R2), audit log, and auth settings.
+
+**Authentication (real, no placeholders):** PBKDF2-SHA256 (210k iterations)
+password hashing, D1-backed users/sessions, HttpOnly session cookie, first-run
+setup gated by `SETUP_TOKEN`, no hardcoded credentials, no default password,
+login rate-limited (5/min/IP). Until the setup flow completes against a live
+backend, the panel honestly reports it is not secured yet.
+
+**Setup (Cloudflare dashboard / CLI):**
+1. `npx wrangler d1 create vao-admin` → paste `database_id` into
+   `apps/worker/wrangler.toml`
+2. `npx wrangler r2 bucket create vao-assets` → enable public access, set
+   `R2_PUBLIC_BASE_URL`
+3. `npx wrangler secret put SETUP_TOKEN` / `INTERNAL_SECRET` / `ADMIN_ORIGIN`
+   (Pages URL, e.g. `https://virtual-ai-office.pages.dev` — enables
+   credentialed CORS so the browser sends the session cookie)
+4. `npx wrangler d1 migrations apply vao-admin`
+5. Deploy the Worker, set `VITE_API_URL` on the Pages project, redeploy
+6. `POST /api/admin/auth/setup` once (username ≥3 chars, password ≥12 chars,
+   plus your `SETUP_TOKEN`)
+
+Full walkthrough: `apps/worker/SETUP.md`. API reference: Zod contracts in
+`packages/shared/src/admin.ts` (`ADMIN_API` / `PUBLIC_API` path constants).
+
+**Live updates:** admin mutations broadcast via the `AgentRoom` Durable Object
+(`config.update` / `workers.update` / `services.update`); the public page
+applies them immediately and polls every 30s as a fallback. Without a backend
+the public scene runs unchanged in local demo mode.
+
+**Known limitations:** D1/R2/secrets must be created by you (no CI credentials
+here); payment marking is a stub until a real provider webhook is wired (never
+claim paid otherwise); character GLB support is manifest-ready but no models
+ship yet (procedural chibi is the built-in source); office layout editing is
+config-based in v1 (drag-and-drop placement is a documented extension point).
 
 ## Project checklist
 
 - [x] Monorepo scaffold, 3D office, camera + interaction
 - [x] Agents, statuses, dashboard UI
 - [x] Backend REST/WS, schemas, demo simulator, adapter seam
-- [x] Tests (45), lint, typecheck, builds, live E2E validation
+- [x] Tests (204: 125 web + 52 worker + 27 shared), lint, typecheck, builds, live E2E validation
 - [x] Docs + CI workflow
+- [x] Admin panel (`/admin`): D1/R2 auth, worker/service/order/config/assets API, character editor, live updates
+- [ ] Cloudflare setup by user: D1 + R2 + secrets + migrations (see "Admin panel" above)
 - [ ] Browser smoke test (`docs/SMOKE_TEST.md`) — visual pass on a real browser
 - [ ] Screenshots for this README
 

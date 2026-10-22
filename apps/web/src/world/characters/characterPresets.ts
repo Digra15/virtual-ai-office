@@ -127,8 +127,10 @@ const BY_ID = new Map(PRESETS.map((p) => [p.agentId, p]));
 
 /**
  * Admin/spawn-panel overrides: lets the UI assign a hand-designed look to
- * an agent id that doesn't have one (e.g. a freshly spawned agent picking
- * the "Design" style). Overrides win over generated fallbacks.
+ * an agent id — e.g. a freshly spawned agent picking the "Design" style, or
+ * the admin console pushing a worker's characterConfig from the backend.
+ * Overrides win over hand-designed presets and generated fallbacks, so the
+ * admin panel can restyle any agent. Cleared when the source goes away.
  */
 const OVERRIDES = new Map<string, CharacterPreset>();
 
@@ -169,15 +171,20 @@ const FALLBACK_OUTFIT_B = ["#232a3a", "#ff8c42", "#a37fa3", "#3a3f4a"];
 const FALLBACK_ACCESSORY: AccessoryKind[] = ["none", "none", "starPin", "ribbon"];
 
 /**
- * Resolve the visual identity for an agent id. Unknown ids (e.g. stress-test
- * agents) get a deterministic generated preset — the same id always yields
- * the same look, so toggling extras on/off is stable.
+ * Resolve the visual identity for an agent id.
+ *
+ * Precedence: admin/worker-config overrides FIRST (set via
+ * setCharacterPresetOverride, e.g. from the public office config or the
+ * spawn panel), then the hand-designed presets, then the deterministic
+ * generated fallback. Unknown ids (e.g. stress-test agents) get a
+ * deterministic generated preset — the same id always yields the same
+ * look, so toggling extras on/off is stable.
  */
 export function getCharacterPreset(agentId: string): CharacterPreset {
-  const known = BY_ID.get(agentId);
-  if (known) return known;
   const override = OVERRIDES.get(agentId);
   if (override) return override;
+  const known = BY_ID.get(agentId);
+  if (known) return known;
   const h = hashString(agentId);
   const pick = <T>(arr: readonly T[]): T => arr[h % arr.length];
   const pick2 = <T>(arr: readonly T[]): T => arr[(h >> 4) % arr.length];

@@ -8,3 +8,4 @@
 export * from './types';
 export * from './schemas';
 export * from './a2a';
+export * from './admin';

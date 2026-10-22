@@ -13,6 +13,10 @@ export interface ConnectSocketOptions {
   onEvent: (agentId: string, entry: ActivityEntry) => void;
   onHeartbeat: (serverTime: string, demoMode: boolean) => void;
   onStatus: (status: SocketStatus) => void;
+  /** Optional: admin broadcasts the Worker sends on admin mutations. */
+  onConfigUpdate?: () => void;
+  onWorkersUpdate?: () => void;
+  onServicesUpdate?: () => void;
 }
 
 const MAX_BACKOFF_MS = 30_000;
@@ -83,6 +87,24 @@ export function connectSocket(opts: ConnectSocketOptions): () => void {
       case "error":
         // Server-side notice; the connection itself stays alive.
         console.warn("[socket] server error:", msg.message);
+        break;
+      default:
+        handleAdminBroadcast(msg);
+        break;
+    }
+  };
+
+  /** Dispatches admin live-update broadcasts (unknown to the old schema). */
+  const handleAdminBroadcast = (msg: { type?: unknown }) => {
+    switch (msg.type) {
+      case "config.update":
+        opts.onConfigUpdate?.();
+        break;
+      case "workers.update":
+        opts.onWorkersUpdate?.();
+        break;
+      case "services.update":
+        opts.onServicesUpdate?.();
         break;
       default:
         break;

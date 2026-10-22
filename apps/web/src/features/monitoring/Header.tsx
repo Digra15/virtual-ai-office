@@ -1,5 +1,6 @@
 import { ConnectionBadge } from "./ConnectionBadge";
 import { DemoBadge } from "./DemoBadge";
+import { useOfficeConfigStore } from "../../stores/useOfficeConfigStore";
 
 interface HeaderProps {
   onOpenSettings: () => void;
@@ -8,18 +9,23 @@ interface HeaderProps {
   onOpenSpawn: () => void;
 }
 
-/** Top bar: title, demo/connection badges, command-control actions. */
+/**
+ * Top bar: title, demo/connection badges, command-control actions.
+ * The office name/tagline come from the public branding config when a
+ * backend is configured; otherwise the built-in defaults are used.
+ */
 export function Header({
   onOpenSettings,
   onOpenKanban,
   onOpenMeetings,
   onOpenSpawn,
 }: HeaderProps) {
+  const branding = useOfficeConfigStore((s) => s.branding);
   return (
     <header className="app-header">
       <div className="brand">
-        <h1>Virtual AI Office</h1>
-        <p>Mission Control</p>
+        <h1>{branding?.officeName ?? "Virtual AI Office"}</h1>
+        <p>{branding?.tagline ?? "Mission Control"}</p>
       </div>
       <div className="header-right">
         <DemoBadge />

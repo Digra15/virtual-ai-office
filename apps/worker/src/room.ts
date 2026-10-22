@@ -15,6 +15,7 @@
  */
 import { DurableObject } from 'cloudflare:workers';
 import {
+  ADMIN_BROADCAST_TYPES,
   EventPostSchema,
   type ActivityEntry,
   type AgentInfo,
@@ -26,6 +27,7 @@ import { AgentRegistry, type RegistrySnapshot } from './registry';
 import { SlidingWindowLimiter } from './ratelimit';
 import { demoTick } from './demo';
 import { loadWorkerConfig, type Env } from './env';
+import { timingSafeEqual } from './admin/auth';
 
 const STATE_KEY = 'vao-state-v1';
 const ALARM_FLAG_KEY = 'vao-alarm-set';
@@ -97,6 +99,13 @@ export class AgentRoom extends DurableObject<Env> {
 
     if (request.method === 'GET' && pathname === '/health') {
       return this.handleHealth();
+    }
+    // Internal broadcast channel: the Worker (admin mutations) POSTs here
+    // with the shared INTERNAL_SECRET; the DO fans the message out to all
+    // connected WS clients. Never exposed publicly — index.ts only routes
+    // /api/* and /ws to this DO.
+    if (request.method === 'POST' && pathname === '/__internal/publish') {
+      return this.handleInternalPublish(request);
     }
     if (request.method === 'GET' && pathname === '/api/agents') {
       return json({ agents: this.registry.list() });
@@ -170,8 +179,37 @@ export class AgentRoom extends DurableObject<Env> {
     return json({ agent }, 200);
   }
 
-  // --------------------------------------------------------------- websocket
+  /**
+   * POST /__internal/publish — broadcast an admin live-update to all WS
+   * clients. Requires header X-Internal-Secret to match INTERNAL_SECRET
+   * (constant-time compare). The message is sent as a bare {type} object —
+   * unknown to older clients, which ignore it; the web client handles the
+   * admin broadcast types.
+   */
+  private async handleInternalPublish(request: Request): Promise<Response> {
+    const secret = this.env.INTERNAL_SECRET;
+    if (!secret) {
+      return json({ error: 'Internal publish not configured' }, 503);
+    }
+    const provided = request.headers.get('X-Internal-Secret') ?? '';
+    if (!timingSafeEqual(provided, secret)) {
+      return json({ error: 'Forbidden' }, 403);
+    }
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const type = (body as { type?: unknown } | null)?.type;
+    if (typeof type !== 'string' || !(ADMIN_BROADCAST_TYPES as readonly string[]).includes(type)) {
+      return json({ error: 'Invalid broadcast type' }, 400);
+    }
+    this.broadcast({ type } as unknown as ServerMessage);
+    return json({ ok: true });
+  }
 
+  // --------------------------------------------------------------- websocket
   private handleWsUpgrade(request: Request): Response {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return json({ error: 'Expected a WebSocket upgrade request' }, 400);

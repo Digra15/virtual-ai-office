@@ -2,6 +2,7 @@ import { Suspense, memo, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Billboard, Text } from "@react-three/drei";
 import { useAgentStore } from "../stores/useAgentStore";
+import { useOfficeConfigStore } from "../stores/useOfficeConfigStore";
 import { STATUS_META } from "../utils/status";
 import {
   EXTRA_DESKS,
@@ -100,7 +101,13 @@ const OverflowDesks = memo(function OverflowDesks() {
  *  system (registered on mount); this just maps the roster. */
 const AgentAvatars = memo(function AgentAvatars() {
   const agents = useAgentStore((s) => s.agents);
-  const list = useMemo(() => Object.values(agents), [agents]);
+  // Hide agents whose worker record is non-public (empty when unconfigured).
+  const hiddenWorkerIds = useOfficeConfigStore((s) => s.hiddenWorkerIds);
+  const list = useMemo(
+    () =>
+      Object.values(agents).filter((a) => !hiddenWorkerIds.includes(a.id)),
+    [agents, hiddenWorkerIds],
+  );
   return (
     <group>
       {list.map((agent) => (
