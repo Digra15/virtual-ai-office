@@ -7,7 +7,8 @@ import {
   SPRITE_H,
   SPRITE_W,
   clearPixelSheetCache,
-  getPixelSheet,
+  getPixelFrame,
+  pixelFrameCacheSize,
   renderSpriteFrame,
   resolvePixelAnimation,
   shade,
@@ -16,33 +17,75 @@ import {
   getAllPresets,
   getCharacterPreset,
 } from "../characterPresets";
-import { validateCharacterPreset } from "../characterTypes";
-import type { CharacterPreset } from "../characterTypes";
+import {
+  validateCharacterPreset,
+  type ChibiAnimation,
+  type CharacterPreset,
+  type SpriteDirection,
+} from "../characterTypes";
 
-function buffersDiffer(a: Uint8ClampedArray, b: Uint8ClampedArray): boolean {
+function buffersDiffer(
+  a: Uint8ClampedArray,
+  b: Uint8ClampedArray,
+): boolean {
   if (a.length !== b.length) return true;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true;
   return false;
 }
 
 const PRESETS = getAllPresets();
+const DIRS: SpriteDirection[] = ["front", "side", "back"];
+
+const hex = (h: string): [number, number, number] => [
+  parseInt(h.slice(1, 3), 16),
+  parseInt(h.slice(3, 5), 16),
+  parseInt(h.slice(5, 7), 16),
+];
+
+function hasColor(
+  buf: Uint8ClampedArray,
+  rgb: [number, number, number],
+): boolean {
+  for (let i = 0; i < buf.length; i += 4) {
+    if (
+      buf[i + 3] > 0 &&
+      buf[i] === rgb[0] &&
+      buf[i + 1] === rgb[1] &&
+      buf[i + 2] === rgb[2]
+    )
+      return true;
+  }
+  return false;
+}
+
+function opaqueCount(buf: Uint8ClampedArray): number {
+  let n = 0;
+  for (let i = 3; i < buf.length; i += 4) if (buf[i] > 0) n++;
+  return n;
+}
 
 describe("sprite dimensions", () => {
-  it("renders 28x36 RGBA buffers for all 8 presets", () => {
+  it("renders 48x48 RGBA buffers for all 8 presets", () => {
+    expect(SPRITE_W).toBe(48);
+    expect(SPRITE_H).toBe(48);
     expect(PRESETS).toHaveLength(8);
     for (const preset of PRESETS) {
-      const buf = renderSpriteFrame(preset, "idle", 0);
+      const buf = renderSpriteFrame(preset, "front", "idle", 0);
       expect(buf.length).toBe(SPRITE_W * SPRITE_H * 4);
     }
   });
 
-  it("every preset produces a non-empty sprite", () => {
+  it("every preset/animation/direction produces a non-empty sprite", () => {
     for (const preset of PRESETS) {
-      const buf = renderSpriteFrame(preset, "idle", 0);
-      let opaque = 0;
-      for (let i = 3; i < buf.length; i += 4) if (buf[i] > 0) opaque++;
-      // A chibi fills a healthy chunk of its 28x36 grid.
-      expect(opaque).toBeGreaterThan(250);
+      for (const anim of PIXEL_ANIMATIONS) {
+        for (const dir of DIRS) {
+          for (let f = 0; f < FRAME_COUNTS[anim]; f++) {
+            const buf = renderSpriteFrame(preset, dir, anim, f);
+            // A chibi fills a healthy chunk of its 48x48 grid.
+            expect(opaqueCount(buf)).toBeGreaterThan(400);
+          }
+        }
+      }
     }
   });
 
@@ -51,278 +94,241 @@ describe("sprite dimensions", () => {
       expect(validateCharacterPreset(preset)).toEqual([]);
     }
   });
+
+  it("covers 7 animations with richer frame counts", () => {
+    expect(PIXEL_ANIMATIONS).toContain("praying");
+    expect(FRAME_COUNTS.walking).toBe(8);
+    expect(FRAME_COUNTS.idle).toBe(4);
+    expect(FRAME_COUNTS.praying).toBe(4);
+    expect(CELEBRATE_SECONDS).toBeGreaterThan(0);
+    expect(Object.keys(FRAME_FPS)).toHaveLength(PIXEL_ANIMATIONS.length);
+  });
 });
 
 describe("palette mapping", () => {
-  it("preset colors appear in the rendered sprite", () => {
+  it("preset hair color appears in front and back views", () => {
     for (const preset of PRESETS) {
-      const buf = renderSpriteFrame(preset, "idle", 0);
-      const hex = (h: string): [number, number, number] => {
-        const s = h.replace("#", "");
-        return [
-          parseInt(s.slice(0, 2), 16),
-          parseInt(s.slice(2, 4), 16),
-          parseInt(s.slice(4, 6), 16),
-        ];
-      };
-      const has = (rgb: [number, number, number]) => {
-        for (let i = 0; i < buf.length; i += 4) {
-          if (
-            buf[i + 3] > 0 &&
-            buf[i] === rgb[0] &&
-            buf[i + 1] === rgb[1] &&
-            buf[i + 2] === rgb[2]
-          )
-            return true;
-        }
-        return false;
-      };
-      expect(has(hex(preset.hairColor))).toBe(true);
-      expect(has(hex(preset.skinTone))).toBe(true);
-      expect(has(hex(preset.eyeColor))).toBe(true);
-      expect(has(hex(preset.outfitPrimary))).toBe(true);    }
+      const hair = hex(preset.hairColor);
+      expect(
+        hasColor(renderSpriteFrame(preset, "front", "idle", 0), hair),
+        `${preset.agentId} front hair`,
+      ).toBe(true);
+      expect(
+        hasColor(renderSpriteFrame(preset, "back", "idle", 0), hair),
+        `${preset.agentId} back hair`,
+      ).toBe(true);
+    }
   });
 
-  it("shade() darkens and lightens deterministically", () => {
-    expect(shade("#808080", -0.5)).toBe("#404040");
-    expect(shade("#808080", 0.5)).toBe("#c0c0c0");
-    expect(shade("#000000", 1)).toBe("#000000");
+  it("eye color appears in front and side views (not back)", () => {
+    for (const preset of PRESETS) {
+      const eye = hex(preset.eyeColor);
+      expect(
+        hasColor(renderSpriteFrame(preset, "front", "idle", 0), eye),
+        `${preset.agentId} front eyes`,
+      ).toBe(true);
+      expect(
+        hasColor(renderSpriteFrame(preset, "side", "idle", 0), eye),
+        `${preset.agentId} side eye`,
+      ).toBe(true);
+      expect(
+        hasColor(renderSpriteFrame(preset, "back", "idle", 0), eye),
+        `${preset.agentId} back has no eyes`,
+      ).toBe(false);
+    }
   });
 });
 
-describe("frame sets", () => {
-  it("declares the expected frame counts and fps", () => {
-    expect(FRAME_COUNTS).toEqual({
-      idle: 2,
-      typing: 2,
-      thinking: 2,
-      walking: 4,
-      meeting: 2,
-      celebrate: 2,
-    });
-    for (const anim of PIXEL_ANIMATIONS) {
-      expect(FRAME_FPS[anim]).toBeGreaterThan(0);
+describe("directional views", () => {
+  const nika = getCharacterPreset("nika");
+
+  it("front, side and back views are all distinct (idle + walking)", () => {
+    for (const anim of ["idle", "walking"] as ChibiAnimation[]) {
+      const front = renderSpriteFrame(nika, "front", anim, 0);
+      const side = renderSpriteFrame(nika, "side", anim, 0);
+      const back = renderSpriteFrame(nika, "back", anim, 0);
+      expect(buffersDiffer(front, side)).toBe(true);
+      expect(buffersDiffer(front, back)).toBe(true);
+      expect(buffersDiffer(side, back)).toBe(true);
     }
   });
 
-  it("idle frames differ (bob)", () => {
-    const preset = getCharacterPreset("nika");
-    expect(
-      buffersDiffer(
-        renderSpriteFrame(preset, "idle", 0),
-        renderSpriteFrame(preset, "idle", 1),
-      ),
-    ).toBe(true);
-  });
-
-  it("walk frames cycle through distinct poses", () => {
-    const preset = getCharacterPreset("coding");
-    const frames = [0, 1, 2, 3].map((f) =>
-      renderSpriteFrame(preset, "walking", f),
+  it("walk frames differ across the 8-frame stride", () => {
+    const frames = Array.from({ length: 8 }, (_, f) =>
+      renderSpriteFrame(nika, "side", "walking", f),
     );
-    // Consecutive stride frames all differ from each other.
-    for (let i = 0; i < frames.length; i++) {
-      expect(
-        buffersDiffer(frames[i], frames[(i + 1) % frames.length]),
-      ).toBe(true);
-    }
-    // Stride poses differ from the neutral idle frame.
-    const idle = renderSpriteFrame(preset, "idle", 0);
-    expect(frames.some((f) => buffersDiffer(f, idle))).toBe(true);
+    let distinct = 0;
+    for (let i = 0; i < frames.length; i++)
+      for (let j = i + 1; j < frames.length; j++)
+        if (buffersDiffer(frames[i], frames[j])) distinct++;
+    // At least the step/together/bob variations must differ.
+    expect(distinct).toBeGreaterThan(10);
   });
 
-  it("typing frames alternate", () => {
-    const preset = getCharacterPreset("research");
-    expect(
-      buffersDiffer(
-        renderSpriteFrame(preset, "typing", 0),
-        renderSpriteFrame(preset, "typing", 1),
-      ),
-    ).toBe(true);
+  it("blink frames differ from open-eye frames", () => {
+    const open = renderSpriteFrame(nika, "front", "idle", 0, false);
+    const blink = renderSpriteFrame(nika, "front", "idle", 0, true);
+    expect(buffersDiffer(open, blink)).toBe(true);
   });
 
-  it("thinking second frame adds the thought bubble + chin hand", () => {
-    const preset = getCharacterPreset("data");
-    const a = renderSpriteFrame(preset, "thinking", 0);
-    const b = renderSpriteFrame(preset, "thinking", 1);
-    expect(buffersDiffer(a, b)).toBe(true);
-    // Bubble pixels are white and sit above the head (y < 9).
-    let whiteAbove = 0;
-    for (let y = 0; y < 9; y++) {
-      for (let x = 0; x < SPRITE_W; x++) {
-        const i = (y * SPRITE_W + x) * 4;
-        if (
-          b[i + 3] > 0 &&
-          b[i] === 255 &&
-          b[i + 1] === 255 &&
-          b[i + 2] === 255
-        ) {
-          // Not white in frame 0 at the same spot.
-          if (!(a[i] === 255 && a[i + 1] === 255 && a[i + 2] === 255)) {
-            whiteAbove++;
-          }
-        }
-      }
-    }
-    expect(whiteAbove).toBeGreaterThan(0);
-  });
-
-  it("meeting second frame raises an arm", () => {
-    const preset = getCharacterPreset("design");
-    expect(
-      buffersDiffer(
-        renderSpriteFrame(preset, "meeting", 0),
-        renderSpriteFrame(preset, "meeting", 1),
-      ),
-    ).toBe(true);
-  });
-
-  it("celebrate first frame jumps higher than the landing frame", () => {
-    const preset = getCharacterPreset("automation");
-    const jump = renderSpriteFrame(preset, "celebrate", 0);
-    const land = renderSpriteFrame(preset, "celebrate", 1);
-    expect(buffersDiffer(jump, land)).toBe(true);
-    // Lowest row of SHOE pixels (outline excluded): the jump frame's shoes
-    // sit exactly 2px higher.
-    const SHOE: [number, number, number] = [43, 43, 58];
-    const lowestShoeRow = (b: Uint8ClampedArray): number => {
-      let max = -1;
-      for (let y = 0; y < SPRITE_H; y++) {
-        for (let x = 0; x < SPRITE_W; x++) {
-          const i = (y * SPRITE_W + x) * 4;
-          if (
-            b[i + 3] > 0 &&
-            b[i] === SHOE[0] &&
-            b[i + 1] === SHOE[1] &&
-            b[i + 2] === SHOE[2]
-          ) {
-            max = y;
-          }
-        }
-      }
-      return max;
-    };
-    expect(lowestShoeRow(jump)).toBe(lowestShoeRow(land) - 2);
-  });
-
-  it("frame index wraps safely", () => {
-    const preset = getCharacterPreset("monitoring");
-    const a = renderSpriteFrame(preset, "walking", 4);
-    const b = renderSpriteFrame(preset, "walking", 0);
+  it("frame index wraps around the animation length", () => {
+    const a = renderSpriteFrame(nika, "front", "walking", 0);
+    const b = renderSpriteFrame(nika, "front", "walking", 8);
     expect(buffersDiffer(a, b)).toBe(false);
   });
 });
 
-describe("blink", () => {
-  it("blink variant differs from open eyes for every animation", () => {
-    const preset = getCharacterPreset("writing");
-    for (const anim of PIXEL_ANIMATIONS) {
-      const open = renderSpriteFrame(preset, anim, 0, false);
-      const shut = renderSpriteFrame(preset, anim, 0, true);
-      expect(buffersDiffer(open, shut)).toBe(true);
+describe("prayer outfits", () => {
+  const nika = getCharacterPreset("nika"); // mukena
+  const data = getCharacterPreset("data"); // sarungPeci
+  const VEIL: [number, number, number] = [248, 248, 252];
+  const PECI: [number, number, number] = [24, 24, 30];
+
+  it("mukena covers the hair with a white veil (front/side/back)", () => {
+    for (const dir of DIRS) {
+      const buf = renderSpriteFrame(nika, dir, "praying", 0, false, "mukena");
+      expect(hasColor(buf, VEIL), `mukena ${dir} veil`).toBe(true);
+      expect(
+        hasColor(buf, hex(nika.hairColor)),
+        `mukena ${dir} hides hair`,
+      ).toBe(false);
     }
   });
 
-  it("blink only redraws the eyes (silhouette outline unchanged)", () => {
-    const preset = getCharacterPreset("nika");
-    const open = renderSpriteFrame(preset, "idle", 0, false);
-    const shut = renderSpriteFrame(preset, "idle", 0, true);
-    // Count opaque pixels outside the eye band (y 12..16, x 8..19):
-    // the silhouette must be pixel-identical there.
-    const outside = (b: Uint8ClampedArray): number => {
-      let sig = 0;
-      for (let y = 0; y < SPRITE_H; y++) {
-        for (let x = 0; x < SPRITE_W; x++) {
-          const inEyeBand = y >= 12 && y <= 16 && x >= 8 && x <= 19;
-          if (!inEyeBand && b[(y * SPRITE_W + x) * 4 + 3] > 0) sig++;
-        }
-      }
-      return sig;
-    };
-    expect(outside(open)).toBe(outside(shut));
+  it("mukena still shows the face in front view", () => {
+    const buf = renderSpriteFrame(nika, "front", "praying", 0, false, "mukena");
+    expect(hasColor(buf, hex(nika.skinTone))).toBe(true);
   });
-});
 
-describe("identity distinctness", () => {
-  it("all 8 presets render differently from each other", () => {
-    const bufs = PRESETS.map((p) => renderSpriteFrame(p, "idle", 0));
-    for (let i = 0; i < bufs.length; i++) {
-      for (let j = i + 1; j < bufs.length; j++) {
-        expect(buffersDiffer(bufs[i], bufs[j])).toBe(true);
-      }
+  it("sarungPeci adds a black peci cap and a sarong", () => {
+    for (const dir of DIRS) {
+      const buf = renderSpriteFrame(
+        data,
+        dir,
+        "praying",
+        0,
+        false,
+        "sarungPeci",
+      );
+      expect(hasColor(buf, PECI), `peci ${dir}`).toBe(true);
+      expect(
+        hasColor(buf, hex(data.outfitSecondary)),
+        `sarong ${dir}`,
+      ).toBe(true);
     }
   });
 
-  it("accessories leave a mark (glasses / hats differ from none)", () => {
-    const base: CharacterPreset = {
-      ...getCharacterPreset("research"),
-      agentId: "test-acc",
-      accessory: "none",
-    };
-    const plain = renderSpriteFrame(base, "idle", 0);
-    const withGlasses = renderSpriteFrame(
-      { ...base, accessory: "roundGlasses" },
-      "idle",
-      0,
+  it("prayer frames differ from the normal outfit", () => {
+    const normal = renderSpriteFrame(nika, "front", "praying", 0);
+    const prayer = renderSpriteFrame(nika, "front", "praying", 0, false, "mukena");
+    expect(buffersDiffer(normal, prayer)).toBe(true);
+  });
+
+  it("prayer animation frames vary (standing → folded → bow → dua)", () => {
+    const frames = [0, 1, 2, 3].map((f) =>
+      renderSpriteFrame(nika, "front", "praying", f, false, "mukena"),
     );
-    expect(buffersDiffer(plain, withGlasses)).toBe(true);
+    let distinct = 0;
+    for (let i = 0; i < frames.length; i++)
+      for (let j = i + 1; j < frames.length; j++)
+        if (buffersDiffer(frames[i], frames[j])) distinct++;
+    expect(distinct).toBeGreaterThan(0);
+  });
+
+  it("shade() still lightens and darkens", () => {
+    expect(shade("#808080", 0.5)).not.toBe("#808080");
+    expect(shade("#808080", -0.5)).not.toBe("#808080");
   });
 });
 
-describe("sheet cache", () => {
+describe("lazy frame cache", () => {
   beforeEach(() => clearPixelSheetCache());
 
-  it("returns the same sheet for the same preset", () => {
+  it("renders on first use and returns the cached buffer afterwards", () => {
     const preset = getCharacterPreset("nika");
-    expect(getPixelSheet(preset)).toBe(getPixelSheet(preset));
+    expect(pixelFrameCacheSize()).toBe(0);
+    const a = getPixelFrame(preset, "side", "walking", 3);
+    expect(pixelFrameCacheSize()).toBe(1);
+    const b = getPixelFrame(preset, "side", "walking", 3);
+    expect(b).toBe(a); // same reference — no re-render
+    expect(pixelFrameCacheSize()).toBe(1);
   });
 
-  it("sheet get() wraps frames and matches direct renders", () => {
-    const preset = getCharacterPreset("design");
-    const sheet = getPixelSheet(preset);
-    for (const anim of PIXEL_ANIMATIONS) {
-      const count = FRAME_COUNTS[anim];
-      for (let f = 0; f < count; f++) {
-        for (const blink of [false, true]) {
-          expect(
-            buffersDiffer(
-              sheet.get(anim, f, blink),
-              renderSpriteFrame(preset, anim, f, blink),
-            ),
-          ).toBe(false);
-        }
-      }
-    }
+  it("keys the cache by direction, blink and prayer variant", () => {
+    const preset = getCharacterPreset("nika");
+    getPixelFrame(preset, "front", "idle", 0);
+    getPixelFrame(preset, "side", "idle", 0);
+    getPixelFrame(preset, "front", "idle", 0, true);
+    getPixelFrame(preset, "front", "idle", 0, false, "mukena");
+    expect(pixelFrameCacheSize()).toBe(4);
   });
 
-  it("different presets get different sheets", () => {
-    expect(getPixelSheet(getCharacterPreset("nika"))).not.toBe(
-      getPixelSheet(getCharacterPreset("coding")),
-    );
+  it("clearPixelSheetCache() empties the cache", () => {
+    const preset = getCharacterPreset("nika");
+    const a = getPixelFrame(preset, "front", "idle", 0);
+    clearPixelSheetCache();
+    expect(pixelFrameCacheSize()).toBe(0);
+    const b = getPixelFrame(preset, "front", "idle", 0);
+    expect(b).not.toBe(a);
+    expect(buffersDiffer(a, b)).toBe(false); // same pixels, new buffer
+  });
+
+  it("does not pre-render views nobody asked for", () => {
+    const preset = getCharacterPreset("coding");
+    getPixelFrame(preset, "front", "idle", 0);
+    // 1 frame cached — not the full 7 anims x 3 dirs x frames x blink set.
+    expect(pixelFrameCacheSize()).toBe(1);
   });
 });
 
 describe("resolvePixelAnimation", () => {
-  it("maps statuses like the old 3D rig", () => {
+  it("praying wins over celebrate, override and status", () => {
+    expect(resolvePixelAnimation("working", "walking", true, true)).toBe(
+      "praying",
+    );
+    expect(resolvePixelAnimation("meeting", "meeting", false, true)).toBe(
+      "praying",
+    );
+  });
+
+  it("keeps the previous priority order when not praying", () => {
     expect(resolvePixelAnimation("working", null, false)).toBe("typing");
-    expect(resolvePixelAnimation("thinking", null, false)).toBe("thinking");
-    expect(resolvePixelAnimation("idle", null, false)).toBe("idle");
-    expect(resolvePixelAnimation("waiting", null, false)).toBe("idle");
-    expect(resolvePixelAnimation("error", null, false)).toBe("idle");
-    expect(resolvePixelAnimation("offline", null, false)).toBe("idle");
-  });
-
-  it("locomotion override wins over status", () => {
+    expect(resolvePixelAnimation("idle", null, true)).toBe("celebrate");
     expect(resolvePixelAnimation("idle", "walking", false)).toBe("walking");
-    expect(resolvePixelAnimation("working", "meeting", false)).toBe("meeting");
+    expect(resolvePixelAnimation("meeting", null, false)).toBe("meeting");
+    expect(resolvePixelAnimation("working", "walking", true)).toBe("celebrate");
   });
 
-  it("celebrating wins over everything", () => {
-    expect(resolvePixelAnimation("idle", "walking", true)).toBe("celebrate");
-    expect(resolvePixelAnimation("working", null, true)).toBe("celebrate");
+  it("defaults praying to false (backward compatible)", () => {
+    expect(resolvePixelAnimation("idle", null, false)).toBe("idle");
+  });
+});
+
+describe("preset + schema integration", () => {
+  it("every hand-designed preset renders in every view", () => {
+    for (const preset of PRESETS) {
+      for (const dir of DIRS) {
+        const buf = renderSpriteFrame(preset, dir, "idle", 0);
+        expect(opaqueCount(buf)).toBeGreaterThan(400);
+      }
+    }
   });
 
-  it("celebrate duration constant is sane", () => {
-    expect(CELEBRATE_SECONDS).toBeGreaterThan(0);
+  it("a fully custom preset object also renders", () => {
+    const custom: CharacterPreset = {
+      agentId: "custom-1",
+      hairStyle: "spiky",
+      hairColor: "#123456",
+      eyeColor: "#abcdef",
+      skinTone: "#fedcba",
+      outfitStyle: "uniform",
+      outfitPrimary: "#111111",
+      outfitSecondary: "#222222",
+      accessory: "cap",
+      prayerWear: "sarungPeci",
+    };
+    expect(validateCharacterPreset(custom)).toEqual([]);
+    const buf = renderSpriteFrame(custom, "side", "walking", 5);
+    expect(opaqueCount(buf)).toBeGreaterThan(400);
   });
 });

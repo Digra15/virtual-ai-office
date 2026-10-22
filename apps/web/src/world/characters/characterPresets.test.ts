@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   getAllPresets,
   getCharacterPreset,
+  prayerWearFor,
   PRESET_AGENT_IDS,
 } from "./characterPresets";
-import { validateCharacterPreset } from "./characterTypes";
+import { PRAYER_WEARS, validateCharacterPreset } from "./characterTypes";
 
 describe("character presets", () => {
   it("covers exactly the 8 demo agents", () => {
@@ -56,5 +57,38 @@ describe("character presets", () => {
       ),
     );
     expect(styles.size).toBeGreaterThan(1);
+  });
+});
+
+describe("prayerWear mapping (musola outfits, user correction 2026-10-22)", () => {
+  it("maps female-coded characters to mukena, male-coded to sarungPeci", () => {
+    expect(prayerWearFor(getCharacterPreset("nika"))).toBe("mukena");
+    expect(prayerWearFor(getCharacterPreset("writing"))).toBe("mukena");
+    expect(prayerWearFor(getCharacterPreset("design"))).toBe("mukena");
+    expect(prayerWearFor(getCharacterPreset("research"))).toBe("sarungPeci");
+    expect(prayerWearFor(getCharacterPreset("coding"))).toBe("sarungPeci");
+    expect(prayerWearFor(getCharacterPreset("data"))).toBe("sarungPeci");
+    expect(prayerWearFor(getCharacterPreset("automation"))).toBe(
+      "sarungPeci",
+    );
+    expect(prayerWearFor(getCharacterPreset("monitoring"))).toBe("sarungPeci");
+  });
+
+  it("every hand-designed preset carries an explicit prayerWear", () => {
+    for (const p of getAllPresets()) {
+      expect(PRAYER_WEARS).toContain(p.prayerWear);
+    }
+  });
+
+  it("an explicit prayerWear override wins over the default mapping", () => {
+    const preset = { ...getCharacterPreset("nika"), prayerWear: "sarungPeci" as const };
+    expect(prayerWearFor(preset)).toBe("sarungPeci");
+  });
+
+  it("unknown agents get a deterministic, valid prayerWear", () => {
+    const a = getCharacterPreset("stress-07");
+    expect(PRAYER_WEARS).toContain(a.prayerWear);
+    expect(prayerWearFor(a)).toBe(a.prayerWear);
+    expect(validateCharacterPreset(a)).toEqual([]);
   });
 });

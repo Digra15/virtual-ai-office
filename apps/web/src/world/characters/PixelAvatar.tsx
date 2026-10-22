@@ -9,32 +9,63 @@ import {
   agentCursorHandlers,
   makeAgentClickHandler,
 } from "../interaction/selectAgent";
-import type { CharacterPreset, ChibiAnimation } from "./characterTypes";
+import { movement } from "../movement";
+import type {
+  CharacterPreset,
+  ChibiAnimation,
+  SpriteDirection,
+} from "./characterTypes";
+import { selectSpriteDirection, wrapAngle } from "./characterTypes";
+import { isInMusola } from "./facing";
+import { prayerWearFor } from "./characterPresets";
 import {
   CELEBRATE_SECONDS,
   FRAME_COUNTS,
   FRAME_FPS,
-  PIXEL_ANIMATIONS,
   PIXEL_BLINK_DURATION,
   SPRITE_H,
   SPRITE_W,
-  getPixelSheet,
+  getPixelFrame,
   resolvePixelAnimation,
+  type PrayerVariant,
 } from "./pixel/pixelSprites";
 
-/** Convert a raw RGBA pixel buffer into a canvas (DOM side only). */
-function bufferToCanvas(buf: Uint8ClampedArray<ArrayBuffer>): HTMLCanvasElement {
+/** Scratch vector for the avatar's world position (no per-frame alloc). */
+const tmpV = new THREE.Vector3();
+
+/**
+ * Convert a raw RGBA pixel buffer into a canvas (DOM side only).
+ * When `mirror` is set the image is flipped horizontally — used for the
+ * side view when the camera is on the character's other side.
+ */
+function bufferToCanvas(
+  buf: Uint8ClampedArray<ArrayBuffer>,
+  mirror: boolean,
+): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = SPRITE_W;
   c.height = SPRITE_H;
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("2d canvas context unavailable");
-  ctx.putImageData(new ImageData(buf, SPRITE_W, SPRITE_H), 0, 0);
+  const src = document.createElement("canvas");
+  src.width = SPRITE_W;
+  src.height = SPRITE_H;
+  const sctx = src.getContext("2d");
+  if (!sctx) throw new Error("2d canvas context unavailable");
+  sctx.putImageData(new ImageData(buf, SPRITE_W, SPRITE_H), 0, 0);
+  if (mirror) {
+    ctx.translate(SPRITE_W, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(src, 0, 0);
   return c;
 }
 
-function makePixelTexture(buf: Uint8ClampedArray<ArrayBuffer>): THREE.CanvasTexture {
-  const tex = new THREE.CanvasTexture(bufferToCanvas(buf));
+function makePixelTexture(
+  buf: Uint8ClampedArray<ArrayBuffer>,
+  mirror: boolean,
+): THREE.CanvasTexture {
+  const tex = new THREE.CanvasTexture(bufferToCanvas(buf, mirror));
   // NearestFilter keeps the individual pixels visible ("agak pixel pixel").
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestFilter;
@@ -50,18 +81,36 @@ interface PixelAvatarProps {
   color: string;
   interactive?: boolean;
   showLabel?: boolean;
-  groupRef: React.Ref<THREE.Group>;
+  groupRef: { current: THREE.Group | null };
   pose?: "desk" | "free";
   animationOverride?: ChibiAnimation | null;
 }
 
 /**
- * PixelAvatar — the 2D pixel-art character rendered as a billboard sprite
- * inside the 3D office (2.5D "Paper Mario" style).
+ * PixelAvatar — the 2D pixel-art character rendered inside the 3D office
+ * (2.5D "Paper Mario" style).
  *
- * Frame animation (not rigid transform animation) is what makes the motion
- * read as lively instead of stiff: each activity has its own hand-drawn
- * frame set, advanced on a timer, with periodic blinks overlaid.
+ * 2.5D DIRECTIONAL SPRITES: the figure is a plane that yaws around Y to
+ * face the camera (never edge-on), but the TEXTURE is picked from
+ * {front, back, side} by the angle between the agent's facing vector and
+ * the camera direction. A desk worker seen from the side shows their side
+ * profile facing the computer — not staring at the camera.
+ *
+ * Facing rules (see world/characters/facing.ts): the movement registry
+ * owns group.rotation.y (direction of travel while walking, desk rotation
+ * while seated). The visual facing adds PI when pose === "desk" because a
+ * seated character's nose points at the monitor (desk-local −z).
+ *
+ * MUSOLA: when the agent's physical position is inside the musola it
+ * plays the "praying" animation in its prayer outfit (mukena for
+ * female-coded characters, sarung + peci for male-coded ones).
+ *
+ * Frame animation (not rigid transform animation) is what makes the
+ * motion read as lively instead of stiff: each activity has its own
+ * hand-drawn frame set, advanced on a timer, with periodic blinks overlaid.
+ * Textures are generated LAZILY per (direction, animation, frame, blink,
+ * mirror, prayer) on first use and cached — the scene never pays for
+ * views it doesn't show.
  *
  * Status chrome (ring, indicator, name label) and click-to-select wiring
  * are preserved from the old 3D avatar — PROVEN WORKING in production,
@@ -79,38 +128,41 @@ export const PixelAvatar = memo(function PixelAvatar({
 }: PixelAvatarProps) {
   const status = agent.status;
 
-  // Pre-rendered frame set for this preset (cached per preset).
-  const sheet = useMemo(() => getPixelSheet(preset), [preset]);
-
-  // One CanvasTexture per (animation, frame, blink) — built once per preset.
-  const textures = useMemo(() => {
-    const t = {} as Record<
-      ChibiAnimation,
-      { open: THREE.CanvasTexture[]; blink: THREE.CanvasTexture[] }
-    >;
-    for (const anim of PIXEL_ANIMATIONS) {
-      const open: THREE.CanvasTexture[] = [];
-      const blink: THREE.CanvasTexture[] = [];
-      for (let f = 0; f < FRAME_COUNTS[anim]; f++) {
-        open.push(makePixelTexture(sheet.get(anim, f, false)));
-        blink.push(makePixelTexture(sheet.get(anim, f, true)));
-      }
-      t[anim] = { open, blink };
+  // Lazy GPU texture cache: one CanvasTexture per
+  // (direction, animation, frame, blink, mirror, prayer) — built on first
+  // use inside useFrame, disposed when the preset changes / unmounts.
+  const texCache = useRef(new Map<string, THREE.CanvasTexture>());
+  const getTexture = (
+    dir: SpriteDirection,
+    anim: ChibiAnimation,
+    frame: number,
+    blink: boolean,
+    mirror: boolean,
+    prayer: PrayerVariant,
+  ): THREE.CanvasTexture => {
+    const key = `${dir}|${anim}|${frame}|${blink ? 1 : 0}|${mirror ? 1 : 0}|${prayer ?? "none"}`;
+    let tex = texCache.current.get(key);
+    if (!tex) {
+      tex = makePixelTexture(
+        getPixelFrame(preset, dir, anim, frame, blink, prayer),
+        mirror,
+      );
+      texCache.current.set(key, tex);
     }
-    return t;
-  }, [sheet]);
+    return tex;
+  };
 
   // Dispose GPU textures when the preset changes / unmounts.
   useEffect(() => {
+    const cache = texCache.current;
     return () => {
-      for (const anim of PIXEL_ANIMATIONS) {
-        for (const tex of textures[anim].open) tex.dispose();
-        for (const tex of textures[anim].blink) tex.dispose();
-      }
+      for (const tex of cache.values()) tex.dispose();
+      cache.clear();
     };
-  }, [textures]);
+  }, [preset]);
 
-  const mat = useRef<THREE.SpriteMaterial>(null);
+  const mat = useRef<THREE.MeshBasicMaterial>(null);
+  const figure = useRef<THREE.Mesh>(null);
   const ring = useRef<THREE.Mesh>(null);
   const indicator = useRef<THREE.Mesh>(null);
 
@@ -186,9 +238,23 @@ export const PixelAvatar = memo(function PixelAvatar({
     const t = state.clock.elapsedTime;
     lastClock.current = t;
 
+    // --- prayer trigger: physically inside the musola and not walking
+    // through it → reverent prayer state + prayer outfit. Position-based,
+    // so it works however the agent got there (wander, meeting, manual).
+    const inMusola = isInMusola(agent.id);
+
     // --- sprite frame animation ---
     const celebrating = t < celebrateUntil.current;
-    const anim = resolvePixelAnimation(status, animationOverride, celebrating);
+    const baseAnim = resolvePixelAnimation(
+      status,
+      animationOverride,
+      celebrating,
+      false,
+    );
+    const praying =
+      inMusola && !movement.isMoving(agent.id) && baseAnim !== "walking";
+    const anim = praying ? "praying" : baseAnim;
+    const prayer: PrayerVariant = praying ? prayerWearFor(preset) : null;
     if (anim !== animRef.current) {
       animRef.current = anim;
       frameIdx.current = 0;
@@ -206,10 +272,45 @@ export const PixelAvatar = memo(function PixelAvatar({
       nextBlink.current = t + 2 + Math.random() * 2.5;
     }
     const blinking = t < blinkUntil.current;
-    const set = blinking ? textures[anim].blink : textures[anim].open;
-    const tex = set[frameIdx.current];
+
+    // --- 2.5D directional texture selection + Y-only billboarding ---
+    let dir: SpriteDirection = "front";
+    let mirror = false;
+    const g = groupRef.current;
+    if (g) {
+      g.getWorldPosition(tmpV);
+      const camAz = Math.atan2(
+        state.camera.position.x - tmpV.x,
+        state.camera.position.z - tmpV.z,
+      );
+      const facing = g.rotation.y;
+      // Yaw the plane toward the camera (never edge-on)...
+      if (figure.current) {
+        figure.current.rotation.y = wrapAngle(camAz - facing);
+      }
+      // ...but pick the TEXTURE from the agent's visual facing: a seated
+      // agent's nose points at the monitor (desk-local −z = +PI).
+      const visualFacing = wrapAngle(
+        facing + (pose === "desk" ? Math.PI : 0),
+      );
+      const view = selectSpriteDirection(visualFacing, camAz);
+      dir = view.direction;
+      mirror = view.mirror;
+    }
+    const tex = getTexture(
+      dir,
+      anim,
+      frameIdx.current,
+      blinking,
+      mirror,
+      prayer,
+    );
     if (mat.current && mat.current.map !== tex) {
+      // needsUpdate only matters for the null → texture transition
+      // (shader define flip); texture-to-texture swaps are free.
+      const firstMap = mat.current.map == null;
       mat.current.map = tex;
+      if (firstMap) mat.current.needsUpdate = true;
     }
 
     // --- status chrome animation: ring pulse (thinking), tumbling
@@ -285,8 +386,8 @@ export const PixelAvatar = memo(function PixelAvatar({
       {...(interactive ? cursorHandlers : {})}
     >
       {/* figure mount: desk = seated at desk, free = centered on the root.
-          The sprite always faces the camera (billboard), so the mount only
-          carries the positional offset. */}
+          The plane yaws toward the camera each frame (Y-billboard); the
+          texture direction comes from the agent's visual facing. */}
       <group position={pose === "desk" ? [0, 0, 0.95] : [0, 0, 0]}>
         {/* status ring at base — drives status readability, do not remove */}
         <mesh
@@ -297,16 +398,18 @@ export const PixelAvatar = memo(function PixelAvatar({
           position={[0, 0.06, 0]}
           rotation={[Math.PI / 2, 0, 0]}
         />
-        {/* 2D pixel-art sprite: 28x36 px, NearestFilter keeps pixels crisp */}
-        <sprite position={[0, 0.95, 0]} scale={[1.4, 1.8, 1]}>
-          <spriteMaterial
+        {/* 2D pixel-art figure: 48x48 px plane, Y-only billboard,
+            NearestFilter keeps pixels crisp. meshBasicMaterial stays
+            readable under the day/night rig (same as the old sprite). */}
+        <mesh ref={figure} position={[0, 0.92, 0]}>
+          <planeGeometry args={[1.7, 1.7]} />
+          <meshBasicMaterial
             ref={mat}
-            map={textures.idle.open[0]}
             transparent
             alphaTest={0.1}
             depthWrite={false}
           />
-        </sprite>
+        </mesh>
         {renderIndicator()}
         {/* name + status label, always faces the camera */}
         {showLabel && (
