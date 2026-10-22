@@ -79,11 +79,30 @@ Two interchangeable backends implement the **same** REST + WebSocket contract
   `useConnectionStore` (live / demo-local / connecting / error),
   `useSettingsStore` (URLs persisted to localStorage, stress mode, reconnect token),
   `useCameraStore` (focus requests, reset).
-- **3D world** (`src/world/`): fully procedural low-poly office — 4 rooms
-  (open workspace, meeting room, mission-control room, lounge), reusable
-  furniture components, shared module-level geometries/materials,
-  `instancedMesh` for chairs and plants, **one** shadow-casting light,
-  `dpr` capped at 1.75. All animation lives in `useFrame` with refs.
+- **3D world** (`src/world/`): fully procedural low-poly office —
+  **simplified 2026-10-22: 13 rooms** across 2 floors, all defined in
+  `src/world/building/floorPlan.ts` (single source of truth). Ground floor:
+  reception, open workspace (with live Kanban wall screen — folded in from
+  the cut PM room), conference room, server room, restrooms, pantry, recovery
+  room (errored-agent pods), overflow hot desks. Upper floor: musola (prayer
+  room with sajadah rows + qibla marker), lounge & library, focus room,
+  content studio, upper corridor. Cut: PM room, executive suite, R&D lab,
+  meeting pods, training room, rooftop terrace, decorative elevator shaft.
+  Agents cross floors via the stair tower (floor-aware waypoints,
+  `findPath3D`). Reusable furniture components, shared module-level
+  geometries/materials, `instancedMesh` for chairs and plants, **one**
+  shadow-casting light, `dpr` capped at 1.75. All animation lives in
+  `useFrame` with refs.
+- **Day/night** (`src/stores/useDayNightStore.ts`, `src/world/DayNightRig.tsx`):
+  auto mode follows the viewer's local time (day 06:00–18:00), manual day/night
+  override persisted in localStorage (`vao-daynight-mode`); interior and garden
+  lights come on at night.
+- **Honest loading gate** (`src/stores/useSceneReadyStore.ts`): the "Loading
+  3D office…" overlay stays up until the first 3D frame has actually rendered
+  (one-shot `useFrame` marker), not just until the JS module loads — this is
+  what the old black-viewport report traced to: a very slow first frame
+  (~1000 meshes × shadow pass ≈ 2000 draw calls on weak GPUs) with the
+  spinner hiding at module load, *not* a lighting/camera bug.
 - **Characters**: `AgentAvatar` — procedural placeholder (capsule body, sphere
   head, status ring, floating status indicator, drei `Billboard`+`Text` label).
   Per-status animation: working = typing bob, thinking = sway + pulse,

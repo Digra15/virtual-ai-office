@@ -32,3 +32,13 @@
 
 ## Remaining for a human (browser)
 - `docs/SMOKE_TEST.md` — visual/interactive checklist for the parent's browser pass (scene zones, animations, click→focus, filters, stress mode, reconnect behavior).
+
+## 2026-10-22 — Building simplification + musola + day/night + honest loading gate
+
+- **Simplified to 13 rooms, still 2 floors** (user: "hanya room penting dan guna saja"). Ground floor (8): reception, open workspace (live Kanban wall screen folded in from the cut PM room), conference room, server room, restrooms, pantry, recovery room (4 error pods), overflow hot desks (stress/spawn). Upper floor (5): musola, lounge & library, focus room, content studio, upper corridor. Kept only rooms that serve a real feature.
+- **Cut**: PM room, executive suite, R&D lab, focus room B, glass meeting pods, training room, rooftop terrace, decorative elevator shaft.
+- **Musola** (upper floor, west north-band): sajadah rows facing a qibla marker, shoe rack, wudu nook, calm lighting. Room id `musola`, type `musola`. Wander target `u-musola` added to `WANDER_WAYPOINT_IDS_2F`.
+- **Day/night cycle**: auto follows the viewer's local time (day 06:00–18:00) + manual day/night override persisted in localStorage (`vao-daynight-mode`). Interior and garden lamps come on at night. Pure helpers `resolveIsNight` / `resolveIsNightAt` are unit-tested.
+- **Honest first-frame loading overlay**: new `useSceneReadyStore` — the overlay now stays up until the first 3D frame has actually rendered (one-shot `useFrame` marker in OfficeScene), not just until the JS module loads.
+- **Black-viewport root cause (confirmed, NOT a lighting/camera bug)**: the "Loading 3D office…" spinner disappeared at JS module load while the scene needed 20–90 s for its first frame (~1000 meshes × shadow pass ≈ 2000 draw calls on weak/software rendering) — users stared at the clear-color viewport. Mitigations: fewer meshes (simplification), honest first-frame gate.
+- Tests: new `useDayNightStore.test.ts`, `useSceneReadyStore.test.ts`, `world/building/musola.test.ts`, `world/wander.test.ts`; stale room references fixed (`shell`, `useOccupancyStore`, `cameraRig` tests). Rooms-barrel mapping for `musola` is pending on the builder's `rooms/` rewrite (assertion captured as a skipped test in `musola.test.ts`).

@@ -1,12 +1,14 @@
-import { Suspense, memo, useMemo } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, memo, useMemo, useRef } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { useAgentStore } from "../stores/useAgentStore";
 import { useOfficeConfigStore } from "../stores/useOfficeConfigStore";
+import { useSceneReadyStore } from "../stores/useSceneReadyStore";
 import { STATUS_META } from "../utils/status";
 import { CameraRig } from "./camera/CameraRig";
 import { AgentAvatar } from "./characters/AgentAvatar";
 import { MovementController } from "./MovementController";
 import { Building } from "./building/Building";
+import { DayNightRig } from "./DayNightRig";
 
 /** One avatar per agent. Position/rotation are owned by the movement
  *  system (registered on mount); this just maps the roster. */
@@ -33,8 +35,25 @@ const AgentAvatars = memo(function AgentAvatars() {
 });
 
 /**
+ * One-shot first-frame marker: flips the honest loading overlay off only
+ * after the Canvas has actually rendered a real frame — never on JS
+ * module load.
+ */
+const FirstFrameSignal = memo(function FirstFrameSignal() {
+  const fired = useRef(false);
+  useFrame(() => {
+    if (!fired.current) {
+      fired.current = true;
+      useSceneReadyStore.getState().markReady();
+    }
+  });
+  return null;
+});
+
+/**
  * The 3D office: two-story building + exterior, composed by <Building />.
- * Exactly ONE shadow-casting light (the directional); everything else is
+ * Lighting (day/night) lives in <DayNightRig /> — exactly ONE
+ * shadow-casting light (the directional); everything else is
  * ambient/hemisphere fill or emissive decoration.
  *
  * Initial camera matches the "entire building" cutaway preset so the
@@ -46,24 +65,10 @@ export default function OfficeScene() {
       shadows
       dpr={[1, 1.75]}
       camera={{ position: [30, 19, 36], fov: 45 }}
+      onCreated={() => useSceneReadyStore.getState().reset()}
     >
-      <color attach="background" args={["#0b0f1a"]} />
-      <fog attach="fog" args={["#0b0f1a", 70, 170]} />
-      <ambientLight intensity={0.45} />
-      <hemisphereLight args={["#3b4a6b", "#0b0f1a", 0.35]} />
-      <directionalLight
-        castShadow
-        position={[14, 22, 10]}
-        intensity={1.15}
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-camera-left={-34}
-        shadow-camera-right={34}
-        shadow-camera-top={34}
-        shadow-camera-bottom={-34}
-        shadow-camera-near={1}
-        shadow-camera-far={70}
-      />
+      <DayNightRig />
+      <FirstFrameSignal />
       <Suspense fallback={null}>
         <Building />
         <AgentAvatars />

@@ -32,13 +32,13 @@ describe("camera store (rig request logic)", () => {
   });
 
   it("requestRoom sets roomRequest with increasing nonces", () => {
-    useCameraStore.getState().requestRoom("lab");
+    useCameraStore.getState().requestRoom("musola");
     const first = useCameraStore.getState().roomRequest;
-    expect(first).toMatchObject({ roomId: "lab" });
+    expect(first).toMatchObject({ roomId: "musola" });
 
-    useCameraStore.getState().requestRoom("terrace");
+    useCameraStore.getState().requestRoom("lounge");
     const second = useCameraStore.getState().roomRequest;
-    expect(second).toMatchObject({ roomId: "terrace" });
+    expect(second).toMatchObject({ roomId: "lounge" });
     expect(second!.nonce).toBeGreaterThan(first!.nonce);
   });
 

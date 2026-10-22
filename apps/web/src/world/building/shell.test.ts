@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   BUILDING,
-  ELEVATOR_SHAFT,
   FLOOR_HEIGHT,
   RECOVERY_BEDS,
   ROOM_BY_ID,
@@ -101,10 +100,33 @@ describe("floorPlan constants", () => {
     }
   });
 
-  it("elevator shaft is adjacent to the building", () => {
-    expect(ELEVATOR_SHAFT.minX).toBe(BUILDING.maxX);
-    expect(ELEVATOR_SHAFT.maxX).toBeGreaterThan(ELEVATOR_SHAFT.minX);
-    expect(ELEVATOR_SHAFT.minZ).toBeGreaterThanOrEqual(BUILDING.minZ);
-    expect(ELEVATOR_SHAFT.maxZ).toBeLessThanOrEqual(BUILDING.maxZ);
+  it("simplified plan: exactly 13 rooms on 2 floors, musola included", () => {
+    expect(ROOMS).toHaveLength(13);
+    const ids = new Set(ROOMS.map((r) => r.id));
+    for (const id of [
+      "reception",
+      "openWorkspace",
+      "conferenceRoom",
+      "serverRoom",
+      "restrooms",
+      "pantry",
+      "recoveryRoom",
+      "overflow",
+      "musola",
+      "lounge",
+      "focus1",
+      "studio",
+      "corridor",
+    ]) {
+      expect(ids, `missing room "${id}"`).toContain(id);
+    }
+    const ground = ROOMS.filter((r) => r.floor === 0);
+    const upper = ROOMS.filter((r) => r.floor === 1);
+    expect(ground).toHaveLength(8);
+    expect(upper).toHaveLength(5);
+    // Cut rooms must stay gone.
+    for (const id of ["pmRoom", "executive", "lab", "training", "terrace", "lounge2"]) {
+      expect(ids, `cut room "${id}" reappeared`).not.toContain(id);
+    }
   });
 });

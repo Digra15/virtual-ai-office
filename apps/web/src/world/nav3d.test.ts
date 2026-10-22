@@ -40,8 +40,8 @@ describe("merged waypoint graph (both floors)", () => {
       }
     }
   });
-  it("stair chain reaches every L2 room spur from the ground aisle", () => {
-    const targets = ["L2-exec", "L2-lab", "L2-studio", "L2-focus1", "L2-focus2", "L2-pmeet1", "L2-pmeet2", "L2-lounge", "L2-train-in", "L2-terr-in"] as const;
+  it("stair chain reaches every upper room spur from the ground aisle", () => {
+    const targets = ["u-focus", "u-musola", "u-studio", "u-lounge"] as const;
     for (const t of targets) {
       const p = findPath3D({ x: 0, z: 1, floor: 0 }, waypointTarget(t));
       expect(p.length, t).toBeGreaterThan(0);
@@ -51,11 +51,10 @@ describe("merged waypoint graph (both floors)", () => {
 
 function waypointTarget(id: string): { x: number; z: number; floor: 0 | 1 } {
   const table: Record<string, { x: number; z: number; floor: 0 | 1 }> = {
-    "L2-exec": { x: -14, z: -9.5, floor: 1 }, "L2-lab": { x: 0, z: -9.5, floor: 1 },
-    "L2-studio": { x: 14, z: -9.5, floor: 1 }, "L2-focus1": { x: -17, z: 0, floor: 1 },
-    "L2-focus2": { x: -10, z: 0, floor: 1 }, "L2-pmeet1": { x: -3, z: 0, floor: 1 },
-    "L2-pmeet2": { x: 4, z: 0, floor: 1 }, "L2-lounge": { x: 14, z: 0, floor: 1 },
-    "L2-train-in": { x: -13, z: 10, floor: 1 }, "L2-terr-in": { x: 8, z: 10, floor: 1 },
+    "u-focus": { x: -14, z: 10, floor: 1 },
+    "u-musola": { x: -10, z: 0, floor: 1 },
+    "u-studio": { x: 2, z: 10, floor: 1 },
+    "u-lounge": { x: 14, z: -2, floor: 1 },
   };
   return table[id];
 }

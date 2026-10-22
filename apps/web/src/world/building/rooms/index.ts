@@ -2,72 +2,52 @@
  * Barrel for the building room interiors. `ROOM_COMPONENTS` maps every
  * floorPlan room id to its interior component so the Building composer (and
  * tests) can stay data-driven.
+ *
+ * Simplified 2026-10-22: only rooms that serve a real feature survived.
  */
 import type { ComponentType } from "react";
 import { Reception } from "./Reception";
 import { OpenWorkspace } from "./OpenWorkspace";
-import { PmRoom } from "./PmRoom";
 import { ConferenceRoom } from "./ConferenceRoom";
 import { ServerRoom } from "./ServerRoom";
-import { Pantry } from "./Pantry";
 import { Restrooms } from "./Restrooms";
+import { Pantry } from "./Pantry";
 import { RecoveryRoom } from "./RecoveryRoom";
 import { Overflow } from "./Overflow";
-import { Executive } from "./Executive";
-import { Lab } from "./Lab";
+import { Musola } from "./Musola";
+import { Lounge } from "./Lounge";
+import { FocusRoom } from "./FocusRoom";
 import { Studio } from "./Studio";
-import { FocusRoomA, FocusRoomB } from "./FocusRooms";
-import { PrivateMeetingRoom1, PrivateMeetingRoom2 } from "./PrivateMeetingRooms";
-import { Lounge2 } from "./Lounge2";
-import { Training } from "./Training";
-import { Terrace } from "./Terrace";
 import { Corridors } from "./Corridors";
 
 export {
   Reception,
   OpenWorkspace,
-  PmRoom,
   ConferenceRoom,
   ServerRoom,
-  Pantry,
   Restrooms,
+  Pantry,
   RecoveryRoom,
   Overflow,
-  Executive,
-  Lab,
+  Musola,
+  Lounge,
+  FocusRoom,
   Studio,
-  FocusRoomA,
-  FocusRoomB,
-  PrivateMeetingRoom1,
-  PrivateMeetingRoom2,
-  Lounge2,
-  Training,
-  Terrace,
   Corridors,
 };
 
 export const ROOM_COMPONENTS: Record<string, ComponentType> = {
   reception: Reception,
   openWorkspace: OpenWorkspace,
-  pmRoom: PmRoom,
   conferenceRoom: ConferenceRoom,
   serverRoom: ServerRoom,
   restrooms: Restrooms,
   pantry: Pantry,
   recoveryRoom: RecoveryRoom,
   overflow: Overflow,
-  executive: Executive,
-  lab: Lab,
+  musola: Musola,
+  lounge: Lounge,
+  focus1: FocusRoom,
   studio: Studio,
-  corridorN: Corridors,
-  linkW: Corridors,
-  linkE: Corridors,
-  focus1: FocusRoomA,
-  focus2: FocusRoomB,
-  pmeet1: PrivateMeetingRoom1,
-  pmeet2: PrivateMeetingRoom2,
-  lounge2: Lounge2,
-  corridor2: Corridors,
-  training: Training,
-  terrace: Terrace,
+  corridor: Corridors,
 };

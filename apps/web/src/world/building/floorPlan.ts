@@ -11,9 +11,18 @@
  * - Wall height: WALL_H. All room rects are in world units (x, z).
  * - The original open-workspace desk block (layout.ts DESKS ws-01..ws-08
  *   and EXTRA_DESKS) is preserved untouched so spawn/wander logic keeps
- *   working; new workstations get ids like `pm-01`, `lab-02`, `bed-01`.
+ *   working; new workstations get ids like `studio-01`, `focus-01`.
  * - Characters stay 2D pixel-art billboard sprites (user decision
  *   2026-10-22) — nothing in this file assumes 3D character rigs.
+ *
+ * Simplified 2026-10-22 (user: "hanya room penting dan guna saja, tetap
+ * 2 lantai"): only rooms that serve a real feature survived. Ground floor:
+ * reception, open workspace (+Kanban screen, folded in from the cut PM
+ * room), conference room, server room, pantry, restrooms, recovery room,
+ * overflow hot desks (stress/spawn). Upper floor: musola, lounge & library,
+ * one focus room, one content studio, and the upper corridor. Cut:
+ * PM room, executive, R&D lab, focus room B, meeting pods, training,
+ * terrace, and the decorative elevator shaft.
  */
 
 export const FLOOR_HEIGHT = 3.5;
@@ -30,20 +39,15 @@ export const BUILDING = {
 export type RoomType =
   | "reception"
   | "workspace"
-  | "pm"
   | "conference"
   | "server"
   | "pantry"
   | "restroom"
   | "recovery"
-  | "executive"
-  | "lab"
   | "studio"
   | "focus"
-  | "privateMeeting"
   | "lounge"
-  | "training"
-  | "terrace"
+  | "musola"
   | "corridor"
   | "overflow";
 
@@ -80,19 +84,17 @@ const R = (
 };
 
 /**
- * All rooms. Ground floor (0): reception, open workspace, PM room,
- * conference, server, pantry, restrooms, recovery, overflow. Second floor
- * (1): executive, R&D lab, content studio, focus rooms, private meeting
- * rooms, lounge/library, training, terrace, corridor.
+ * All rooms. Ground floor (0): reception, open workspace, conference,
+ * server, pantry, restrooms, recovery, overflow hot desks. Second floor
+ * (1): musola, lounge & library, one focus room, one content studio, and
+ * the upper corridor.
  */
 export const ROOMS: RoomDef[] = [
   // ---- Ground floor ----
   R("reception", "Reception", 0, 8, 20, 8, 14, "reception",
     "Main entrance, welcome desk and waiting area."),
   R("openWorkspace", "Open Workspace", 0, -10, 10, -4, 7, "workspace",
-    "Main desk block for the agent roster (ws-01..ws-08)."),
-  R("pmRoom", "Project Management", 0, 11, 20, -14, -5, "pm",
-    "DIFIA's project-management workspace with live Kanban screen."),
+    "Main desk block for the agent roster (ws-01..ws-08), with a live Kanban wall screen."),
   R("conferenceRoom", "Conference Room", 0, -20, -9, -14, -5, "conference",
     "Large meeting table, presentation display, glass walls."),
   R("serverRoom", "Server Room", 0, -8, -3, -14, -5, "server",
@@ -103,39 +105,22 @@ export const ROOMS: RoomDef[] = [
     "Coffee machine, fridge, counter, dining table."),
   R("recoveryRoom", "Agent Recovery Room", 0, -20, -13, -4, 5, "recovery",
     "Quiet wellness room with recovery pods for errored agents."),
-  R("overflow", "Overflow Desks", 0, -19, -9, 6, 13, "overflow",
-    "Extra workstations for stress-mode agents (stress-01..22)."),
+  R("overflow", "Overflow Hot Desks", 0, -19, -9, 6, 13, "overflow",
+    "Extra workstations for stress-mode and spawned agents (stress-01..22)."),
   // ---- Second floor ----
-  // North strip (z -14..-7) served by the north upper corridor (z -7..-5);
-  // vertical links at x≈-6 and x≈7.5 connect it to the south corridor.
-  R("executive", "Executive Office", 1, -20, -8, -14, -7, "executive",
-    "Strategy space with goals and analytics displays."),
-  R("lab", "R&D Laboratory", 1, -7, 5, -14, -7, "lab",
-    "Experimental workspace: coding, analysis, multi-monitor desks."),
-  R("studio", "Content Studio", 1, 6, 20, -14, -7, "studio",
-    "Writing, design and video-production workstations."),
-  R("corridorN", "North Corridor", 1, -20, 20, -7, -5, "corridor",
-    "Connects the north-strip rooms to the vertical links."),
-  R("linkW", "West Link", 1, -7.5, -4.5, -7, 6, "corridor",
-    "Vertical link between the north and south upper corridors."),
-  R("linkE", "East Link", 1, 6.5, 8.5, -7, 6, "corridor",
-    "Vertical link between the north and south upper corridors."),
-  R("focus1", "Focus Room A", 1, -20, -14, -4, 3, "focus",
-    "Quiet enclosed room for uninterrupted work."),
-  R("focus2", "Focus Room B", 1, -13, -7.5, -4, 3, "focus",
-    "Quiet enclosed room for uninterrupted work."),
-  R("pmeet1", "Meeting Pod 1", 1, -4.5, 0, -4, 3, "privateMeeting",
-    "Small glass meeting room for 1-on-1s."),
-  R("pmeet2", "Meeting Pod 2", 1, 1, 6.5, -4, 3, "privateMeeting",
-    "Small glass meeting room for 1-on-1s."),
-  R("lounge2", "Lounge & Library", 1, 8.5, 20, -4, 3, "lounge",
+  // North band (z -14..3.5): musola (west) + lounge (east), served by the
+  // upper corridor (z 3.5..6). South band (z 6..14): focus room (west) +
+  // content studio (east). The stair tower feeds the corridor's east end.
+  R("musola", "Musola", 1, -20, -2, -14, 3.5, "musola",
+    "Prayer room: rows of sajadah facing the qibla marker, shoe rack, wudu nook."),
+  R("lounge", "Lounge & Library", 1, -2, 20, -14, 3.5, "lounge",
     "Bookshelves, sofas and plants. Idle agents relax here."),
-  R("corridor2", "Upper Corridor", 1, -20, 20, 3.5, 6, "corridor",
+  R("focus1", "Focus Room", 1, -20, -8, 6, 14, "focus",
+    "Quiet enclosed room for uninterrupted work."),
+  R("studio", "Content Studio", 1, -8, 20, 6, 14, "studio",
+    "Writing, design and video-production workstations."),
+  R("corridor", "Upper Corridor", 1, -20, 20, 3.5, 6, "corridor",
     "Connects the second-floor rooms to the stair tower."),
-  R("training", "Training Room", 1, -20, -6, 7, 14, "training",
-    "Onboarding and simulated team training."),
-  R("terrace", "Rooftop Terrace", 1, -5, 20, 7, 14, "terrace",
-    "Open-air break area with shaded seating."),
 ];
 
 export const ROOM_BY_ID: Record<string, RoomDef> = Object.fromEntries(
@@ -164,25 +149,11 @@ export interface WorkstationDef {
 
 /** New workstations (the original ws-01..08 + stress desks live in layout.ts). */
 const EXTRA_WORKSTATIONS: WorkstationDef[] = [
-  // PM room — DIFIA's desk faces the Kanban screen on the north wall.
-  { id: "pm-01", roomId: "pmRoom", floor: 0, position: [15.5, 0, -9], rotationY: Math.PI },
-  // R&D lab — three experiment desks.
-  { id: "lab-01", roomId: "lab", floor: 1, position: [-4, FLOOR_HEIGHT, -11], rotationY: Math.PI },
-  { id: "lab-02", roomId: "lab", floor: 1, position: [0, FLOOR_HEIGHT, -11], rotationY: Math.PI },
-  { id: "lab-03", roomId: "lab", floor: 1, position: [4, FLOOR_HEIGHT, -11], rotationY: Math.PI },
   // Content studio — two creative desks.
-  { id: "studio-01", roomId: "studio", floor: 1, position: [10, FLOOR_HEIGHT, -11], rotationY: Math.PI },
-  { id: "studio-02", roomId: "studio", floor: 1, position: [14, FLOOR_HEIGHT, -11], rotationY: Math.PI },
-  // Executive office.
-  { id: "exec-01", roomId: "executive", floor: 1, position: [-14, FLOOR_HEIGHT, -9.5], rotationY: Math.PI },
-  // Focus rooms — one desk each.
-  { id: "focus-01", roomId: "focus1", floor: 1, position: [-17, FLOOR_HEIGHT, 0], rotationY: Math.PI / 2 },
-  { id: "focus-02", roomId: "focus2", floor: 1, position: [-10, FLOOR_HEIGHT, 0], rotationY: Math.PI / 2 },
-  // Training room — four learner desks.
-  { id: "train-01", roomId: "training", floor: 1, position: [-16, FLOOR_HEIGHT, 10], rotationY: Math.PI },
-  { id: "train-02", roomId: "training", floor: 1, position: [-12, FLOOR_HEIGHT, 10], rotationY: Math.PI },
-  { id: "train-03", roomId: "training", floor: 1, position: [-16, FLOOR_HEIGHT, 12.5], rotationY: Math.PI },
-  { id: "train-04", roomId: "training", floor: 1, position: [-12, FLOOR_HEIGHT, 12.5], rotationY: Math.PI },
+  { id: "studio-01", roomId: "studio", floor: 1, position: [2, FLOOR_HEIGHT, 10], rotationY: Math.PI },
+  { id: "studio-02", roomId: "studio", floor: 1, position: [8, FLOOR_HEIGHT, 10], rotationY: Math.PI },
+  // Focus room — one desk.
+  { id: "focus-01", roomId: "focus1", floor: 1, position: [-14, FLOOR_HEIGHT, 10], rotationY: Math.PI / 2 },
 ];
 
 export const WORKSTATIONS: Record<string, WorkstationDef> = Object.fromEntries(
@@ -215,13 +186,14 @@ export const RECOVERY_BEDS: BedDef[] = [
 export const RECOVERY_ROOM_ID = "recoveryRoom";
 
 // ---------------------------------------------------------------------------
-// Stairs / elevator
+// Stairs (elevator cut in the 2026-10-22 simplification: visual-only,
+// pure decoration — agents always use the stair tower)
 // ---------------------------------------------------------------------------
 
 /**
  * Stair tower attached to the EAST facade (x 20..24, z -2..6), full height.
  * Agents enter at ground level through the east wall door (x=20, z≈2) and
- * exit upstairs into the upper corridor / lounge.
+ * exit upstairs into the upper corridor.
  */
 export const STAIR_TOWER = {
   minX: 20,
@@ -235,14 +207,6 @@ export const STAIR_TOWER = {
   /** Door positions through the east wall. */
   groundDoor: { x: 20, z: 2 },
   upperDoor: { x: 20, z: 4.5 },
-} as const;
-
-/** Decorative elevator shaft beside the stair tower (visual only, v1). */
-export const ELEVATOR_SHAFT = {
-  minX: 20,
-  maxX: 22.5,
-  minZ: 7,
-  maxZ: 9.5,
 } as const;
 
 // ---------------------------------------------------------------------------

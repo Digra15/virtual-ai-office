@@ -6,26 +6,29 @@ import {
   pathLength,
   WANDER_WAYPOINT_IDS,
   WAYPOINTS,
+  mergedWaypoints,
 } from "./navigation";
 
 describe("waypoint graph", () => {
-  it("every waypoint id referenced by neighbors exists", () => {
-    for (const w of Object.values(WAYPOINTS)) {
+  it("every waypoint id referenced by neighbors exists (merged graph)", () => {
+    const all = mergedWaypoints();
+    for (const w of Object.values(all)) {
       for (const nb of w.neighbors) {
-        expect(WAYPOINTS[nb], `neighbor ${nb} of ${w.id}`).toBeDefined();
+        expect(all[nb], `neighbor ${nb} of ${w.id}`).toBeDefined();
       }
     }
   });
 
-  it("neighbor links are bidirectional", () => {
-    for (const w of Object.values(WAYPOINTS)) {
+  it("neighbor links are bidirectional (merged graph)", () => {
+    const all = mergedWaypoints();
+    for (const w of Object.values(all)) {
       for (const nb of w.neighbors) {
-        expect(WAYPOINTS[nb].neighbors).toContain(w.id);
+        expect(all[nb].neighbors, `${w.id} <-> ${nb}`).toContain(w.id);
       }
     }
   });
 
-  it("the graph is fully connected", () => {
+  it("the ground graph is fully connected", () => {
     const ids = Object.keys(WAYPOINTS);
     const start = ids[0];
     for (const id of ids) {

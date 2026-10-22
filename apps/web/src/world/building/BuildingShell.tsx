@@ -1,11 +1,8 @@
 import { memo } from "react";
 import * as THREE from "three";
-import { Text } from "@react-three/drei";
 import { geoBox } from "../geometries";
-import { matGlass, matWall } from "../materials";
 import {
   BUILDING,
-  ELEVATOR_SHAFT,
   FLOOR_HEIGHT,
   SLAB_T,
   STAIR_TOWER,
@@ -28,20 +25,14 @@ const matConcrete = new THREE.MeshStandardMaterial({ color: "#39424f", roughness
 const matSlabEdge = new THREE.MeshStandardMaterial({ color: "#232b3a", roughness: 0.9 });
 const matRoof = new THREE.MeshStandardMaterial({ color: "#1e2635", roughness: 0.95 });
 const matParapet = new THREE.MeshStandardMaterial({ color: "#141b2a", roughness: 0.9 });
-const matElevatorGlow = new THREE.MeshStandardMaterial({
-  color: "#0e7490",
-  emissive: new THREE.Color("#22d3ee"),
-  emissiveIntensity: 1.5,
-  roughness: 0.4,
-});
 const matDoorFrame = new THREE.MeshStandardMaterial({ color: "#1a2230", roughness: 0.45, metalness: 0.6 });
 
 const ROOF_Y = FLOOR_HEIGHT + WALL_H; // 6.7
 
 /**
  * Building shell: slabs, perimeter walls per floor, roof, stair tower with
- * staircase, decorative elevator shaft, and facade signage. Coordinates come
- * from building/floorPlan.ts — never hardcoded here.
+ * staircase, and facade signage. Coordinates come from
+ * building/floorPlan.ts — never hardcoded here.
  */
 export const BuildingShell = memo(function BuildingShell({
   showGround,
@@ -122,32 +113,6 @@ export const BuildingShell = memo(function BuildingShell({
         <Stairs position={[22, 0, -1]} width={2.2} steps={12} height={FLOOR_HEIGHT} length={6} />
         {/* upper landing slab (top at FLOOR_HEIGHT) */}
         <mesh geometry={geoBox} material={matConcrete} scale={[4, SLAB_T, 1]} position={[22, FLOOR_HEIGHT - SLAB_T / 2, 5.5]} receiveShadow />
-      </group>
-
-      {/* ================= elevator shaft (visual only) ================= */}
-      <group>
-        {/* shell: x 20..22.5, z 7..9.5, full height */}
-        <mesh geometry={geoBox} material={matWall} scale={[0.25, ROOF_Y, 2.5]} position={[ELEVATOR_SHAFT.maxX, ROOF_Y / 2, 8.25]} castShadow />
-        <mesh geometry={geoBox} material={matWall} scale={[2.5, ROOF_Y, 0.25]} position={[21.25, ROOF_Y / 2, ELEVATOR_SHAFT.minZ]} castShadow />
-        <mesh geometry={geoBox} material={matWall} scale={[2.5, ROOF_Y, 0.25]} position={[21.25, ROOF_Y / 2, ELEVATOR_SHAFT.maxZ]} castShadow />
-        {/* cap */}
-        <mesh geometry={geoBox} material={matParapet} scale={[2.9, 0.25, 2.9]} position={[21.25, ROOF_Y + 0.125, 8.25]} />
-        {/* door frames on both floors (west face) */}
-        {[0, FLOOR_HEIGHT].map((baseY) => (
-          <group key={baseY} position={[20, baseY, 0]}>
-            {[7.6, 8.9].map((z) => (
-              <mesh key={z} geometry={geoBox} material={matDoorFrame} scale={[0.3, 2.2, 0.15]} position={[0, 1.1, z]} />
-            ))}
-            <mesh geometry={geoBox} material={matDoorFrame} scale={[0.3, 0.18, 1.5]} position={[0, 2.29, 8.25]} />
-            <mesh geometry={geoBox} material={matGlass} scale={[0.08, 2.05, 1.1]} position={[0, 1.06, 8.25]} />
-          </group>
-        ))}
-        {/* emissive strip */}
-        <mesh geometry={geoBox} material={matElevatorGlow} scale={[0.06, 6.4, 0.14]} position={[22.66, ROOF_Y / 2, 8.25]} />
-        {/* LIFT label */}
-        <Text position={[22.74, 5.2, 8.25]} rotation={[0, Math.PI / 2, 0]} fontSize={0.4} color="#a5f3fc" anchorX="center" anchorY="middle">
-          LIFT
-        </Text>
       </group>
 
       {/* ================= roof ================= */}

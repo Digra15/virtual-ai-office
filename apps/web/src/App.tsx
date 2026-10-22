@@ -11,6 +11,8 @@ import { AgentDetailPanel } from "./features/agents/AgentDetailPanel";
 import { EventTimeline } from "./features/agents/EventTimeline";
 import { useAgentStore } from "./stores/useAgentStore";
 import { useConnectionStore } from "./stores/useConnectionStore";
+import { useDayNightStore } from "./stores/useDayNightStore";
+import { useSceneReadyStore } from "./stores/useSceneReadyStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { useOfficeConfigStore } from "./stores/useOfficeConfigStore";
 import { connectSocket } from "./services/socket";
@@ -59,6 +61,22 @@ function PublicOfficeSync() {
   return null;
 }
 
+/**
+ * Keeps the day/night cycle in sync with the viewer's real local time:
+ * re-resolve on mount, then every 60s (for `auto` drift while open).
+ */
+function DayNightSync() {
+  useEffect(() => {
+    useDayNightStore.getState().reResolve();
+    const timer = window.setInterval(() => {
+      useDayNightStore.getState().reResolve();
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return null;
+}
+
 function applyStressExtrasIfEnabled() {
   if (useSettingsStore.getState().stressMode) {
     const store = useAgentStore.getState();
@@ -86,6 +104,8 @@ function Dashboard() {
   const selectedId = useAgentStore((s) => s.selectedId);
   const agents = useAgentStore((s) => s.agents);
   const select = useAgentStore((s) => s.select);
+  // Honest loading gate: stays up until the Canvas has rendered a real frame.
+  const sceneReady = useSceneReadyStore((s) => s.ready);
 
   const backendConfigured = backendEnv.configured || wsUrl.trim() !== "";
 
@@ -184,6 +204,7 @@ function Dashboard() {
   return (
     <div className="app">
       <PublicOfficeSync />
+      <DayNightSync />
       <WanderDirector />
       <RecoveryDirector />
       <Header
@@ -210,6 +231,7 @@ function Dashboard() {
               <OfficeScene />
             </Suspense>
           </AssetGuard>
+          {!sceneReady && <LoadingOverlay />}
           <CameraControls />
           {selected && (
             <AgentDetailPanel agent={selected} onClose={() => select(null)} />

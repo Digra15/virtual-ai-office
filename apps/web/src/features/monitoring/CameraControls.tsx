@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAgentStore } from "../../stores/useAgentStore";
 import { useBuildingViewStore } from "../../stores/useBuildingViewStore";
 import { useCameraStore } from "../../stores/useCameraStore";
+import { useDayNightStore, type DayNightMode } from "../../stores/useDayNightStore";
 import { movement } from "../../world/movement";
 import { ROOMS, type FloorMode } from "../../world/building/floorPlan";
 
@@ -10,6 +11,12 @@ const FLOOR_BUTTONS: { mode: FloorMode; label: string }[] = [
   { mode: "ground", label: "🟫 Ground" },
   { mode: "second", label: "🟦 Upper" },
   { mode: "outdoor", label: "🌳 Outdoor" },
+];
+
+const DAYNIGHT_BUTTONS: { mode: DayNightMode; label: string }[] = [
+  { mode: "day", label: "☀️ Day" },
+  { mode: "night", label: "🌙 Night" },
+  { mode: "auto", label: "🔄 Auto" },
 ];
 
 /**
@@ -26,6 +33,8 @@ export function CameraControls() {
   const selectedId = useAgentStore((s) => s.selectedId);
   const agents = useAgentStore((s) => s.agents);
   const [roomId, setRoomId] = useState("");
+  const dnMode = useDayNightStore((s) => s.mode);
+  const setDnMode = useDayNightStore((s) => s.setMode);
 
   const focusSelected = () => {
     if (!selectedId) return;
@@ -58,6 +67,18 @@ export function CameraControls() {
           onClick={() => requestView(mode)}
           aria-pressed={mode === floorMode}
           aria-label={`Show ${label} view`}
+        >
+          {label}
+        </button>
+      ))}
+      {DAYNIGHT_BUTTONS.map(({ mode, label }) => (
+        <button
+          key={mode}
+          type="button"
+          className={mode === dnMode ? "btn btn-primary" : "btn"}
+          onClick={() => setDnMode(mode)}
+          aria-pressed={mode === dnMode}
+          aria-label={`Set ${label} lighting`}
         >
           {label}
         </button>

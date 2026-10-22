@@ -139,8 +139,8 @@ describe("roomOf / workstationOf", () => {
 
   it("resolves the room of a floorPlan workstation", () => {
     const s = useOccupancyStore.getState();
-    s.assignWorkstation("a", "lab-01", { force: true });
-    expect(s.roomOf("a")?.id).toBe("lab");
+    s.assignWorkstation("a", "studio-01", { force: true });
+    expect(s.roomOf("a")?.id).toBe("studio");
   });
 
   it("returns null for unknown workstations", () => {
@@ -150,7 +150,7 @@ describe("roomOf / workstationOf", () => {
 
 describe("workstationLocation / roomOfWorkstation / isKnownBed", () => {
   it("locates floorPlan and legacy workstations", () => {
-    expect(workstationLocation("lab-01")).toMatchObject({ floor: 1, roomId: "lab" });
+    expect(workstationLocation("studio-01")).toMatchObject({ floor: 1, roomId: "studio" });
     expect(workstationLocation("ws-01")).toMatchObject({ floor: 0 });
     expect(workstationLocation("nope")).toBeNull();
   });

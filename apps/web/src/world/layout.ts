@@ -1,7 +1,14 @@
 /**
  * Office floor plan. The floor is 40 x 28 units (x: -20..20, z: -14..14).
  *
- * Zones:
+ * NOTE: This file only keeps the LEGACY desk layout (ws-01..ws-08 plus
+ * stress desks). The authoritative building layout — rooms, walls,
+ * stairs, camera presets — lives in world/building/floorPlan.ts
+ * (simplified 2026-10-22: 13 rooms incl. musola; the old PM room,
+ * executive suite, R&D lab, training, terrace, meeting pods and the
+ * elevator shaft are gone).
+ *
+ * Zones (legacy, desk-placement only):
  * - Open workspace: center (x -10..10, z -4..7) — 8 desks in two rows of four.
  * - Meeting room:    north-west (x -20..-8, z -14..-5).
  * - Mission control: north-east (x 8..20, z -14..-5).

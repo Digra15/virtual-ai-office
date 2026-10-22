@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
+import { useDayNightStore } from "../../stores/useDayNightStore";
 import { geoCylinder } from "../geometries";
 import { matDeskLeg, matLampGlow, matLampShade } from "../materials";
 
@@ -10,11 +11,19 @@ interface CeilingLampProps {
 /**
  * Hanging lamp. Emissive shade glow only — it casts NO real light
  * (the scene has exactly one shadow-casting directional light).
+ *
+ * The diffuser glows warm at night and dims (lamp off) by day. matLampGlow
+ * is shared by all ceiling lamps, so one update drives them together.
  */
 export const CeilingLamp = memo(function CeilingLamp({
   position = [0, 0],
   dropY = 2.55,
 }: CeilingLampProps) {
+  const isNight = useDayNightStore((s) => s.isNight);
+  useEffect(() => {
+    matLampGlow.emissiveIntensity = isNight ? 2.2 : 0.25;
+  }, [isNight]);
+
   const [x, z] = position;
   const shadeTop = dropY + 0.45; // shade center (dropY+0.2) + half height
   const cordH = 3.2 - shadeTop;
