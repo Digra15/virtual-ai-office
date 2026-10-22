@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from "react";
 import type { AgentInfo } from "@virtual-ai-office/shared";
-import { ChibiAvatar } from "./ChibiAvatar";
+import { PixelAvatar } from "./PixelAvatar";
 import { getCharacterPreset } from "./characterPresets";
 import { movement } from "../movement";
 import {
@@ -23,17 +23,18 @@ interface AgentAvatarProps {
  * `getCharacterPreset(agent.id)` (stable across renames — keyed by the
  * integration id, never the display name), registers the avatar's
  * scene-graph root with the movement system, and mirrors the discrete
- * locomotion presence (seated/walking/meeting/standing) into the chibi's
- * pose + animation override.
+ * locomotion presence (seated/walking/meeting/standing) into the sprite's
+ * animation override.
  *
  * Locomotion design: per-frame positions are owned IMPERATIVELY by
  * `world/movement.ts` (zero React re-renders while walking). Only discrete
  * activity transitions flow through `usePresenceStore`, re-rendering just
- * this avatar to swap its pose/animation.
+ * this avatar to swap its animation.
  *
- * The chibi is fully procedural Three.js (no downloaded assets). See
- * `characterTypes.ts` for the visual identity schema and the documented
- * GLB swap-in point (`CharacterModelSource`).
+ * Characters are 2D pixel-art billboard sprites (2.5D Paper-Mario style),
+ * procedurally generated from the CharacterPreset — no downloaded assets.
+ * See `pixel/pixelSprites.ts` for the renderer and `characterTypes.ts` for
+ * the visual identity schema.
  */
 export const AgentAvatar = memo(function AgentAvatar({
   agent,
@@ -55,7 +56,7 @@ export const AgentAvatar = memo(function AgentAvatar({
     };
   }, [agent.id, agent.workstationId]);
 
-  // Drive the chibi animation from live locomotion presence.
+  // Drive the sprite animation from live locomotion presence.
   const animationOverride: ChibiAnimation | null =
     presence.activity === "walking"
       ? "walking"
@@ -64,7 +65,7 @@ export const AgentAvatar = memo(function AgentAvatar({
         : null;
 
   return (
-    <ChibiAvatar
+    <PixelAvatar
       agent={agent}
       preset={preset}
       color={color}

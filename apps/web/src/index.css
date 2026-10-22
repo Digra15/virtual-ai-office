@@ -771,6 +771,36 @@ input {
   display: block;
 }
 
+/* 2D pixel-art character preview (PixelPreview) */
+.pixel-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 8px;
+  gap: 4px;
+}
+
+.pixel-preview canvas {
+  image-rendering: pixelated;
+}
+
+.pixel-preview-anim {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+}
+
+.admin-char-note {
+  margin: 0;
+  padding: 0 12px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
 .char-swatches {
   display: flex;
   flex-wrap: wrap;

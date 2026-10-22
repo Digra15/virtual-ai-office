@@ -60,7 +60,7 @@ function WorkerForm({ worker, services, assets, onSaved, onCancel }: WorkerFormP
   const [workstationId, setWorkstationId] = useState(worker?.workstationId ?? "");
   const [publicVisible, setPublicVisible] = useState(worker?.publicVisible ?? true);
   const [characterModel, setCharacterModel] = useState(
-    worker?.characterModel ?? "procedural-chibi",
+    worker?.characterModel ?? "procedural-pixel",
   );
   const [characterConfig, setCharacterConfig] = useState<Record<string, unknown>>(
     worker?.characterConfig ?? {},

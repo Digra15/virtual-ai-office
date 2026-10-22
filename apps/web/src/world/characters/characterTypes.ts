@@ -14,7 +14,7 @@ import type { AgentStatus } from "@virtual-ai-office/shared";
 // Animation sets
 // ---------------------------------------------------------------------------
 
-/** Animation sets the procedural chibi rig can perform. */
+/** Animation sets the pixel sprite can perform. */
 export type ChibiAnimation =
   | "idle"
   | "typing"
@@ -23,7 +23,7 @@ export type ChibiAnimation =
   | "meeting"
   | "celebrate";
 
-/** Maps a live agent status to the chibi animation it should play. */
+/** Maps a live agent status to the sprite animation it should play. */
 export function statusToAnimation(status: AgentStatus): ChibiAnimation {
   switch (status) {
     case "working":
@@ -112,7 +112,7 @@ export const ACCESSORY_KINDS: AccessoryKind[] = [
 ];
 
 /**
- * Full visual identity of one agent's chibi. Colors are hex strings
+ * Full visual identity of one agent's pixel-art character. Colors are hex strings
  * ("#rrggbb"). This is the shape the admin panel's character editor
  * will read and write.
  */
@@ -191,31 +191,33 @@ export function eyeOpenAmount(t: number, blinkStart: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Model sources — GLB swap-in point
+// Model sources — sprite-sheet swap-in point
 // ---------------------------------------------------------------------------
 
 /**
- * Describes where a character's 3D model comes from. The scene renders
- * through a `CharacterModelSource`; today the only implementation is the
- * procedural anime chibi below. A future GLB-based source plugs in here
- * without touching the scene, the interaction wiring, or the admin schema:
+ * Describes where a character's artwork comes from. The scene renders
+ * through a `CharacterModelSource`; the built-in implementation is the
+ * procedural 2D pixel-art sprite below. A custom PNG sprite-sheet source
+ * plugs in here without touching the scene, the interaction wiring, or
+ * the admin schema:
  *
- *   const glbSource: CharacterModelSource = {
- *     id: "glb",
- *     label: "GLB model (asset manifest)",
+ *   const sheetSource: CharacterModelSource = {
+ *     id: "sprite-sheet",
+ *     label: "PNG sprite sheet (asset manifest)",
  *     supports: { hairColor: false, eyeColor: false, outfit: false, accessories: false },
  *     assetManifestUrl: "/assets/characters/manifest.json",
  *   };
  *   // and the renderer switches on source.id:
- *   //   "procedural-chibi" → <ChibiFigure preset={preset} ... />
- *   //   "glb"             → <GlbFigure url={manifest.models[preset.modelId]} ... />
+ *   //   "procedural-pixel" → pixel/pixelSprites.ts (built-in)
+ *   //   "sprite-sheet"     → uploaded PNG frame sets from the manifest
  *
  * The manifest format is documented in CHARACTER_ASSET_MANIFEST_DOC below.
  * Only options a source REALLY supports are exposed in the admin editor —
- * e.g. a GLB that cannot recolor hair hides the hair-color picker.
+ * e.g. a fixed PNG sheet that cannot recolor hair hides the hair-color
+ * picker.
  */
 export interface CharacterModelSource {
-  /** Stable id, e.g. "procedural-chibi" or "glb". */
+  /** Stable id, e.g. "procedural-pixel" or "sprite-sheet". */
   readonly id: string;
   /** Human label shown in the admin panel. */
   readonly label: string;
@@ -230,10 +232,10 @@ export interface CharacterModelSource {
   readonly assetManifestUrl?: string;
 }
 
-/** The built-in source: procedural anime chibi, zero downloads, offline. */
-export const PROCEDURAL_CHIBI_SOURCE: CharacterModelSource = {
-  id: "procedural-chibi",
-  label: "Procedural anime chibi (built-in)",
+/** The built-in source: procedural 2D pixel-art sprite, zero downloads. */
+export const PROCEDURAL_PIXEL_SOURCE: CharacterModelSource = {
+  id: "procedural-pixel",
+  label: "Procedural pixel-art sprite (built-in)",
   supports: {
     hairColor: true,
     eyeColor: true,
@@ -243,28 +245,34 @@ export const PROCEDURAL_CHIBI_SOURCE: CharacterModelSource = {
 };
 
 /**
- * DOCUMENTATION — approved GLB asset manifest format (for a future source).
+ * DOCUMENTATION — custom PNG sprite-sheet manifest format.
  *
  * ```json
  * {
  *   "version": "1.0",
  *   "models": [
  *     {
- *       "id": "chibi-mika-01",
- *       "url": "/assets/characters/chibi-mika-01.glb",
+ *       "id": "pixel-mika-01",
+ *       "url": "/assets/characters/pixel-mika-01.png",
  *       "attribution": "Artist name",
  *       "license": "CC0-1.0",
  *       "supports": { "hairColor": false, "eyeColor": false, "outfit": false, "accessories": false },
- *       "height": 1.6,
- *       "animations": ["idle", "typing", "thinking", "walking", "meeting", "celebrate"]
+ *       "frameWidth": 28,
+ *       "frameHeight": 36,
+ *       "animations": {
+ *         "idle": 2, "typing": 2, "thinking": 2,
+ *         "walking": 4, "meeting": 2, "celebrate": 2
+ *       }
  *     }
  *   ]
  * }
  * ```
  *
- * Rules: every model needs `url`, `attribution`, and `license`; only list
- * animations the file really contains; the renderer falls back to the
- * procedural chibi when a model fails to load (never a broken scene).
+ * The PNG is a horizontal strip (or grid) of 28x36 frames in row-major
+ * order per the `animations` counts. Rules: every model needs `url`,
+ * `attribution`, and `license`; only list animations the sheet really
+ * contains; the renderer falls back to the procedural pixel sprite when a
+ * sheet fails to load (never a broken scene).
  */
 export const CHARACTER_ASSET_MANIFEST_DOC = "character-asset-manifest/v1";
 

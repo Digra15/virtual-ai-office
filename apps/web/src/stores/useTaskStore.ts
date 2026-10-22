@@ -7,7 +7,7 @@ import { useAgentStore } from "./useAgentStore";
  * Tasks are synced to agents: moving a card updates the assignee's
  * `currentTask`/`progress` in the agent store, and completing a task
  * (status → done, progress → 100) triggers the agent's celebrate
- * animation via the existing progress watcher in ChibiFigure.
+ * animation via the existing progress watcher in PixelAvatar.
  */
 
 export type TaskStatus = "todo" | "in_progress" | "review" | "done";

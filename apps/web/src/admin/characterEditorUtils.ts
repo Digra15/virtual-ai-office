@@ -1,16 +1,16 @@
 /**
  * Pure helpers for the admin character editor. Kept free of Three.js so
- * they stay unit-testable; the 3D preview lives in CharacterEditor.tsx.
+ * they stay unit-testable; the 2D preview lives in CharacterDraftPreview.tsx.
  */
 import type { AssetManifestEntry } from "@virtual-ai-office/shared";
 import {
-  PROCEDURAL_CHIBI_SOURCE,
+  PROCEDURAL_PIXEL_SOURCE,
   validateCharacterPreset,
   type CharacterModelSource,
   type CharacterPreset,
 } from "../world/characters/characterTypes";
 
-export const PROCEDURAL_MODEL_ID = "procedural-chibi";
+export const PROCEDURAL_MODEL_ID = "procedural-pixel";
 
 const DEFAULT_PRESET: Omit<CharacterPreset, "agentId"> = {
   hairStyle: "bob",
@@ -66,8 +66,8 @@ const NONE_SUPPORTED: ModelSupports = {
 
 /**
  * Which appearance options the given characterModel exposes in the editor.
- * "procedural-chibi" (built-in) supports everything; a GLB asset only
- * exposes what its manifest `supports` flags allow.
+ * "procedural-pixel" (built-in) supports everything; a PNG sprite-sheet
+ * asset only exposes what its manifest `supports` flags allow.
  */
 export function supportsForModel(
   characterModel: string,
@@ -85,7 +85,7 @@ export function modelSourceFor(
   assets: AssetManifestEntry[],
 ): CharacterModelSource & { note: string } {
   if (characterModel === PROCEDURAL_MODEL_ID) {
-    return { ...PROCEDURAL_CHIBI_SOURCE, note: "All options editable." };
+    return { ...PROCEDURAL_PIXEL_SOURCE, note: "All options editable." };
   }
   const asset = assets.find((a) => a.id === characterModel);
   if (!asset) {
@@ -98,22 +98,22 @@ export function modelSourceFor(
   }
   return {
     id: asset.id,
-    label: `${asset.id} (GLB)`,
+    label: `${asset.id} (PNG sprite sheet)`,
     supports: { ...asset.supports },
-    note: "GLB: only supported options shown.",
+    note: "PNG sprite sheet: only supported options shown.",
   };
 }
 
-/** Model select options: built-in chibi + uploaded GLB assets. */
+/** Model select options: built-in pixel sprite + uploaded PNG sheets. */
 export function modelOptions(assets: AssetManifestEntry[]): Array<{
   id: string;
   label: string;
 }> {
   return [
-    { id: PROCEDURAL_MODEL_ID, label: "Procedural anime chibi (built-in)" },
+    { id: PROCEDURAL_MODEL_ID, label: "Procedural pixel-art sprite (built-in)" },
     ...assets.map((a) => ({
       id: a.id,
-      label: `${a.id} — GLB${a.license ? ` (${a.license})` : ""}`,
+      label: `${a.id} — PNG${a.license ? ` (${a.license})` : ""}`,
     })),
   ];
 }

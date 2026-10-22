@@ -15,7 +15,7 @@ import {
   type ModelSupports,
 } from "./characterEditorUtils";
 
-// The 3D preview is lazy so the form logic stays light (and unit-testable
+// The 2D preview is lazy so the form logic stays light (and unit-testable
 // without a WebGL context).
 const CharacterDraftPreview = React.lazy(() =>
   import("./CharacterDraftPreview").then((m) => ({ default: m.CharacterDraftPreview })),
@@ -49,8 +49,9 @@ function ColorInput({
 
 /**
  * Character editor: form bound to the CharacterPreset fields with a live
- * 3D preview. `supports` gates which controls are shown (GLB models only
- * expose the options their manifest `supports` flags allow).
+ * 2D pixel-art preview. `supports` gates which controls are shown (PNG
+ * sprite-sheet models only expose the options their manifest `supports`
+ * flags allow).
  */
 export function CharacterEditor({
   agentId,
@@ -175,9 +176,9 @@ export function CharacterEditor({
         )}
         {!supports.hairColor && (
           <p className="hint">
-            GLB: only supported options shown — hair color, eye color, outfit
-            and accessory pickers are hidden because this model does not
-            support them.
+            PNG sprite sheet: only supported options shown — hair color, eye
+            color, outfit and accessory pickers are hidden because this sheet
+            does not support them.
           </p>
         )}
         {problems.length > 0 && (

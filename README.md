@@ -13,6 +13,12 @@ API. Runs fully offline in a clearly-labeled **demo mode** — no paid APIs need
 - **8 sample agents** (Nika, Research, Coding, Writing, Design, Data Analyst,
   Automation, Monitoring), each with status, task, progress, last-seen,
   workstation, and activity history.
+- **2D pixel-art characters** — each agent is a procedurally generated
+  28×36-pixel sprite (big chibi head, big anime eyes, unique hair/outfit/
+  accessory per agent) rendered as a billboard inside the 3D office
+  (2.5D Paper-Mario style). Frame-based animation per activity
+  (idle/typing/thinking/walking/meeting/celebrate) plus blinking — no
+  downloaded assets, fully customizable from the admin character editor.
 - **6 statuses, visually distinct** — idle, working, thinking, waiting, error,
   offline — with per-status colors and simple procedural animations.
 - **Camera**: orbit / zoom (limits) / pan, Reset View, Focus Agent with smooth
@@ -98,14 +104,14 @@ mockups.
 
 **What it manages:** worker CRUD (stable ids; renaming never changes the
 integration identity; delete = archive, never terminates an underlying agent),
-character editor with live 3D chibi preview (built on the `CharacterPreset`
-schema; GLB assets via manifest with per-model `supports` flags), office
+character editor with live 2D pixel-art preview (built on the `CharacterPreset`
+schema; custom PNG sprite sheets via manifest with per-sheet `supports` flags), office
 configuration (branding, theme, rooms, workstations, assignments, visibility,
 camera defaults — applied to the public 3D scene live, no rebuild), service
 catalog (draft/published, pricing, AI-disclosure), orders (explicit states
 `pending → accepted → queued → in_progress → review → completed`, plus
 `cancelled`/`failed`; `paid` flips only via the verified-payment endpoint),
-asset uploads (.glb/.gltf ≤ 25 MB → R2), audit log, and auth settings.
+asset uploads (PNG sprite sheets ≤ 5 MB → R2), audit log, and auth settings.
 
 **Authentication (real, no placeholders):** PBKDF2-SHA256 (210k iterations)
 password hashing, D1-backed users/sessions, HttpOnly session cookie, first-run
@@ -136,8 +142,8 @@ the public scene runs unchanged in local demo mode.
 
 **Known limitations:** D1/R2/secrets must be created by you (no CI credentials
 here); payment marking is a stub until a real provider webhook is wired (never
-claim paid otherwise); character GLB support is manifest-ready but no models
-ship yet (procedural chibi is the built-in source); office layout editing is
+claim paid otherwise); custom PNG sprite-sheet support is manifest-ready but no
+sheets ship yet (the procedural pixel-art sprite is the built-in source); office layout editing is
 config-based in v1 (drag-and-drop placement is a documented extension point).
 
 ## Project checklist

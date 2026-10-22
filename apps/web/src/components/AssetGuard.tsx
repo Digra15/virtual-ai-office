@@ -16,7 +16,7 @@ interface AssetGuardState {
  * Error boundary for (possibly lazy) 3D content. All current office assets
  * are procedural — nothing external is loaded — so this exists to guard
  * future/optional external models (e.g. a rigged character replacing the
- * procedural AgentAvatar) without taking down the whole dashboard.
+ * procedural pixel AgentAvatar) without taking down the whole dashboard.
  */
 class AssetErrorBoundary extends Component<AssetGuardProps, AssetGuardState> {
   state: AssetGuardState = { failed: false, message: "" };

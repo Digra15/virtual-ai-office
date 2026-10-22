@@ -2,7 +2,7 @@
 
 The admin panel (`/api/admin/*`) and the public storefront (`/api/public/*`)
 run inside this Worker, backed by D1 (structured data) and R2 (character
-`.glb`/`.gltf` uploads). The agent registry / WebSocket side is untouched —
+PNG sprite-sheet uploads). The agent registry / WebSocket side is untouched —
 it still lives in the `AgentRoom` Durable Object.
 
 Prerequisites: this repo checked out, `npm install` done at the repo root,
@@ -52,7 +52,7 @@ R2_PUBLIC_BASE_URL = "https://pub-xxxx.r2.dev"
 ```
 
 If you skip this, uploads still work — the API stores the R2 key
-(`characters/<id>.glb`) and returns it with `publicUrlConfigured: false`.
+(`characters/<id>.png`) and returns it with `publicUrlConfigured: false`.
 
 ## 3. Set the secrets
 

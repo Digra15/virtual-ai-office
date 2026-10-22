@@ -56,7 +56,7 @@ describe("useOfficeConfigStore", () => {
       lastSeen: null,
       currentTask: "",
       workstationId: "",
-      characterModel: "procedural-chibi",
+      characterModel: "procedural-pixel",
       characterConfig: {},
       accentColor: "#38bdf8",
       animationProfile: "default",
@@ -105,7 +105,7 @@ describe("useOfficeConfigStore", () => {
       lastSeen: null,
       currentTask: "",
       workstationId: "",
-      characterModel: "procedural-chibi",
+      characterModel: "procedural-pixel",
       characterConfig: {
         hairStyle: "hime",
         hairColor: "#111111",

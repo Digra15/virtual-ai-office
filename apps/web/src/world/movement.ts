@@ -17,7 +17,7 @@ import {
  * `MovementController` (one useFrame for the whole scene) drives.
  * Discrete transitions (started walking / arrived) are mirrored to
  * `usePresenceStore` so React only re-renders on activity changes —
- * e.g. to swap the chibi animation set or the seated pose.
+ * e.g. to swap the sprite animation set or the seated pose.
  */
 
 export interface MoveOptions {

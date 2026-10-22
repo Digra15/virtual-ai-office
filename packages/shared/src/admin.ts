@@ -51,7 +51,7 @@ export const WorkerSchema = z.object({
   currentTask: z.string().max(500).default(''),
   workstationId: z.string().max(32).default(''),
   publicVisible: z.boolean().default(true),
-  characterModel: z.string().max(64).default('procedural-chibi'),
+  characterModel: z.string().max(64).default('procedural-pixel'),
   /** JSON-serializable CharacterPreset (validated client-side too). */
   characterConfig: z.record(z.string(), z.unknown()).default({}),
   accentColor: HexColorSchema.default('#38bdf8'),
@@ -341,7 +341,7 @@ export type AssetSupport = z.infer<typeof AssetSupportSchema>;
 export const AssetManifestEntrySchema = z.object({
   id: z.string().min(1).max(64).regex(/^[a-z0-9][a-z0-9_-]*$/i),
   url: z.string().url().max(1000),
-  kind: z.enum(['glb', 'gltf']).default('glb'),
+  kind: z.enum(['png']).default('png'),
   attribution: z.string().max(300).default(''),
   license: z.string().max(100).default(''),
   supports: AssetSupportSchema.default({
@@ -350,17 +350,22 @@ export const AssetManifestEntrySchema = z.object({
     outfit: false,
     accessories: false,
   }),
-  animations: z.array(z.string().max(32)).max(20).default([]),
-  height: z.number().positive().max(10).nullable().default(null),
+  /** Animation name -> frame count for the PNG sprite sheet. */
+  animations: z
+    .record(z.string().max(32), z.number().int().min(1).max(64))
+    .default({}),
+  /** Frame dimensions in pixels (built-in sprites are 28x36). */
+  frameWidth: z.number().int().min(8).max(256).default(28),
+  frameHeight: z.number().int().min(8).max(256).default(36),
   createdAt: z.string().datetime(),
 });
 export type AssetManifestEntry = z.infer<typeof AssetManifestEntrySchema>;
 
 /** Server-side upload validation (mirrored client-side for UX). */
 export const ASSET_UPLOAD_LIMITS = {
-  maxBytes: 25 * 1024 * 1024, // 25 MB
-  allowedMime: ['model/gltf-binary', 'model/gltf+json'],
-  allowedExt: ['.glb', '.gltf'],
+  maxBytes: 5 * 1024 * 1024, // 5 MB
+  allowedMime: ['image/png'],
+  allowedExt: ['.png'],
 } as const;
 
 // ---------------------------------------------------------------------------

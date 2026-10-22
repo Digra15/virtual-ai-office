@@ -46,7 +46,7 @@ function makeWorker(overrides: Partial<Worker> = {}): Worker {
     currentTask: "",
     workstationId: "ws-01",
     publicVisible: true,
-    characterModel: "procedural-chibi",
+    characterModel: "procedural-pixel",
     characterConfig: {},
     accentColor: "#38bdf8",
     animationProfile: "default",

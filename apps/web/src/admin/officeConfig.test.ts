@@ -100,24 +100,24 @@ describe("OFFICE_CONFIG_SCHEMAS (client-side validation mirrors the Worker)", ()
 describe("asset upload client-side validation (mirrors ASSET_UPLOAD_LIMITS)", () => {
   const file = (name: string, size: number) =>
     new File(["x".repeat(Math.min(size, 10))], name, {
-      type: "model/gltf-binary",
+      type: "image/png",
     });
 
-  it("accepts a small .glb", () => {
-    const f = file("model.glb", 1024);
+  it("accepts a small .png sprite sheet", () => {
+    const f = file("sheet.png", 1024);
     Object.defineProperty(f, "size", { value: 1024 });
     expect(validateAssetFile(f)).toBeNull();
   });
 
-  it("rejects files over 25 MB", () => {
-    const f = file("big.glb", 10);
-    Object.defineProperty(f, "size", { value: 26 * 1024 * 1024 });
-    expect(validateAssetFile(f)).toContain("25 MB");
+  it("rejects files over 5 MB", () => {
+    const f = file("big.png", 10);
+    Object.defineProperty(f, "size", { value: 6 * 1024 * 1024 });
+    expect(validateAssetFile(f)).toContain("5 MB");
   });
 
   it("rejects disallowed extensions", () => {
     const f = file("model.obj", 1024);
     Object.defineProperty(f, "size", { value: 1024 });
-    expect(validateAssetFile(f)).toContain(".glb");
+    expect(validateAssetFile(f)).toContain(".png");
   });
 });

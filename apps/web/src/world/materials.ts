@@ -181,7 +181,7 @@ export const matBookAmber = new THREE.MeshStandardMaterial({ color: "#92400e", r
 
 // ---------------------------------------------------------------------------
 // Chibi character shared materials (color-neutral parts). Per-character
-// colors (hair, skin, iris, outfit) are created per ChibiFigure via useMemo.
+// (legacy note) per-character colors now come from the pixel sprite palette.
 // ---------------------------------------------------------------------------
 
 /** Sclera — bright white, slightly glossy. */

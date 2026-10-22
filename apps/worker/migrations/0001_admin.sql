@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS workers (
   current_task      TEXT NOT NULL DEFAULT '',
   workstation_id    TEXT NOT NULL DEFAULT '',
   public_visible    INTEGER NOT NULL DEFAULT 1,
-  character_model   TEXT NOT NULL DEFAULT 'procedural-chibi',
+  character_model   TEXT NOT NULL DEFAULT 'procedural-pixel',
   character_config  TEXT NOT NULL DEFAULT '{}',
   accent_color      TEXT NOT NULL DEFAULT '#38bdf8',
   animation_profile TEXT NOT NULL DEFAULT 'default',
@@ -139,11 +139,12 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
 CREATE TABLE IF NOT EXISTS asset_manifest (
   id         TEXT PRIMARY KEY,
   url        TEXT NOT NULL,
-  kind       TEXT NOT NULL DEFAULT 'glb',
+  kind       TEXT NOT NULL DEFAULT 'png',
   attribution TEXT NOT NULL DEFAULT '',
   license    TEXT NOT NULL DEFAULT '',
   supports   TEXT NOT NULL DEFAULT '{}',
-  animations TEXT NOT NULL DEFAULT '[]',
-  height     REAL,
+  animations TEXT NOT NULL DEFAULT '{}',
+  frame_width  INTEGER NOT NULL DEFAULT 28,
+  frame_height INTEGER NOT NULL DEFAULT 36,
   created_at TEXT NOT NULL
 );

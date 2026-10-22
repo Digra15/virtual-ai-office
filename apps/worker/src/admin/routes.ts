@@ -694,7 +694,7 @@ async function putConfig(
 
 // ------------------------------------------------------------------- assets
 
-const ASSET_COLS = 'id, url, kind, attribution, license, supports, animations, height, created_at';
+const ASSET_COLS = 'id, url, kind, attribution, license, supports, animations, frame_width, frame_height, created_at';
 const ASSET_ID_SCHEMA = z
   .string()
   .min(1)
@@ -738,14 +738,14 @@ async function uploadAsset(
   if (file.size > ASSET_UPLOAD_LIMITS.maxBytes) {
     return err(413, `File too large — max ${ASSET_UPLOAD_LIMITS.maxBytes / 1024 / 1024} MB`);
   }
-  const filename = file.name || 'model.glb';
+  const filename = file.name || 'sprite.png';
   const dot = filename.lastIndexOf('.');
   const ext = dot === -1 ? '' : filename.slice(dot).toLowerCase();
   if (!(ASSET_UPLOAD_LIMITS.allowedExt as readonly string[]).includes(ext)) {
-    return err(400, `Unsupported file extension "${ext || '(none)'}" — use .glb or .gltf`);
+    return err(400, `Unsupported file extension "${ext || '(none)'}" — use .png (28x36-pixel sprite sheet)`);
   }
   if (!(ASSET_UPLOAD_LIMITS.allowedMime as readonly string[]).includes(file.type)) {
-    return err(400, `Unsupported MIME type "${file.type || 'unknown'}" — expected model/gltf-binary or model/gltf+json`);
+    return err(400, `Unsupported MIME type "${file.type || 'unknown'}" — expected image/png`);
   }
 
   let id: string;
@@ -770,7 +770,9 @@ async function uploadAsset(
   const license = String(form.get('license') ?? '');
   if (license.length > 100) return err(400, 'license too long (max 100 chars)');
 
-  let animations: string[] = [];
+  // animations: JSON object mapping animation name -> frame count,
+  // e.g. {"idle":2,"walking":4}
+  let animations: Record<string, number> = {};
   const rawAnims = form.get('animations');
   if (typeof rawAnims === 'string' && rawAnims.trim() !== '') {
     let parsedAnims: unknown;
@@ -779,23 +781,32 @@ async function uploadAsset(
     } catch {
       return err(400, 'Invalid animations JSON');
     }
-    const ap = z.array(z.string().max(32)).max(20).safeParse(parsedAnims);
+    const ap = z
+      .record(z.string().max(32), z.number().int().min(1).max(64))
+      .refine((o) => Object.keys(o).length <= 20, 'too many animations (max 20)')
+      .safeParse(parsedAnims);
     if (!ap.success) return err(400, 'Invalid animations value', ap.error.flatten());
     animations = ap.data;
   }
 
-  let height: number | null = null;
-  const rawHeight = form.get('height');
-  if (typeof rawHeight === 'string' && rawHeight.trim() !== '') {
-    const h = Number(rawHeight);
-    if (!Number.isFinite(h) || h <= 0 || h > 10) {
-      return err(400, 'Invalid height (must satisfy 0 < height <= 10)');
+  let frameWidth = 28;
+  let frameHeight = 36;
+  for (const [field, set] of [
+    ['frameWidth', (v: number) => (frameWidth = v)],
+    ['frameHeight', (v: number) => (frameHeight = v)],
+  ] as const) {
+    const raw = form.get(field);
+    if (typeof raw === 'string' && raw.trim() !== '') {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 8 || n > 256) {
+        return err(400, `Invalid ${field} (must be an integer 8..256)`);
+      }
+      set(n);
     }
-    height = h;
   }
 
-  const kind = ext === '.gltf' ? 'gltf' : 'glb';
-  const r2Key = `characters/${id}.glb`;
+  const kind = 'png';
+  const r2Key = `characters/${id}.png`;
   await env.ASSETS.put(r2Key, file, { httpMetadata: { contentType: file.type } });
 
   const base = (env.R2_PUBLIC_BASE_URL ?? '').trim().replace(/\/+$/, '');
@@ -812,7 +823,8 @@ async function uploadAsset(
       license,
       JSON.stringify({ hairColor: false, eyeColor: false, outfit: false, accessories: false }),
       JSON.stringify(animations),
-      height,
+      frameWidth,
+      frameHeight,
       now,
     )
     .run();
@@ -838,7 +850,7 @@ async function deleteAsset(
   if (!env.ASSETS) return err(503, 'asset storage not configured');
   const row = await db.prepare(`SELECT ${ASSET_COLS} FROM asset_manifest WHERE id = ?`).bind(id).first<Row>();
   if (!row) return err(404, `Unknown asset: ${id}`);
-  await env.ASSETS.delete(`characters/${id}.glb`);
+  await env.ASSETS.delete(`characters/${id}.png`);
   await db.prepare('DELETE FROM asset_manifest WHERE id = ?').bind(id).run();
   await audit(db, {
     actor,

@@ -14,7 +14,7 @@ export interface Env {
    */
   DB?: D1Database;
   /**
-   * R2 bucket for character asset uploads (.glb/.gltf). OPTIONAL: asset
+   * R2 bucket for character sprite-sheet uploads (.png). OPTIONAL: asset
    * upload/delete answers 503 when unbound.
    */
   ASSETS?: R2Bucket;

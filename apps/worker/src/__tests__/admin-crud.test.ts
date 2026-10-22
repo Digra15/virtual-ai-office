@@ -24,7 +24,7 @@ async function createService(ctx: MockEnv, cookie: string, body: Record<string, 
   return handleAdminRequest(req('/api/admin/services', { method: 'POST', body, cookie }), ctx.env);
 }
 
-function glbForm(name: string, type: string, bytes: Uint8Array, extra: Record<string, string> = {}): FormData {
+function pngForm(name: string, type: string, bytes: Uint8Array, extra: Record<string, string> = {}): FormData {
   const f = new FormData();
   f.append('file', new File([bytes], name, { type }));
   for (const [k, v] of Object.entries(extra)) f.append(k, v);
@@ -462,7 +462,7 @@ describe('assets', () => {
     );
     const cookie = sessionCookie(l) as string;
     const up = await handleAdminRequest(
-      req('/api/admin/assets', { method: 'POST', form: glbForm('m.glb', 'model/gltf-binary', tiny), cookie }),
+      req('/api/admin/assets', { method: 'POST', form: pngForm('m.png', 'image/png', tiny), cookie }),
       ctx.env,
     );
     expect(up.status).toBe(503);
@@ -470,9 +470,9 @@ describe('assets', () => {
 
   it('413s oversize files', async () => {
     const { ctx, cookie } = await authed();
-    const big = new Uint8Array(26 * 1024 * 1024);
+    const big = new Uint8Array(6 * 1024 * 1024);
     const res = await handleAdminRequest(
-      req('/api/admin/assets', { method: 'POST', form: glbForm('big.glb', 'model/gltf-binary', big), cookie }),
+      req('/api/admin/assets', { method: 'POST', form: pngForm('big.png', 'image/png', big), cookie }),
       ctx.env,
     );
     expect(res.status).toBe(413);
@@ -481,12 +481,12 @@ describe('assets', () => {
   it('400s on bad extension or MIME', async () => {
     const { ctx, cookie } = await authed();
     const badExt = await handleAdminRequest(
-      req('/api/admin/assets', { method: 'POST', form: glbForm('evil.exe', 'model/gltf-binary', tiny), cookie }),
+      req('/api/admin/assets', { method: 'POST', form: pngForm('evil.exe', 'image/png', tiny), cookie }),
       ctx.env,
     );
     expect(badExt.status).toBe(400);
     const badMime = await handleAdminRequest(
-      req('/api/admin/assets', { method: 'POST', form: glbForm('m.glb', 'application/octet-stream', tiny), cookie }),
+      req('/api/admin/assets', { method: 'POST', form: pngForm('m.png', 'application/octet-stream', tiny), cookie }),
       ctx.env,
     );
     expect(badMime.status).toBe(400);
@@ -498,32 +498,34 @@ describe('assets', () => {
       req('/api/admin/assets', {
         method: 'POST',
         cookie,
-        form: glbForm('Hero Model.glb', 'model/gltf-binary', tiny, {
+        form: pngForm('Hero Sheet.png', 'image/png', tiny, {
           attribution: 'Test Artist',
           license: 'CC0',
-          animations: JSON.stringify(['idle', 'wave']),
-          height: '1.8',
+          animations: JSON.stringify({ idle: 2, walking: 4 }),
+          frameWidth: '28',
+          frameHeight: '36',
         }),
       }),
       ctx.env,
     );
     expect(up.status).toBe(201);
     const body = (await up.json()) as {
-      asset: { id: string; url: string; kind: string; attribution: string; animations: string[]; height: number };
+      asset: { id: string; url: string; kind: string; attribution: string; animations: Record<string, number>; frameWidth: number; frameHeight: number };
       publicUrlConfigured: boolean;
     };
-    expect(body.asset.id).toBe('hero-model');
+    expect(body.asset.id).toBe('hero-sheet');
     expect(body.publicUrlConfigured).toBe(false);
-    expect(body.asset.url).toBe('characters/hero-model.glb');
-    expect(body.asset.kind).toBe('glb');
-    expect(body.asset.animations).toEqual(['idle', 'wave']);
-    expect(body.asset.height).toBe(1.8);
-    expect(ctx.r2.has('characters/hero-model.glb')).toBe(true);
-    expect(ctx.r2.get('characters/hero-model.glb')?.contentType).toBe('model/gltf-binary');
+    expect(body.asset.url).toBe('characters/hero-sheet.png');
+    expect(body.asset.kind).toBe('png');
+    expect(body.asset.animations).toEqual({ idle: 2, walking: 4 });
+    expect(body.asset.frameWidth).toBe(28);
+    expect(body.asset.frameHeight).toBe(36);
+    expect(ctx.r2.has('characters/hero-sheet.png')).toBe(true);
+    expect(ctx.r2.get('characters/hero-sheet.png')?.contentType).toBe('image/png');
     expect(ctx.db.rowsOf('asset_manifest').length).toBe(1);
 
     const dup = await handleAdminRequest(
-      req('/api/admin/assets', { method: 'POST', form: glbForm('Hero Model.glb', 'model/gltf-binary', tiny), cookie }),
+      req('/api/admin/assets', { method: 'POST', form: pngForm('Hero Sheet.png', 'image/png', tiny), cookie }),
       ctx.env,
     );
     expect(dup.status).toBe(409);
@@ -533,10 +535,10 @@ describe('assets', () => {
     };
     expect(list.assets.length).toBe(1);
 
-    const del = await handleAdminRequest(req('/api/admin/assets/hero-model', { method: 'DELETE', cookie }), ctx.env);
+    const del = await handleAdminRequest(req('/api/admin/assets/hero-sheet', { method: 'DELETE', cookie }), ctx.env);
     expect(del.status).toBe(200);
-    expect(ctx.r2.has('characters/hero-model.glb')).toBe(false);
+    expect(ctx.r2.has('characters/hero-sheet.png')).toBe(false);
     expect(ctx.db.rowsOf('asset_manifest').length).toBe(0);
-    expect((await handleAdminRequest(req('/api/admin/assets/hero-model', { method: 'DELETE', cookie }), ctx.env)).status).toBe(404);
+    expect((await handleAdminRequest(req('/api/admin/assets/hero-sheet', { method: 'DELETE', cookie }), ctx.env)).status).toBe(404);
   });
 });

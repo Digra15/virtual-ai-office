@@ -44,7 +44,7 @@ function UploadForm({ onUploaded }: { onUploaded: () => void }) {
   const submit = async () => {
     setError(null);
     if (!file) {
-      setError("Choose a .glb or .gltf file first.");
+      setError("Choose a .png sprite sheet first.");
       return;
     }
     const problem = validateAssetFile(file);
@@ -80,16 +80,17 @@ function UploadForm({ onUploaded }: { onUploaded: () => void }) {
     <div className="admin-panel">
       <h3>Upload character asset</h3>
       <p className="hint">
-        GLB/GLTF character models for the worker “character model” select. Max{" "}
-        {MAX_BYTES / 1024 / 1024} MB. Uploaded files are served from the
-        Worker's R2 bucket — configure the R2 public URL in the Worker before
-        uploading, or asset URLs will not resolve publicly.
+        PNG sprite sheets (28x36 px frames, one row per animation) for the
+        worker “character model” select. Max {MAX_BYTES / 1024 / 1024} MB.
+        Uploaded files are served from the Worker's R2 bucket — configure the
+        R2 public URL in the Worker before uploading, or asset URLs will not
+        resolve publicly.
       </p>
       <FormError error={error} />
-      <Field label="File (.glb, .gltf)">
+      <Field label="File (.png sprite sheet)">
         <input
           type="file"
-          accept=".glb,.gltf"
+          accept=".png"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
         {file && (
@@ -98,12 +99,12 @@ function UploadForm({ onUploaded }: { onUploaded: () => void }) {
           </span>
         )}
       </Field>
-      <Field label="Asset id" hint="URL-safe, e.g. chibi-mika-01.">
+      <Field label="Asset id" hint="URL-safe, e.g. pixel-mika-01.">
         <input
           type="text"
           value={id}
           onChange={(e) => setId(e.target.value)}
-          placeholder="chibi-mika-01"
+          placeholder="pixel-mika-01"
         />
       </Field>
       <Field label="Attribution" hint="Required by the manifest format.">
@@ -161,7 +162,7 @@ export function AssetsPage() {
     <div className="admin-page">
       <PageHeader
         title="Assets"
-        sub="Character model manifest (GLB/GLTF) used by the worker character-model select."
+        sub="Character sprite-sheet manifest (PNG) used by the worker character-model select."
       />
       <UploadForm onUploaded={assetsRes.refresh} />
       <div className="admin-panel" style={{ marginTop: 16 }}>
@@ -173,7 +174,7 @@ export function AssetsPage() {
             {assetsRes.error}
           </p>
         ) : assets.length === 0 ? (
-          <Empty text="No assets uploaded. The built-in procedural chibi is always available." />
+          <Empty text="No assets uploaded. The built-in procedural pixel sprite is always available." />
         ) : (
           <table className="admin-table">
             <thead>
@@ -204,7 +205,7 @@ export function AssetsPage() {
                       .join(", ") || "none"}
                   </td>
                   <td className="muted small">
-                    {a.animations.join(", ") || "—"}
+                    {Object.entries(a.animations).map(([k, v]) => `${k}×${v}`).join(", ") || "—"}
                   </td>
                   <td>
                     <a href={a.url} target="_blank" rel="noreferrer">

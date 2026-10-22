@@ -68,7 +68,7 @@ export function mapWorkerRow(row: Row): Worker {
     currentTask: String(row.current_task ?? ''),
     workstationId: String(row.workstation_id ?? ''),
     publicVisible: toBool(row.public_visible),
-    characterModel: String(row.character_model ?? 'procedural-chibi'),
+    characterModel: String(row.character_model ?? 'procedural-pixel'),
     characterConfig: parseJson<Record<string, unknown>>(row.character_config, {}),
     accentColor: String(row.accent_color ?? '#38bdf8'),
     animationProfile: (row.animation_profile ?? 'default') as Worker['animationProfile'],
@@ -126,7 +126,7 @@ export function mapAssetRow(row: Row): AssetManifestEntry {
   return {
     id: String(row.id),
     url: String(row.url ?? ''),
-    kind: row.kind === 'gltf' ? 'gltf' : 'glb',
+    kind: 'png',
     attribution: String(row.attribution ?? ''),
     license: String(row.license ?? ''),
     supports: parseJson<AssetManifestEntry['supports']>(row.supports, {
@@ -135,9 +135,9 @@ export function mapAssetRow(row: Row): AssetManifestEntry {
       outfit: false,
       accessories: false,
     }),
-    animations: parseJson<string[]>(row.animations, []),
-    height:
-      row.height === null || row.height === undefined ? null : Number(row.height),
+    animations: parseJson<Record<string, number>>(row.animations, {}),
+    frameWidth: Number(row.frame_width ?? 28),
+    frameHeight: Number(row.frame_height ?? 36),
     createdAt: String(row.created_at),
   };
 }
