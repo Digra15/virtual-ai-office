@@ -14,6 +14,7 @@ import { geoPlane } from "./geometries";
 import { matFloor } from "./materials";
 import { CameraRig } from "./camera/CameraRig";
 import { AgentAvatar } from "./characters/AgentAvatar";
+import { SceneSpy } from "../debug/SceneSpy";
 import { InstancedChairs } from "./furniture/Chair";
 import { Desk } from "./furniture/Desk";
 import { Monitor } from "./furniture/Monitor";
@@ -121,8 +122,19 @@ const AgentAvatars = memo(function AgentAvatars() {
  * everything else is ambient/hemisphere fill or emissive decoration.
  */
 export default function OfficeScene() {
+  // TEMPORARY debug hook for ?debug=fullscene — remove after diagnosis.
+  const debugFull =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("debug") === "fullscene";
   return (
     <Canvas shadows dpr={[1, 1.75]} camera={{ position: [16, 13, 16], fov: 45 }}>
+      {debugFull && (
+        <SceneSpy
+          onReport={(r) => {
+            (window as unknown as { __dbgReport: string }).__dbgReport = r;
+          }}
+        />
+      )}
       <color attach="background" args={["#0b0f1a"]} />
       <fog attach="fog" args={["#0b0f1a", 48, 95]} />
       <ambientLight intensity={0.45} />
