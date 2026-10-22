@@ -21,7 +21,8 @@ export type ChibiAnimation =
   | "thinking"
   | "walking"
   | "meeting"
-  | "celebrate";
+  | "celebrate"
+  | "praying";
 
 /** Maps a live agent status to the sprite animation it should play. */
 export function statusToAnimation(status: AgentStatus): ChibiAnimation {
@@ -117,6 +118,68 @@ export const ACCESSORY_KINDS: AccessoryKind[] = [
 ];
 
 /**
+ * Prayer outfit worn in the musola (room id "musola"). Per the user's
+ * correction (2026-10-22): female characters wear a white mukena (prayer
+ * veil covering head and body); male characters wear a sarong (sarung)
+ * with a black peci cap.
+ */
+export type PrayerWear = "mukena" | "sarungPeci";
+
+export const PRAYER_WEARS: PrayerWear[] = ["mukena", "sarungPeci"];
+
+/**
+ * Which way the sprite texture faces, chosen per frame from the angle
+ * between the agent's facing vector and the camera direction (2.5D
+ * directional sprites — the character no longer stares at the camera).
+ * - "front": camera roughly in front of the character (sees the face)
+ * - "back":  camera roughly behind the character
+ * - "side":  camera roughly perpendicular; the side texture is drawn
+ *   facing sprite-local +x and mirrored horizontally when the camera is
+ *   on the character's other side.
+ */
+export type SpriteDirection = "front" | "back" | "side";
+
+export const SPRITE_DIRECTIONS: SpriteDirection[] = ["front", "back", "side"];
+
+/** Wrap an angle in radians to (-PI, PI]. */
+export function wrapAngle(rad: number): number {
+  const TAU = Math.PI * 2;
+  let r = rad % TAU;
+  if (r <= -Math.PI) r += TAU;
+  else if (r > Math.PI) r -= TAU;
+  return r;
+}
+
+export interface SpriteView {
+  direction: SpriteDirection;
+  /**
+   * Mirror the side texture horizontally. True when the camera is on the
+   * character's local +x side (sin of the relative angle > 0). Only
+   * meaningful for direction === "side".
+   */
+  mirror: boolean;
+}
+
+/**
+ * Pick the sprite texture direction from the agent's world-space facing
+ * angle and the camera's world-space azimuth (both measured like
+ * THREE's rotation.y: 0 = +z, atan2(dx, dz)).
+ *
+ * |relative angle| <= 45° → front; >= 135° → back; otherwise side.
+ * Pure — unit-tested, including boundary angles and mirroring.
+ */
+export function selectSpriteDirection(
+  facing: number,
+  cameraAzimuth: number,
+): SpriteView {
+  const phi = wrapAngle(cameraAzimuth - facing);
+  const abs = Math.abs(phi);
+  if (abs <= Math.PI / 4) return { direction: "front", mirror: false };
+  if (abs >= (3 * Math.PI) / 4) return { direction: "back", mirror: false };
+  return { direction: "side", mirror: phi > 0 };
+}
+
+/**
  * Full visual identity of one agent's pixel-art character. Colors are hex strings
  * ("#rrggbb"). This is the shape the admin panel's character editor
  * will read and write.
@@ -134,6 +197,13 @@ export interface CharacterPreset {
   /** Secondary garment color (skirt, vest, trim...). */
   outfitSecondary: string;
   accessory: AccessoryKind;
+  /**
+   * Prayer outfit for the musola. OPTIONAL and additive: presets written
+   * before this field existed stay valid (the renderer falls back to
+   * `prayerWearFor()` defaults). Admin-overridable like every other
+   * visual-identity field.
+   */
+  prayerWear?: PrayerWear;
 }
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -159,6 +229,13 @@ export function validateCharacterPreset(preset: unknown): string[] {
   }
   if (!ACCESSORY_KINDS.includes(p.accessory as AccessoryKind)) {
     problems.push(`accessory must be one of: ${ACCESSORY_KINDS.join(", ")}`);
+  }
+  // prayerWear is optional (backward compatible); when present it must be known.
+  if (
+    p.prayerWear !== undefined &&
+    !PRAYER_WEARS.includes(p.prayerWear as PrayerWear)
+  ) {
+    problems.push(`prayerWear must be one of: ${PRAYER_WEARS.join(", ")}`);
   }
   for (const key of [
     "hairColor",

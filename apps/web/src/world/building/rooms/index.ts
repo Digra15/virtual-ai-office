@@ -3,7 +3,9 @@
  * floorPlan room id to its interior component so the Building composer (and
  * tests) can stay data-driven.
  *
- * Simplified 2026-10-22: only rooms that serve a real feature survived.
+ * Redesigned 2026-10-22 from the user's dream-office denah: 14 rooms.
+ * Circulation dressing (stair lobbies, garden hall) is exported separately
+ * — it is not a room and is rendered explicitly by Building.tsx.
  */
 import type { ComponentType } from "react";
 import { Reception } from "./Reception";
@@ -12,13 +14,15 @@ import { ConferenceRoom } from "./ConferenceRoom";
 import { ServerRoom } from "./ServerRoom";
 import { Restrooms } from "./Restrooms";
 import { Pantry } from "./Pantry";
-import { RecoveryRoom } from "./RecoveryRoom";
-import { Overflow } from "./Overflow";
+import { ProjectRoom } from "./ProjectRoom";
+import { DireksiRoom } from "./DireksiRoom";
+import { KontenRoom } from "./KontenRoom";
+import { RnDRoom } from "./RnDRoom";
 import { Musola } from "./Musola";
 import { Lounge } from "./Lounge";
 import { FocusRoom } from "./FocusRoom";
-import { Studio } from "./Studio";
-import { Corridors } from "./Corridors";
+import { RecoveryRoom } from "./RecoveryRoom";
+import { GroundCirculation, UpperCirculation } from "./Circulation";
 
 export {
   Reception,
@@ -27,27 +31,31 @@ export {
   ServerRoom,
   Restrooms,
   Pantry,
-  RecoveryRoom,
-  Overflow,
+  ProjectRoom,
+  DireksiRoom,
+  KontenRoom,
+  RnDRoom,
   Musola,
   Lounge,
   FocusRoom,
-  Studio,
-  Corridors,
+  RecoveryRoom,
+  GroundCirculation,
+  UpperCirculation,
 };
 
 export const ROOM_COMPONENTS: Record<string, ComponentType> = {
   reception: Reception,
   openWorkspace: OpenWorkspace,
-  conferenceRoom: ConferenceRoom,
-  serverRoom: ServerRoom,
-  restrooms: Restrooms,
+  meeting: ConferenceRoom,
+  server: ServerRoom,
+  restroom: Restrooms,
   pantry: Pantry,
-  recoveryRoom: RecoveryRoom,
-  overflow: Overflow,
+  project: ProjectRoom,
+  direksi: DireksiRoom,
+  konten: KontenRoom,
+  rnd: RnDRoom,
   musola: Musola,
   lounge: Lounge,
-  focus1: FocusRoom,
-  studio: Studio,
-  corridor: Corridors,
+  fokus: FocusRoom,
+  pemulihan: RecoveryRoom,
 };

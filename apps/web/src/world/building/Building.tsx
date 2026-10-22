@@ -10,7 +10,7 @@ import { useBuildingViewStore } from "../../stores/useBuildingViewStore";
 import { FLOOR_HEIGHT, FLOOR_VISIBILITY, ROOMS } from "./floorPlan";
 import { BuildingShell } from "./BuildingShell";
 import { Exterior } from "../exterior/Exterior";
-import { ROOM_COMPONENTS } from "./rooms";
+import { GroundCirculation, ROOM_COMPONENTS, UpperCirculation } from "./rooms";
 
 export const Building = memo(function Building() {
   const floorMode = useBuildingViewStore((s) => s.floorMode);
@@ -39,12 +39,14 @@ export const Building = memo(function Building() {
           const C = ROOM_COMPONENTS[id];
           return C ? <C key={id} /> : null;
         })}
+        <GroundCirculation />
       </group>
       <group position={[0, FLOOR_HEIGHT, 0]} visible={v.second}>
         {secondIds.map((id) => {
           const C = ROOM_COMPONENTS[id];
           return C ? <C key={id} /> : null;
         })}
+        <UpperCirculation />
       </group>
     </group>
   );

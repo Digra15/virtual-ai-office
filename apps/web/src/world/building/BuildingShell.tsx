@@ -61,14 +61,15 @@ export const BuildingShell = memo(function BuildingShell({
 
         {southWalls && (
           <group>
-            {/* south wall with reception double-door gap (x 12..16) */}
-            <Wall length={32} height={WALL_H} position={[-4, 0, 14]} windows={6} />
+            {/* south wall with reception double-door gap (x -16..-12) */}
+            <Wall length={4} height={WALL_H} position={[-18, 0, 14]} windows={1} />
+            <Wall length={28} height={WALL_H} position={[2, 0, 14]} windows={6} />
             <Wall length={4} height={WALL_H} position={[18, 0, 14]} windows={1} />
           </group>
         )}
-        {/* reception double doors */}
-        <Door position={[13, 0, 14]} width={2} height={2.6} open />
-        <Door position={[15, 0, 14]} width={2} height={2.6} open />
+        {/* reception double doors (hung by the Reception room component) */}
+        <Door position={[-15, 0, 14]} width={2} height={2.6} open />
+        <Door position={[-13, 0, 14]} width={2} height={2.6} open />
       </group>
 
       {/* ================= second floor ================= */}
@@ -133,7 +134,7 @@ export const BuildingShell = memo(function BuildingShell({
         <Signage position={[-8, 4.9, 14.3]} text="DIFIA" subtext="VIRTUAL AI OFFICE" scale={1.7} />
       </group>
       {/* freestanding logo panel at the reception entrance */}
-      <group position={[17.6, 0, 15.4]}>
+      <group position={[-16, 0, 15.4]}>
         <mesh geometry={geoBox} material={matDoorFrame} scale={[0.14, 1.7, 0.14]} position={[0, 0.85, 0]} castShadow />
         <Signage position={[0, 2.1, 0]} text="DIFIA" subtext="VIRTUAL AI OFFICE" scale={0.8} />
       </group>

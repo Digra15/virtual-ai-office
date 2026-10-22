@@ -117,12 +117,12 @@ describe("shouldAutoRecover", () => {
 });
 
 describe("recoveryTarget", () => {
-  it("targets the bed position on the ground floor", () => {
+  it("targets the bed position on the second floor (Ruang Pemulihan)", () => {
     const target = recoveryTarget(RECOVERY_BEDS[0]!);
     expect(target).toEqual({
       x: RECOVERY_BEDS[0]!.position[0],
       z: RECOVERY_BEDS[0]!.position[2],
-      floor: 0,
+      floor: 1,
     });
   });
 });

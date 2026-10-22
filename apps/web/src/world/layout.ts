@@ -4,17 +4,16 @@
  * NOTE: This file only keeps the LEGACY desk layout (ws-01..ws-08 plus
  * stress desks). The authoritative building layout — rooms, walls,
  * stairs, camera presets — lives in world/building/floorPlan.ts
- * (simplified 2026-10-22: 13 rooms incl. musola; the old PM room,
- * executive suite, R&D lab, training, terrace, meeting pods and the
- * elevator shaft are gone).
+ * (redesigned 2026-10-22 from the user's dream-office denah: 14 rooms,
+ * recovery moved to the second floor, stair tower on the east/right side).
  *
  * Zones (legacy, desk-placement only):
- * - Open workspace: center (x -10..10, z -4..7) — 8 desks in two rows of four.
- * - Meeting room:    north-west (x -20..-8, z -14..-5).
+ * - Open workspace: center (x -10..10, z -5..14) — 8 desks in two rows of
+ *   four, plus the hot-desk bullpen annex (x -8..8, z 6..13) holding
+ *   EXTRA_DESKS for the 22 stress-mode agents.
+ * - Meeting room:    north-west (x -20..-11, z -14..-5).
  * - Mission control: north-east (x 8..20, z -14..-5).
  * - Lounge:          south (x 2..14, z 8..13).
- * - Overflow:        south-west, lounge-adjacent (x -19..-9, z 6..13) —
- *                    holds EXTRA_DESKS for the 22 stress-mode agents.
  *
  * Desk convention: a desk's local -z is the "back" (monitor side), local +z
  * is where the chair and the seated avatar go (avatar faces -z, i.e. its
@@ -42,7 +41,7 @@ export const ZONES: Record<string, ZoneRect> = {
   meetingRoom: { minX: -20, maxX: -8, minZ: -14, maxZ: -5, label: "Meeting Room" },
   missionControl: { minX: 8, maxX: 20, minZ: -14, maxZ: -5, label: "Mission Control" },
   lounge: { minX: 2, maxX: 14, minZ: 8, maxZ: 13, label: "Lounge" },
-  overflow: { minX: -19, maxX: -9, minZ: 6, maxZ: 13, label: "Overflow" },
+  bullpen: { minX: -8, maxX: 8, minZ: 6, maxZ: 14, label: "Hot-desk bullpen" },
 };
 
 /** Main roster: two rows of four desks in the open workspace. */
@@ -57,12 +56,13 @@ export const DESKS: Record<string, DeskSlot> = {
   "ws-08": { position: [7.5, 0, 3.5], rotationY: Math.PI, zone: "openWorkspace" },
 };
 
-/** 22 overflow desks (lounge-adjacent) for stress-mode agents, keyed
- *  `stress-01`..`stress-22` so they line up with buildStressAgents() ids. */
+/** 22 hot-desk workstations (workspace bullpen annex, x -8..8, z 6..14)
+ *  for stress-mode agents, keyed `stress-01`..`stress-22` so they line up
+ *  with buildStressAgents() ids. Rendered by the OpenWorkspace room. */
 export const EXTRA_DESKS: Record<string, DeskSlot> = (() => {
   const desks: Record<string, DeskSlot> = {};
-  const cols = [-18, -16, -14, -12, -10];
-  const rows = [6, 7.75, 9.5, 11.25, 13];
+  const cols = [-6.25, -3.75, -1.25, 1.25, 3.75, 6.25];
+  const rows = [8, 9.75, 11.5, 13.25];
   let n = 0;
   for (let r = 0; r < rows.length && n < 22; r++) {
     for (let c = 0; c < cols.length && n < 22; c++) {
@@ -71,7 +71,7 @@ export const EXTRA_DESKS: Record<string, DeskSlot> = (() => {
       desks[id] = {
         position: [cols[c], 0, rows[r]],
         rotationY: r % 2 === 0 ? 0 : Math.PI,
-        zone: "overflow",
+        zone: "workspace",
       };
     }
   }
@@ -98,7 +98,7 @@ export function AGENT_SPAWN_POSITION(
   }
   const col = h % 6;
   const row = Math.floor(h / 6) % 4;
-  // West corridor between meeting room and open workspace.
+  // Inside the project room (open area west of the workspace).
   return [-19 + col * 1.5, 0, -2 + row * 2];
 }
 

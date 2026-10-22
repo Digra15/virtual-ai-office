@@ -21,7 +21,7 @@ const SPAWN_ROLES = [
 
 /**
  * Spawn a new simulated agent: name + role + visual style → a free
- * workstation from the overflow desks. New agents are honestly labeled
+ * workstation from the hot desks. New agents are honestly labeled
  * source "Simulated" (same as the demo roster).
  */
 export function SpawnPanel({ onClose }: { onClose: () => void }) {
@@ -45,7 +45,7 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
     const freeDesk = findFreeWorkstation(agents);
     if (!freeDesk) {
       setError(
-        "No free workstation — all 22 overflow desks are occupied. Remove an agent first.",
+        "No free workstation — all 22 hot desks are occupied. Remove an agent first.",
       );
       return;
     }
@@ -94,7 +94,7 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="muted small">
-          Creates a simulated agent at a free overflow desk.{" "}
+          Creates a simulated agent at a free hot desk.{" "}
           <span className="sim-badge">SIMULATED</span>
         </p>
         <label className="field">
@@ -144,7 +144,7 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
         )}
         {spawnedId && (
           <p className="success-text" role="status">
-            Spawned! Find them at their new desk in the overflow area.
+            Spawned! Find them at their new desk in the hot-desk area.
           </p>
         )}
         <button

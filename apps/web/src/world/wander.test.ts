@@ -39,7 +39,9 @@ describe("wander waypoint ids", () => {
     }
     // recep-in deliberately mixes ground-floor traffic into the 2F pool.
     expect(merged["recep-in"].floor ?? 0).toBe(0);
-    expect([...WANDER_WAYPOINT_IDS_2F]).toContain("u-musola");
     expect([...WANDER_WAYPOINT_IDS_2F]).toContain("u-lounge");
+    expect([...WANDER_WAYPOINT_IDS_2F]).toContain("u-hall");
+    expect([...WANDER_WAYPOINT_IDS_2F]).toContain("u-land");
+    expect([...WANDER_WAYPOINT_IDS_2F]).toContain("u-musola");
   });
 });

@@ -47,9 +47,9 @@ describe("waypoint graph", () => {
   });
 
   it("routes around the desk block (no straight cut through desks)", () => {
-    // From a north-corridor point to an aisle point: must go via west/east
-    // corridor, never straight through the desk rows at z=-1.5.
-    const path = bfsPath("north-c", "aisle-c");
+    // From a north-room door to an aisle point: must hop through the
+    // north walkway, never straight through the desk rows at z=-1.5.
+    const path = bfsPath("server-in", "aisle-c");
     expect(path.length).toBeGreaterThan(2);
     // Every hop stays on corridors/aisle (all waypoints are placed in open space).
     for (const id of path) expect(WAYPOINTS[id]).toBeDefined();

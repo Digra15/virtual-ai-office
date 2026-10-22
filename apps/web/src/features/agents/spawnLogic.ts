@@ -4,7 +4,7 @@ import { EXTRA_DESKS } from "../../world/layout";
 /**
  * Workstation allocation for the spawn panel (pure, testable).
  *
- * Returns the first free overflow desk, or null when every desk is taken.
+ * Returns the first free hot desk, or null when every desk is taken.
  */
 export function findFreeWorkstation(
   agents: Record<string, AgentInfo>,

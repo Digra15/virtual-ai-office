@@ -44,8 +44,8 @@ describe("floorPlan constants", () => {
     }
   });
 
-  it("recovery beds are inside the recovery room rect", () => {
-    const room = ROOM_BY_ID["recoveryRoom"];
+  it("recovery beds are inside the upstairs recovery room rect", () => {
+    const room = ROOM_BY_ID["pemulihan"];
     expect(room).toBeDefined();
     expect(RECOVERY_BEDS.length).toBeGreaterThan(0);
     for (const bed of RECOVERY_BEDS) {
@@ -100,32 +100,33 @@ describe("floorPlan constants", () => {
     }
   });
 
-  it("simplified plan: exactly 13 rooms on 2 floors, musola included", () => {
-    expect(ROOMS).toHaveLength(13);
+  it("denah plan: exactly 14 rooms on 2 floors (7 + 7), musola included", () => {
+    expect(ROOMS).toHaveLength(14);
     const ids = new Set(ROOMS.map((r) => r.id));
     for (const id of [
       "reception",
       "openWorkspace",
-      "conferenceRoom",
-      "serverRoom",
-      "restrooms",
+      "meeting",
+      "server",
+      "restroom",
       "pantry",
-      "recoveryRoom",
-      "overflow",
+      "project",
+      "direksi",
+      "konten",
       "musola",
+      "fokus",
       "lounge",
-      "focus1",
-      "studio",
-      "corridor",
+      "pemulihan",
+      "rnd",
     ]) {
       expect(ids, `missing room "${id}"`).toContain(id);
     }
     const ground = ROOMS.filter((r) => r.floor === 0);
     const upper = ROOMS.filter((r) => r.floor === 1);
-    expect(ground).toHaveLength(8);
-    expect(upper).toHaveLength(5);
+    expect(ground).toHaveLength(7);
+    expect(upper).toHaveLength(7);
     // Cut rooms must stay gone.
-    for (const id of ["pmRoom", "executive", "lab", "training", "terrace", "lounge2"]) {
+    for (const id of ["pmRoom", "executive", "lab", "training", "terrace", "lounge2", "overflow", "corridor", "studio", "conferenceRoom", "recoveryRoom", "restrooms", "focus1"]) {
       expect(ids, `cut room "${id}" reappeared`).not.toContain(id);
     }
   });

@@ -77,7 +77,7 @@ export interface WorkstationLocation {
 
 /**
  * Resolve any known workstation id to its floor/position. Covers the
- * floorPlan WORKSTATIONS (studio-*, focus-*) plus the legacy layout DESKS
+ * floorPlan WORKSTATIONS (konten-*, focus-*) plus the legacy layout DESKS
  * (ws-01..ws-08) and EXTRA_DESKS (stress-01..22).
  */
 export function workstationLocation(wsId: string): WorkstationLocation | null {

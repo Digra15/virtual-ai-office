@@ -2,11 +2,13 @@ import {
   ACCESSORY_KINDS,
   HAIR_STYLES,
   OUTFIT_STYLES,
+  PRAYER_WEARS,
   validateCharacterPreset,
   type AccessoryKind,
   type CharacterPreset,
   type HairStyle,
   type OutfitStyle,
+  type PrayerWear,
 } from "./characterTypes";
 
 /**
@@ -35,6 +37,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#f5ead9",
     outfitSecondary: "#d98a9e",
     accessory: "ribbon",
+    prayerWear: "mukena",
   },
   {
     agentId: "research",
@@ -46,6 +49,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#eef2f6",
     outfitSecondary: "#2b3a55",
     accessory: "roundGlasses",
+    prayerWear: "sarungPeci",
   },
   {
     agentId: "coding",
@@ -57,6 +61,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#3a4356",
     outfitSecondary: "#232a3a",
     accessory: "headphones",
+    prayerWear: "sarungPeci",
   },
   {
     agentId: "writing",
@@ -68,6 +73,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#c9a7c7",
     outfitSecondary: "#a37fa3",
     accessory: "beret",
+    prayerWear: "mukena",
   },
   {
     agentId: "design",
@@ -79,6 +85,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#2aa198",
     outfitSecondary: "#ff8c42",
     accessory: "starPin",
+    prayerWear: "mukena",
   },
   {
     agentId: "data",
@@ -90,6 +97,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#dbe7f3",
     outfitSecondary: "#1f3a5f",
     accessory: "rectGlasses",
+    prayerWear: "sarungPeci",
   },
   {
     agentId: "automation",
@@ -101,6 +109,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#e07b39",
     outfitSecondary: "#3a3f4a",
     accessory: "cap",
+    prayerWear: "sarungPeci",
   },
   {
     agentId: "monitoring",
@@ -112,6 +121,7 @@ const PRESETS: CharacterPreset[] = [
     outfitPrimary: "#232b3d",
     outfitSecondary: "#b91c1c",
     accessory: "headsetMic",
+    prayerWear: "sarungPeci",
   },
 ];
 
@@ -124,6 +134,35 @@ for (const p of PRESETS) {
 }
 
 const BY_ID = new Map(PRESETS.map((p) => [p.agentId, p]));
+
+/**
+ * Default prayer outfit per agent (user correction 2026-10-22: female
+ * characters wear mukena in the musola, male characters wear sarung+peci).
+ * Mapping: Nika, Writing, Design → mukena; Research, Coding, Data,
+ * Automation, Monitoring → sarungPeci.
+ */
+export const DEFAULT_PRAYER_WEAR: Record<string, PrayerWear> = {
+  nika: "mukena",
+  research: "sarungPeci",
+  coding: "sarungPeci",
+  writing: "mukena",
+  design: "mukena",
+  data: "sarungPeci",
+  automation: "sarungPeci",
+  monitoring: "sarungPeci",
+};
+
+/**
+ * Resolve the prayer outfit for a preset: explicit `prayerWear` wins
+ * (admin-overridable), then the per-agent default above, then a
+ * deterministic fallback for generated/unknown agents.
+ */
+export function prayerWearFor(preset: CharacterPreset): PrayerWear {
+  if (preset.prayerWear && PRAYER_WEARS.includes(preset.prayerWear)) {
+    return preset.prayerWear;
+  }
+  return DEFAULT_PRAYER_WEAR[preset.agentId] ?? "sarungPeci";
+}
 
 /**
  * Admin/spawn-panel overrides: lets the UI assign a hand-designed look to
@@ -188,6 +227,8 @@ export function getCharacterPreset(agentId: string): CharacterPreset {
   const h = hashString(agentId);
   const pick = <T>(arr: readonly T[]): T => arr[h % arr.length];
   const pick2 = <T>(arr: readonly T[]): T => arr[(h >> 4) % arr.length];
+  const prayerWear: PrayerWear =
+    DEFAULT_PRAYER_WEAR[agentId] ?? (h % 2 === 0 ? "mukena" : "sarungPeci");
   return {
     agentId,
     hairStyle: pick(FALLBACK_HAIR),
@@ -198,6 +239,7 @@ export function getCharacterPreset(agentId: string): CharacterPreset {
     outfitPrimary: pick(FALLBACK_OUTFIT_A),
     outfitSecondary: pick2(FALLBACK_OUTFIT_B),
     accessory: pick(FALLBACK_ACCESSORY),
+    prayerWear,
   };
 }
 
@@ -206,4 +248,4 @@ export function getAllPresets(): CharacterPreset[] {
   return [...PRESETS];
 }
 
-export { ACCESSORY_KINDS, HAIR_STYLES, OUTFIT_STYLES };
+export { ACCESSORY_KINDS, HAIR_STYLES, OUTFIT_STYLES, PRAYER_WEARS };

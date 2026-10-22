@@ -78,7 +78,7 @@ export function shouldAutoRecover(input: AutoRecoverInput): boolean {
   );
 }
 
-/** Floor-aware destination for a recovery bed (all beds are ground floor). */
+/** Floor-aware destination for a recovery bed (all beds are upstairs in Ruang Pemulihan). */
 export function recoveryTarget(bed: BedDef): FloorPoint {
   const floor = ROOM_BY_ID[bed.roomId]?.floor ?? 0;
   return { x: bed.position[0], z: bed.position[2], floor };

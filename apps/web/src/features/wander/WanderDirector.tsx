@@ -16,8 +16,8 @@ import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
  *
  * Every few seconds it looks for `idle` agents that are seated at their
  * desks and, if fewer than MAX_CONCURRENT are already wandering, sends one
- * for a gentle stroll to a random pleasant waypoint — now including the
- * upstairs lounge, terrace and reception via the stair tower
+ * for a gentle stroll to a random pleasant waypoint — including the
+ * upstairs lounge, garden hall and reception via the stair tower
  * (floor-aware `navigateToFloor`). After a cooldown the agent strolls back
  * to its desk.
  *
@@ -45,7 +45,7 @@ interface WanderState {
 
 const states = new Map<string, WanderState>();
 
-/** All wander destinations: ground floor + upstairs (terrace, lounge, reception). */
+/** All wander destinations: ground floor + upstairs (lounge, garden hall, reception). */
 const WANDER_SPOT_IDS: readonly string[] = [
   ...WANDER_WAYPOINT_IDS,
   ...WANDER_WAYPOINT_IDS_2F,

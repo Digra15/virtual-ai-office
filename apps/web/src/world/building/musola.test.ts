@@ -23,14 +23,14 @@ describe("musola room contract", () => {
     expect(ROOM_BY_ID["musola"]).toBe(musola);
   });
 
-  it("roomAt(-10, 0, 1) resolves inside the musola rect", () => {
+  it("roomAt(7, -9, 1) resolves inside the musola rect", () => {
     const musola = ROOM_BY_ID["musola"];
     expect(musola).toBeDefined();
-    expect(-10).toBeGreaterThanOrEqual(musola.minX);
-    expect(-10).toBeLessThanOrEqual(musola.maxX);
-    expect(0).toBeGreaterThanOrEqual(musola.minZ);
-    expect(0).toBeLessThanOrEqual(musola.maxZ);
-    expect(roomAt(-10, 0, 1)?.id).toBe("musola");
+    expect(7).toBeGreaterThanOrEqual(musola.minX);
+    expect(7).toBeLessThanOrEqual(musola.maxX);
+    expect(-9).toBeGreaterThanOrEqual(musola.minZ);
+    expect(-9).toBeLessThanOrEqual(musola.maxZ);
+    expect(roomAt(7, -9, 1)?.id).toBe("musola");
   });
 
   it("RECOVERY_BEDS still all inside the recovery room", () => {

@@ -41,20 +41,36 @@ describe("merged waypoint graph (both floors)", () => {
     }
   });
   it("stair chain reaches every upper room spur from the ground aisle", () => {
-    const targets = ["u-focus", "u-musola", "u-studio", "u-lounge"] as const;
+    const targets = ["u-direksi", "u-konten", "u-musola", "u-fokus", "u-lounge", "u-pem", "u-rnd"] as const;
     for (const t of targets) {
       const p = findPath3D({ x: 0, z: 1, floor: 0 }, waypointTarget(t));
       expect(p.length, t).toBeGreaterThan(0);
+    }
+  });
+
+  it("recovery beds are reachable from a ground desk via the stairs", async () => {
+    const { RECOVERY_BEDS, ROOM_BY_ID } = await import("./building/floorPlan");
+    for (const bed of RECOVERY_BEDS) {
+      const floor = ROOM_BY_ID[bed.roomId]?.floor ?? 0;
+      const p = findPath3D(
+        { x: -7.5, z: 1, floor: 0 },
+        { x: bed.position[0], z: bed.position[2], floor },
+      );
+      expect(p.length, bed.id).toBeGreaterThan(0);
+      expect(p[p.length - 1].y, `${bed.id} ends upstairs`).toBe(3.5);
     }
   });
 });
 
 function waypointTarget(id: string): { x: number; z: number; floor: 0 | 1 } {
   const table: Record<string, { x: number; z: number; floor: 0 | 1 }> = {
-    "u-focus": { x: -14, z: 10, floor: 1 },
-    "u-musola": { x: -10, z: 0, floor: 1 },
-    "u-studio": { x: 2, z: 10, floor: 1 },
-    "u-lounge": { x: 14, z: -2, floor: 1 },
+    "u-direksi": { x: -13, z: -8, floor: 1 },
+    "u-konten": { x: -3, z: -8, floor: 1 },
+    "u-musola": { x: 10, z: -9, floor: 1 },
+    "u-fokus": { x: -16, z: 0, floor: 1 },
+    "u-lounge": { x: -2, z: 0.5, floor: 1 },
+    "u-pem": { x: -14, z: 9, floor: 1 },
+    "u-rnd": { x: 10, z: 9, floor: 1 },
   };
   return table[id];
 }

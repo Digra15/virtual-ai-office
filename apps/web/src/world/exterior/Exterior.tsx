@@ -1,7 +1,8 @@
 /**
- * Building surroundings (simplified 2026-10-22): grass, the reception
- * sidewalk path, ~6 trees, 4 lamp posts, 2 planters. Lamp heads glow
- * bright at night (dim by day).
+ * Building surroundings (redesigned 2026-10-22): grass, the reception
+ * sidewalk path (west, to the new main entrance), ~6 trees, 4 lamp posts,
+ * 2 planters, and a simple painted parking area east of the building.
+ * Lamp heads glow bright at night (dim by day).
  */
 import { memo, useEffect } from "react";
 import * as THREE from "three";
@@ -27,8 +28,11 @@ const TREE_SPOTS: [number, number, number][] = [
 ];
 
 const LAMP_SPOTS: [number, number][] = [
-  [10, 18], [18, 18], [10, 30], [18, 30],
+  [-18, 18], [-10, 18], [-18, 30], [-10, 30],
 ];
+
+/** Simple parking area east of the building: asphalt slab + painted bays. */
+const PARK_BAYS = 5;
 
 /** One exterior lamp post; the head glows bright at night. */
 const LampPost = memo(function LampPost({ position }: { position: [number, number] }) {
@@ -52,8 +56,20 @@ export const Exterior = memo(function Exterior() {
       {/* grass */}
       <mesh geometry={geoPlane} material={matGrass} scale={[140, 140, 1]} position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow />
 
-      {/* sidewalk: reception doors (14,0,14) -> (14,0,32) */}
-      <mesh geometry={geoBox} material={matWalk} scale={[4, 0.1, 18]} position={[14, 0.05, 23]} receiveShadow />
+      {/* sidewalk: reception doors (-14,0,14) -> (-14,0,32) */}
+      <mesh geometry={geoBox} material={matWalk} scale={[4, 0.1, 18]} position={[-14, 0.05, 23]} receiveShadow />
+
+      {/* parking area east of the building (painted bays, no cars) */}
+      <mesh geometry={geoBox} material={matPole} scale={[10, 0.08, 16]} position={[30, 0.04, 16]} receiveShadow />
+      {Array.from({ length: PARK_BAYS + 1 }, (_, i) => (
+        <mesh
+          key={i}
+          geometry={geoBox}
+          material={matWalk}
+          scale={[0.18, 0.02, 16]}
+          position={[26 + i * 2, 0.1, 16]}
+        />
+      ))}
 
       {/* trees */}
       {TREE_SPOTS.map(([x, z, s], i) => (
@@ -66,8 +82,8 @@ export const Exterior = memo(function Exterior() {
       ))}
 
       {/* planters near the entrance */}
-      <Planter position={[10.5, 0, 16]} />
-      <Planter position={[17.5, 0, 16]} />
+      <Planter position={[-17.5, 0, 16]} />
+      <Planter position={[-10.5, 0, 16]} />
     </group>
   );
 });

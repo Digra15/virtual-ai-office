@@ -11,7 +11,7 @@ Visual/interactive checks that require a real browser. Run against
 - [ ] **First-frame honesty**: the loading overlay stays visible until real 3D content is on screen (it must NOT disappear while the viewport is still black). The overlay is gated on the first actual rendered frame (`useSceneReadyStore`), not on JS module load.
 
 ## 3D scene
-- [ ] **13 rooms** across 2 floors: ground — reception, open workspace, conference room, server room, restrooms, pantry, recovery room, overflow hot desks; upper — musola, lounge & library, focus room, content studio, upper corridor. Kanban screen on the open-workspace wall.
+- [ ] **14 rooms** across 2 floors: ground — ruang meeting, ruang server, pantry, toilet, ruang project (live Kanban board), workspace (8 desks + hot-desk bullpen), resepsionis (main entrance); upper — ruang direksi, ruang konten, musola, ruang fokus, lounge, ruang pemulihan (recovery beds), ruang R&D. Stair tower on the east side.
 - [ ] 8 agent characters visible at desks, each with a name label and a colored status ring.
 - [ ] Status colors differ across agents (green/purple/gray/amber/red rings).
 - [ ] Animations play: at least one agent bobs (working), one pulses (thinking). No frozen scene.

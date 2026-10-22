@@ -1,19 +1,19 @@
 /**
- * Musola (second floor, x -20..-2, z -14..3.5; authored at local y=0):
+ * Musola (second floor, x 2..13, z -14..-4; authored at local y=0):
  * a calm, respectful prayer room.
  *
- * - 12 prayer rugs (sajadah) in 3 rows x 4, all facing WEST (-x) toward
- *   the qibla marker on the west wall.
+ * - 12 prayer rugs (sajadah) in 4 columns x 3 rows, all facing WEST (-x)
+ *   toward the qibla marker on the west wall.
  * - Qibla plaque on the west wall with a small arrow + "ARAH KIBLAT".
- * - Shoe rack by the entrance door (x=-10 on the south edge, z=3.5 —
- *   the wall itself is owned by the Corridors room, this room only hangs
- *   the door and signage).
- * - Wudu (ablution) nook: 3 basins along the east wall behind a low
+ * - Shoe rack by the entrance door (east edge, x=13, z=-9).
+ * - Wudu (ablution) nook: 3 basins along the south wall behind a low
  *   partition.
  * - 2 warm ceiling lamps (day/night glow handled by CeilingLamp itself).
  *
- * West/north edges are the building perimeter (shell walls); the east
- * partition (x=-2) is owned by the Lounge room.
+ * North edge is the building perimeter (shell wall). The west partition
+ * (x=2) is owned by the konten room (this room only hangs the qibla
+ * plaque on it). Owned by this room: the east partition (x=13, door gap
+ * z -10..-8 into the north landing) and the south partition (z=-4).
  */
 import { memo } from "react";
 import * as THREE from "three";
@@ -24,6 +24,7 @@ import { Plant } from "../../furniture/Plant";
 import { Signage } from "../../furniture/Signage";
 import { Wall } from "../../furniture/Wall";
 import { geoBox, geoCone, geoCylinder } from "../../geometries";
+import { WallSegments } from "./_helpers";
 
 type V3 = [number, number, number];
 
@@ -39,7 +40,7 @@ const matBasin = new THREE.MeshStandardMaterial({ color: "#dbe4ea", roughness: 0
 const matFaucet = new THREE.MeshStandardMaterial({ color: "#9aa7b4", roughness: 0.3, metalness: 0.7 });
 
 /** Rug grid: 4 columns (x) x 3 rows (z), all facing west (-x). */
-const RUG_XS = [-18.2, -16.7, -15.2, -13.7];
+const RUG_XS = [4.2, 5.7, 7.2, 8.7];
 const RUG_ZS = [-10.6, -9.4, -8.2];
 
 /** One prayer rug: thin box, 1.1 (x) x 0.6 (z). */
@@ -89,14 +90,17 @@ const WuduBasin = memo(function WuduBasin({ position }: { position: V3 }) {
 export const Musola = memo(function Musola() {
   return (
     <group>
-      {/* entrance door on the south edge (wall owned by Corridors) */}
-      <Door position={[-10, 0, 3.5]} width={1.8} />
-      <Signage text="MUSOLA" position={[-10, 2.35, 3.32]} rotationY={Math.PI} scale={0.7} />
+      {/* east partition: door gap z -10..-8 into the north landing */}
+      <WallSegments axis="z" fixed={13} from={-14} to={-4} gaps={[[-10, -8]]} />
+      {/* south partition (lounge / stair lobby beyond, no door) */}
+      <WallSegments axis="x" fixed={-4} from={2} to={13} />
+      <Door position={[13, 0, -9]} rotationY={Math.PI / 2} width={2} />
+      <Signage text="MUSOLA" position={[12.82, 2.35, -9]} rotationY={-Math.PI / 2} scale={0.7} />
 
       {/* --- qibla marker: plaque on the west wall + floor arrow --- */}
-      <mesh geometry={geoBox} material={matPlaque} scale={[0.1, 0.9, 1.7]} position={[-19.9, 1.75, -5.5]} />
+      <mesh geometry={geoBox} material={matPlaque} scale={[0.1, 0.9, 1.7]} position={[2.1, 1.75, -9.4]} />
       <Text
-        position={[-19.83, 1.85, -5.5]}
+        position={[2.17, 1.85, -9.4]}
         rotation={[0, Math.PI / 2, 0]}
         fontSize={0.22}
         color="#e8c468"
@@ -111,7 +115,7 @@ export const Musola = memo(function Musola() {
         material={matArrow}
         scale={[0.06, 0.9, 0.5]}
         rotation={[0, 0, Math.PI / 2]}
-        position={[-18.5, 0.06, -5.5]}
+        position={[3.2, 0.06, -9.4]}
       />
 
       {/* --- prayer rugs --- */}
@@ -122,19 +126,19 @@ export const Musola = memo(function Musola() {
       )}
 
       {/* --- shoe rack by the entrance --- */}
-      <ShoeRack position={[-10, 0, 2.2]} />
+      <ShoeRack position={[11.9, 0, -5.6]} />
 
-      {/* --- wudu nook: low partition + 3 basins along the east wall --- */}
-      <Wall length={4.6} height={1.4} position={[-4.4, 0, -10]} rotationY={Math.PI / 2} />
-      {[-11.4, -10, -8.6].map((z) => (
-        <WuduBasin key={z} position={[-2.85, 0, z]} />
+      {/* --- wudu nook: low partition + 3 basins along the south wall --- */}
+      <Wall length={4.6} height={1.4} position={[6, 0, -5.8]} />
+      {[4.6, 6, 7.4].map((x) => (
+        <WuduBasin key={x} position={[x, 0, -4.9]} />
       ))}
 
       {/* calm dressing */}
-      <CeilingLamp position={[-11, -8]} />
-      <CeilingLamp position={[-11, -1]} />
-      <Plant position={[-3.2, 0, 2.6]} scale={0.85} />
-      <Plant position={[-19.2, 0, 2.6]} scale={0.85} />
+      <CeilingLamp position={[6, -9.4]} />
+      <CeilingLamp position={[6, -5.8]} />
+      <Plant position={[12.2, 0, -4.8]} scale={0.85} />
+      <Plant position={[2.8, 0, -13.2]} scale={0.85} />
     </group>
   );
 });

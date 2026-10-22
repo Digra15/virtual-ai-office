@@ -80,18 +80,20 @@ Two interchangeable backends implement the **same** REST + WebSocket contract
   `useSettingsStore` (URLs persisted to localStorage, stress mode, reconnect token),
   `useCameraStore` (focus requests, reset).
 - **3D world** (`src/world/`): fully procedural low-poly office —
-  **simplified 2026-10-22: 13 rooms** across 2 floors, all defined in
-  `src/world/building/floorPlan.ts` (single source of truth). Ground floor:
-  reception, open workspace (with live Kanban wall screen — folded in from
-  the cut PM room), conference room, server room, restrooms, pantry, recovery
-  room (errored-agent pods), overflow hot desks. Upper floor: musola (prayer
-  room with sajadah rows + qibla marker), lounge & library, focus room,
-  content studio, upper corridor. Cut: PM room, executive suite, R&D lab,
-  meeting pods, training room, rooftop terrace, decorative elevator shaft.
-  Agents cross floors via the stair tower (floor-aware waypoints,
-  `findPath3D`). Reusable furniture components, shared module-level
-  geometries/materials, `instancedMesh` for chairs and plants, **one**
-  shadow-casting light, `dpr` capped at 1.75. All animation lives in
+  **redesigned 2026-10-22 from the user's dream-office denah: 14 rooms**
+  across 2 floors, all defined in `src/world/building/floorPlan.ts`
+  (single source of truth). Ground floor: ruang meeting, ruang server,
+  pantry, toilet (north band), ruang project (live Kanban project board),
+  workspace (ws-01..ws-08 + hot-desk bullpen for stress/spawn), resepsionis
+  (main entrance "Pintu Masuk"). Upper floor: ruang direksi, ruang konten,
+  musola (prayer room with sajadah rows + qibla marker), ruang fokus,
+  lounge (idle-agent hangout), ruang pemulihan (errored-agent pods —
+  moved up from the ground floor), ruang R&D. Unroomed circulation
+  (stair lobbies, indoor garden hall) is dressed by rooms/Circulation.tsx.
+  Agents cross floors via the stair tower on the east side (floor-aware
+  waypoints, `findPath3D`). Reusable furniture components, shared
+  module-level geometries/materials, `instancedMesh` for chairs and plants,
+  **one** shadow-casting light, `dpr` capped at 1.75. All animation lives in
   `useFrame` with refs.
 - **Day/night** (`src/stores/useDayNightStore.ts`, `src/world/DayNightRig.tsx`):
   auto mode follows the viewer's local time (day 06:00–18:00), manual day/night

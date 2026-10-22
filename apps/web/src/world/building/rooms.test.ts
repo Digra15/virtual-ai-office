@@ -59,10 +59,11 @@ describe("workstation placement", () => {
 });
 
 describe("recovery beds", () => {
-  it("all four beds lie inside the recovery room rect", () => {
+  it("all four beds lie inside the upstairs recovery room rect", () => {
     expect(RECOVERY_BEDS).toHaveLength(4);
     const room = ROOM_BY_ID[RECOVERY_ROOM_ID];
     expect(room).toBeDefined();
+    expect(room.floor).toBe(1);
     for (const bed of RECOVERY_BEDS) {
       expect(bed.roomId).toBe(RECOVERY_ROOM_ID);
       const [x, , z] = bed.position;
@@ -70,7 +71,7 @@ describe("recovery beds", () => {
         inside(x, z, room),
         `${bed.id} at [${x}, ${z}] is outside the recovery room`,
       ).toBe(true);
-      expect(roomAt(x, z, 0)?.id).toBe(RECOVERY_ROOM_ID);
+      expect(roomAt(x, z, 1)?.id).toBe(RECOVERY_ROOM_ID);
     }
   });
 });
