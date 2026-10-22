@@ -15,7 +15,7 @@ class_name = "AgentRoom"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["AgentRoom"]
+new_sqlite_classes = ["AgentRoom"]
 
 [vars]
 # "true" = run the clearly-labeled demo simulator (8 demo agents).
