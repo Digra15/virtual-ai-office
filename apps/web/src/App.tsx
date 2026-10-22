@@ -16,6 +16,7 @@ import { connectSocket } from "./services/socket";
 import { buildLocalDemoAgents, buildStressAgents } from "./services/demoAgents";
 import { backendEnv } from "./env";
 import { DebugEvents } from "./debug/DebugEvents";
+import { DebugAvatar } from "./debug/DebugAvatar";
 
 // Code-split the 3D scene: the 2D dashboard stays interactive while three.js loads.
 const OfficeScene = React.lazy(() => import("./world/OfficeScene"));
@@ -162,12 +163,12 @@ function Dashboard() {
 
 export default function App() {
   // TEMPORARY production debug harness — remove after diagnosis.
-  if (
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("debug") === "events"
-  ) {
-    return <DebugEvents />;
-  }
+  const debugParam =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("debug")
+      : null;
+  if (debugParam === "events") return <DebugEvents />;
+  if (debugParam === "avatar") return <DebugAvatar />;
   return (
     <ErrorBoundary>
       <Dashboard />
