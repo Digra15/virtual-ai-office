@@ -1,13 +1,57 @@
 import { memo, useMemo } from "react";
 import { useAgentStore } from "../../stores/useAgentStore";
 import { STATUS_META } from "../../utils/status";
-import { DESKS, deskChairSlot, deskLocalToWorld } from "../layout";
+import { DESKS, deskChairSlot, deskLocalToWorld, type DeskSlot } from "../layout";
 import { InstancedChairs } from "../furniture/Chair";
 import { Desk } from "../furniture/Desk";
 import { Monitor } from "../furniture/Monitor";
 import { Partition } from "../furniture/Partition";
 import { Plant } from "../furniture/Plant";
 import { Rug } from "../furniture/Rug";
+import {
+  agentCursorHandlers,
+  makeAgentClickHandler,
+} from "../interaction/selectAgent";
+
+/**
+ * One desk setup (desk + monitor). Clicking the desk selects the agent
+ * seated there — the same select + detail panel + camera focus path as
+ * clicking the agent character itself.
+ */
+const DeskSetup = memo(function DeskSetup({
+  wsId,
+  slot,
+  accent,
+}: {
+  wsId: string;
+  slot: DeskSlot;
+  accent: string;
+}) {
+  const agentId = useAgentStore((s) => {
+    for (const a of Object.values(s.agents)) {
+      if (a.workstationId === wsId) return a.id;
+    }
+    return null;
+  });
+  const onClick = useMemo(
+    () => (agentId ? makeAgentClickHandler(agentId, wsId) : undefined),
+    [agentId, wsId],
+  );
+  const cursor = useMemo(
+    () => (agentId ? agentCursorHandlers() : undefined),
+    [agentId],
+  );
+  return (
+    <group onClick={onClick} {...cursor}>
+      <Desk position={slot.position} rotationY={slot.rotationY} />
+      <Monitor
+        position={deskLocalToWorld(slot.position, slot.rotationY, [0, 0, -0.35])}
+        rotationY={slot.rotationY}
+        accent={accent}
+      />
+    </group>
+  );
+});
 
 /**
  * The open workspace: 8 desk setups in two rows of four, chairs, monitors
@@ -33,14 +77,7 @@ export const OpenWorkspace = memo(function OpenWorkspace() {
   return (
     <group>
       {entries.map(([wsId, slot]) => (
-        <group key={wsId}>
-          <Desk position={slot.position} rotationY={slot.rotationY} />
-          <Monitor
-            position={deskLocalToWorld(slot.position, slot.rotationY, [0, 0, -0.35])}
-            rotationY={slot.rotationY}
-            accent={accentFor(wsId)}
-          />
-        </group>
+        <DeskSetup key={wsId} wsId={wsId} slot={slot} accent={accentFor(wsId)} />
       ))}
       <InstancedChairs slots={chairSlots} />
       {/* divider panels between desks in each row */}

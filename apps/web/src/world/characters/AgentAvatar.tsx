@@ -1,10 +1,8 @@
 import { memo, useEffect, useMemo, useRef } from "react";
-import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { Billboard, Text } from "@react-three/drei";
 import * as THREE from "three";
 import type { AgentInfo } from "@virtual-ai-office/shared";
-import { useAgentStore } from "../../stores/useAgentStore";
-import { useCameraStore } from "../../stores/useCameraStore";
 import { STATUS_META } from "../../utils/status";
 import {
   geoBox,
@@ -14,6 +12,10 @@ import {
   geoTorus,
 } from "../geometries";
 import { matEye, matSkin } from "../materials";
+import {
+  agentCursorHandlers,
+  makeAgentClickHandler,
+} from "../interaction/selectAgent";
 
 interface AgentAvatarProps {
   agent: AgentInfo;
@@ -49,6 +51,14 @@ export const AgentAvatar = memo(function AgentAvatar({
 
   const status = agent.status;
 
+  // Clicking any visible part of the character selects the agent (same path
+  // as dashboard selection: select + detail panel + camera focus).
+  const handleClick = useMemo(
+    () => makeAgentClickHandler(agent.id, agent.workstationId),
+    [agent.id, agent.workstationId],
+  );
+  const cursorHandlers = useMemo(() => agentCursorHandlers(), []);
+
   const bodyMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -78,64 +88,98 @@ export const AgentAvatar = memo(function AgentAvatar({
     [color],
   );
 
+  // Base indicator scale per status (must match renderIndicator below).
+  const indicatorBaseScale =
+    status === "error"
+      ? 0.18
+      : status === "waiting"
+        ? 0.35
+        : status === "thinking"
+          ? 0.16
+          : 0.09;
+
   // Reset any animation transforms when the status changes so a previous
-  // status's pose doesn't leak into the new one.
+  // status's pose doesn't leak into the new one. (The indicator <mesh> is
+  // reconciled rather than remounted across statuses, so every property the
+  // animation loop mutates must be restored here.)
   useEffect(() => {
-    if (torso.current) torso.current.position.y = 0;
+    if (torso.current) {
+      torso.current.position.y = 0;
+      torso.current.rotation.z = 0;
+    }
     if (body.current) body.current.scale.set(0.45, 0.55, 0.45);
-    if (head.current) head.current.rotation.set(0, 0, 0);
+    if (head.current) {
+      head.current.rotation.set(0, 0, 0);
+      head.current.position.set(0, 1.45, 0.03);
+    }
     if (armL.current) armL.current.rotation.x = -0.85;
     if (armR.current) armR.current.rotation.x = -0.85;
     if (ring.current) ring.current.scale.set(1.3, 1.3, 1);
-    if (indicator.current) indicator.current.visible = true;
-  }, [status]);
+    if (indicator.current) {
+      indicator.current.visible = true;
+      indicator.current.rotation.set(0, 0, 0);
+      indicator.current.position.set(0, 2.0, 0);
+      indicator.current.scale.setScalar(indicatorBaseScale);
+    }
+  }, [status, indicatorBaseScale]);
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
     switch (status) {
       case "working":
-        // typing bob + alternating arm swings
-        if (torso.current) torso.current.position.y = Math.sin(t * 3) * 0.03;
-        if (armL.current) armL.current.rotation.x = -0.85 + Math.sin(t * 3) * 0.12;
+        // typing: torso bob + alternating arm pumps + slight head nod.
+        // Amplitudes are deliberately generous — sub-pixel motion is
+        // indistinguishable from a frozen frame in screenshots.
+        if (torso.current) torso.current.position.y = Math.sin(t * 6) * 0.07;
+        if (armL.current)
+          armL.current.rotation.x = -0.85 + Math.sin(t * 6) * 0.28;
         if (armR.current)
-          armR.current.rotation.x = -0.85 + Math.sin(t * 3 + Math.PI) * 0.12;
+          armR.current.rotation.x =
+            -0.85 + Math.sin(t * 6 + Math.PI) * 0.28;
+        if (head.current) head.current.rotation.x = Math.sin(t * 6) * 0.06;
         break;
       case "thinking":
-        // head sway + breathing status ring
-        if (head.current) head.current.rotation.z = Math.sin(t * 1.2) * 0.18;
+        // head tilt sway + hover bob + breathing status ring
+        if (head.current) {
+          head.current.rotation.z = Math.sin(t * 1.4) * 0.3;
+          head.current.position.y = 1.45 + Math.sin(t * 2.1) * 0.05;
+        }
         if (ring.current) {
-          const k = 1 + Math.sin(t * 2) * 0.05;
+          const k = 1 + Math.sin(t * 2.4) * 0.12;
           ring.current.scale.set(1.3 * k, 1.3 * k, 1);
         }
         break;
       case "idle":
-        // gentle breathing
+        // calm breathing + gentle sway
         if (body.current)
           body.current.scale.set(
             0.45,
-            0.55 * (1 + Math.sin(t * 1.5) * 0.02),
+            0.55 * (1 + Math.sin(t * 1.6) * 0.05),
             0.45,
           );
+        if (torso.current) torso.current.rotation.z = Math.sin(t * 0.9) * 0.04;
         break;
       case "waiting":
-        if (indicator.current) indicator.current.rotation.y += delta * 2.5;
+        // tumbling, bobbing indicator — unmistakable at a glance
+        if (indicator.current) {
+          indicator.current.rotation.x += delta * 3.2;
+          indicator.current.position.y = 2.0 + Math.sin(t * 3.2) * 0.16;
+        }
         break;
       case "error":
-        if (indicator.current)
-          indicator.current.visible = Math.sin(t * 7) > 0;
+        // urgent blink + pulse
+        if (indicator.current) {
+          const pulse = Math.sin(t * 9);
+          indicator.current.visible = pulse > -0.2;
+          indicator.current.scale.setScalar(
+            indicatorBaseScale * (1 + Math.max(0, pulse) * 0.35),
+          );
+        }
         break;
       case "offline":
         break; // static, gray
     }
   });
-
-  const handleClick = (e: ThreeEvent<MouseEvent>) => {
-    e.stopPropagation();
-    useAgentStore.getState().select(agent.id);
-    useCameraStore
-      .getState()
-      .requestFocus(agent.id, [position[0], 1.2, position[2]]);
-  };
 
   const renderIndicator = () => {
     const y = 2.0;
@@ -185,7 +229,12 @@ export const AgentAvatar = memo(function AgentAvatar({
   };
 
   return (
-    <group position={position} rotation={[0, rotationY, 0]}>
+    <group
+      position={position}
+      rotation={[0, rotationY, 0]}
+      onClick={handleClick}
+      {...cursorHandlers}
+    >
       {/* seated figure, faces desk-local -z (the monitor) */}
       <group position={[0, 0, 0.95]} rotation={[0, Math.PI, 0]}>
         {/* status ring at base */}
@@ -260,21 +309,6 @@ export const AgentAvatar = memo(function AgentAvatar({
             {STATUS_META[status].label}
           </Text>
         </Billboard>
-        {/* invisible click target (easier to hit than the small meshes) */}
-        <mesh
-          position={[0, 1.1, 0]}
-          visible={false}
-          onClick={handleClick}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            document.body.style.cursor = "pointer";
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = "";
-          }}
-        >
-          <boxGeometry args={[1.4, 2.4, 1.4]} />
-        </mesh>
       </group>
     </group>
   );
