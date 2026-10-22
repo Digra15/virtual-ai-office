@@ -23,6 +23,8 @@ import { z } from 'zod';
 import {
   ADMIN_BROADCAST_TYPES,
   ASSET_UPLOAD_LIMITS,
+  ErrorEventCreateSchema,
+  ErrorEventUpdateSchema,
   OFFICE_CONFIG_SCHEMAS,
   OrderCreateSchema,
   OrderPaymentSchema,
@@ -33,6 +35,7 @@ import {
   ServiceUpdateSchema,
   WorkerCreateSchema,
   WorkerUpdateSchema,
+  canTransitionErrorEvent,
   canTransitionOrder,
   type AdminBroadcastType,
   type OfficeConfigKey,
@@ -45,6 +48,7 @@ import {
   clientIp,
   mapAssetRow,
   mapAuditRow,
+  mapErrorEventRow,
   mapOrderRow,
   mapServiceRow,
   mapWorkerRow,
@@ -862,10 +866,109 @@ async function deleteAsset(
   return json({ ok: true });
 }
 
+// ------------------------------------------------------------ error events
+
+const ERROR_EVENT_COLS =
+  'id, agent_id, category, message, status, created_at, resolved_at';
+
+async function listErrorEvents(db: D1Database, url: URL): Promise<Response> {
+  const status = url.searchParams.get('status');
+  const sql = status
+    ? `SELECT ${ERROR_EVENT_COLS} FROM error_events WHERE status = ? ORDER BY created_at DESC`
+    : `SELECT ${ERROR_EVENT_COLS} FROM error_events ORDER BY created_at DESC`;
+  const stmt = db.prepare(sql);
+  const { results } = status
+    ? await stmt.bind(status).all<Row>()
+    : await stmt.bind().all<Row>();
+  return json({ events: results.map(mapErrorEventRow) });
+}
+
+async function createErrorEvent(
+  db: D1Database,
+  request: Request,
+  env: Env,
+  actor: string,
+): Promise<Response> {
+  const body = await readJson(request);
+  if (!body.ok) return err(400, 'Invalid JSON body');
+  const parsed = ErrorEventCreateSchema.safeParse(body.value);
+  if (!parsed.success) return err(400, 'Invalid error event payload', parsed.error.flatten());
+  const id = `err_${randomHex(12)}`;
+  const now = new Date().toISOString();
+  await db
+    .prepare(insertSql('error_events', ERROR_EVENT_COLS))
+    .bind(
+      id,
+      parsed.data.agentId,
+      parsed.data.category,
+      parsed.data.message,
+      'open',
+      now,
+      null,
+    )
+    .run();
+  await audit(db, {
+    actor,
+    action: 'errorEvent.create',
+    entity: 'errorEvent',
+    entityId: id,
+    detail: { agentId: parsed.data.agentId, category: parsed.data.category },
+    ip: clientIp(request),
+  });
+  await notifyClients(env, 'errorEvents.update');
+  const row = await db
+    .prepare(`SELECT ${ERROR_EVENT_COLS} FROM error_events WHERE id = ?`)
+    .bind(id)
+    .first<Row>();
+  return json({ event: mapErrorEventRow(row ?? {}) }, 201);
+}
+
+async function patchErrorEvent(
+  db: D1Database,
+  id: string,
+  request: Request,
+  env: Env,
+  actor: string,
+): Promise<Response> {
+  const row = await db
+    .prepare(`SELECT ${ERROR_EVENT_COLS} FROM error_events WHERE id = ?`)
+    .bind(id)
+    .first<Row>();
+  if (!row) return err(404, `Unknown error event: ${id}`);
+  const body = await readJson(request);
+  if (!body.ok) return err(400, 'Invalid JSON body');
+  const parsed = ErrorEventUpdateSchema.safeParse(body.value);
+  if (!parsed.success) return err(400, 'Invalid error event payload', parsed.error.flatten());
+  const event = mapErrorEventRow(row);
+  const { status: to, note } = parsed.data;
+  if (!canTransitionErrorEvent(event.status, to)) {
+    return err(422, `Cannot transition error event from "${event.status}" to "${to}"`);
+  }
+  const now = new Date().toISOString();
+  const resolvedAt = to === 'resolved' ? now : event.resolvedAt;
+  await db
+    .prepare('UPDATE error_events SET status = ?, resolved_at = ? WHERE id = ?')
+    .bind(to, resolvedAt, id)
+    .run();
+  await audit(db, {
+    actor,
+    action: 'errorEvent.transition',
+    entity: 'errorEvent',
+    entityId: id,
+    detail: { from: event.status, to, note },
+    ip: clientIp(request),
+  });
+  await notifyClients(env, 'errorEvents.update');
+  const updated = await db
+    .prepare(`SELECT ${ERROR_EVENT_COLS} FROM error_events WHERE id = ?`)
+    .bind(id)
+    .first<Row>();
+  return json({ event: mapErrorEventRow(updated ?? {}) });
+}
+
 // -------------------------------------------------------------------- audit
 
-async function listAudit(db: D1Database, url: URL): Promise<Response> {
-  let limit = 50;
+async function listAudit(db: D1Database, url: URL): Promise<Response> {  let limit = 50;
   const raw = url.searchParams.get('limit');
   if (raw !== null) {
     const n = Number.parseInt(raw, 10);
@@ -1054,6 +1157,16 @@ async function handleAdmin(request: Request, env: Env): Promise<Response> {
 
   if (head === 'audit' && !id && method === 'GET') {
     return listAudit(db, url);
+  }
+
+  if (head === 'error-events') {
+    if (!id) {
+      if (method === 'GET') return listErrorEvents(db, url);
+      if (method === 'POST') return createErrorEvent(db, request, env, actor);
+    } else if (!tail && method === 'PATCH') {
+      return patchErrorEvent(db, id, request, env, actor);
+    }
+    return err(404, 'Not found');
   }
 
   return err(404, 'Not found');

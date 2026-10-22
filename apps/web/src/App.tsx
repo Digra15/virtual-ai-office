@@ -20,6 +20,7 @@ import { KanbanBoard } from "./features/kanban/KanbanBoard";
 import { MeetingPanel } from "./features/meetings/MeetingPanel";
 import { SpawnPanel } from "./features/agents/SpawnPanel";
 import { WanderDirector } from "./features/wander/WanderDirector";
+import { RecoveryDirector } from "./features/recovery/RecoveryDirector";
 import { useTaskStore } from "./stores/useTaskStore";
 
 // Code-split the 3D scene: the 2D dashboard stays interactive while three.js loads.
@@ -184,6 +185,7 @@ function Dashboard() {
     <div className="app">
       <PublicOfficeSync />
       <WanderDirector />
+      <RecoveryDirector />
       <Header
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenKanban={() => setKanbanOpen(true)}

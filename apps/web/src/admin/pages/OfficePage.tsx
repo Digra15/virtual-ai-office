@@ -11,7 +11,8 @@ import { getConfig, listWorkers, putConfigKey } from "../api";
 import { useResource } from "../useResource";
 import { Empty, Field, FormError, PageHeader, toast } from "../ui";
 
-type EditableKey = Exclude<OfficeConfigKey, "office.branding">;
+type EditableKey = Exclude<OfficeConfigKey, "office.branding" | "office.recovery">;
+// "office.recovery" is curated on the dedicated Recovery admin page.
 
 const EDITABLE_KEYS: EditableKey[] = [
   "office.theme",

@@ -7,7 +7,16 @@
  */
 
 /** Every lifecycle state an agent can be in. */
-export const AGENT_STATUSES = ['idle', 'working', 'thinking', 'waiting', 'error', 'offline'] as const;
+export const AGENT_STATUSES = [
+  'idle',
+  'working',
+  'thinking',
+  'waiting',
+  'error',
+  'offline',
+  'meeting',
+  'recovering',
+] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];
 
 /** Kinds of activity log entries. */

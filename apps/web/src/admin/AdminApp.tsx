@@ -10,6 +10,8 @@ import { WorkersPage } from "./pages/WorkersPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { OfficePage } from "./pages/OfficePage";
+import { RoomsPage } from "./pages/RoomsPage";
+import { RecoveryPage } from "./pages/RecoveryPage";
 import { BrandingPage } from "./pages/BrandingPage";
 import { AssetsPage } from "./pages/AssetsPage";
 import { ActivityPage } from "./pages/ActivityPage";
@@ -266,6 +268,8 @@ function Shell() {
         {page === "services" && <ServicesPage />}
         {page === "orders" && <OrdersPage />}
         {page === "office" && <OfficePage />}
+        {page === "rooms" && <RoomsPage />}
+        {page === "recovery" && <RecoveryPage />}
         {page === "branding" && <BrandingPage />}
         {page === "assets" && <AssetsPage />}
         {page === "activity" && <ActivityPage />}

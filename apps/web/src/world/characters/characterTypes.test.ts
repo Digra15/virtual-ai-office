@@ -27,6 +27,9 @@ describe("statusToAnimation", () => {
     expect(statusToAnimation("waiting")).toBe("idle");
     expect(statusToAnimation("error")).toBe("idle");
     expect(statusToAnimation("offline")).toBe("idle");
+    expect(statusToAnimation("meeting")).toBe("meeting");
+    // Recovering agents rest quietly: the calm "thinking" idle-set.
+    expect(statusToAnimation("recovering")).toBe("thinking");
   });
 });
 

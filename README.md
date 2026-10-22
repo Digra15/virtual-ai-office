@@ -8,21 +8,37 @@ API. Runs fully offline in a clearly-labeled **demo mode** — no paid APIs need
 
 ## Features
 
-- **Navigable 3D office** — open workspace, meeting room, mission-control room,
-  lounge; 100% procedural low-poly geometry (zero third-party assets, clean licensing).
+- **Two-story 3D office building** — ground floor (reception, open workspace,
+  project-management room, conference room, server room, pantry, restrooms,
+  agent recovery room, overflow desks) and second floor (executive office,
+  R&D lab, content studio, focus rooms, private meeting pods, lounge &
+  library, training room, rooftop terrace), connected by a visible stair
+  tower (+ decorative elevator shaft). Coherent exterior: facade with DIFIA
+  signage, garden, trees, benches, bike rack, parking, patio with pergola.
+  100% procedural geometry (zero third-party assets, clean licensing).
+- **Exploration camera** — floor selector (Entire Building cutaway / Ground /
+  Upper / Outdoor), room quick-nav, orbit / zoom / pan, Reset View, Focus
+  Agent with smooth tweens, click-to-select, touch support.
 - **8 sample agents** (Nika, Research, Coding, Writing, Design, Data Analyst,
   Automation, Monitoring), each with status, task, progress, last-seen,
-  workstation, and activity history.
+  workstation, assigned room, and activity history.
 - **2D pixel-art characters** — each agent is a procedurally generated
   28×36-pixel sprite (big chibi head, big anime eyes, unique hair/outfit/
   accessory per agent) rendered as a billboard inside the 3D office
   (2.5D Paper-Mario style). Frame-based animation per activity
   (idle/typing/thinking/walking/meeting/celebrate) plus blinking — no
   downloaded assets, fully customizable from the admin character editor.
-- **6 statuses, visually distinct** — idle, working, thinking, waiting, error,
-  offline — with per-status colors and simple procedural animations.
-- **Camera**: orbit / zoom (limits) / pan, Reset View, Focus Agent with smooth
-  tween, click-to-select, touch support.
+- **8 statuses, visually distinct** — idle, working, thinking, waiting,
+  meeting, error, recovering, offline — with per-status colors and sprite
+  animations.
+- **Agent recovery room** — agents reporting a genuine `error` status are
+  walked (via the stair-aware pathfinder) to a free recovery pod; healthy
+  agents walk back. Manual controls in the agent detail panel (send to
+  recovery, mark resolved) plus clearly-labeled SIMULATED error injection
+  for testing. Never treats idle agents as broken.
+- **Real-time occupancy** — workstation / room / recovery-bed assignments
+  with double-occupancy guards; admin can reassign agents to rooms and
+  workstations.
 - **Dark dashboard**: connection indicator, demo-mode badge, stat cards computed
   from live state, searchable + filterable agent list, detail panel, event
   timeline, settings (backend URLs, 30-agent stress mode, reconnect).
@@ -145,6 +161,30 @@ here); payment marking is a stub until a real provider webhook is wired (never
 claim paid otherwise); custom PNG sprite-sheet support is manifest-ready but no
 sheets ship yet (the procedural pixel-art sprite is the built-in source); office layout editing is
 config-based in v1 (drag-and-drop placement is a documented extension point).
+
+## Building, occupancy & recovery
+
+The office is data-driven from `apps/web/src/world/building/floorPlan.ts`
+(rooms, workstations, recovery beds, stair tower, camera presets) and the
+waypoint graph in `apps/web/src/world/navigation.ts` (ground floor +
+`WAYPOINTS_UPPER` for the second floor, stitched via the stair chain by
+`findPath3D`). Agents walk between floors with `movement.navigateToFloor`;
+idle wanderers roam the upstairs lounge and terrace.
+
+- **Recovery:** `apps/web/src/features/recovery/` — `RecoveryDirector`
+  watches real agent statuses; on `error` it walks the agent to a free pod
+  (double-occupancy guarded by `useOccupancyStore`); healthy agents walk back.
+  New statuses: `meeting`, `recovering`. The detail panel has manual
+  Send-to-recovery / Mark-resolved controls plus SIMULATED error injection for
+  testing. Recovery history persists via the worker (`error_events` table,
+  migration `0002_building.sql` — apply with the same
+  `npx wrangler d1 migrations apply vao-admin`).
+- **Admin additions:** `/admin` → *Rooms* (rename/describe rooms, stored in the
+  `office.rooms` config key) and *Recovery* (auto-recover toggle, capacity,
+  error-event acknowledge/resolve).
+- **Honest limits:** the elevator is visual-only (agents use the stairs);
+  error categories come from the backend when it reports them, otherwise the
+  panel says so; nothing is claimed recovered without a healthy status.
 
 ## Project checklist
 

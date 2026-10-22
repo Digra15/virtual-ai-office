@@ -10,6 +10,7 @@ import type {
   AdminUser,
   AssetManifestEntry,
   AuditEntry,
+  ErrorEvent,
   Order,
   Service,
   Worker,
@@ -152,6 +153,18 @@ export function mapAuditRow(row: Row): AuditEntry {
     entityId: String(row.entity_id ?? ''),
     detail: parseJson<Record<string, unknown>>(row.detail, {}),
     ip: (row.ip as string | null) ?? null,
+  };
+}
+
+export function mapErrorEventRow(row: Row): ErrorEvent {
+  return {
+    id: String(row.id),
+    agentId: String(row.agent_id ?? ''),
+    category: (row.category ?? 'unknown') as ErrorEvent['category'],
+    message: String(row.message ?? ''),
+    status: (row.status ?? 'open') as ErrorEvent['status'],
+    createdAt: String(row.created_at),
+    resolvedAt: (row.resolved_at as string | null) ?? null,
   };
 }
 

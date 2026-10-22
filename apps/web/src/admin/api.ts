@@ -11,6 +11,9 @@ import {
   type AdminUser,
   type AssetManifestEntry,
   type AuditEntry,
+  type ErrorEvent,
+  type ErrorEventCreate,
+  type ErrorEventStatus,
   type Order,
   type OrderCreate,
   type OrderPayment,
@@ -79,6 +82,8 @@ export const post = <T>(path: string, body?: unknown): Promise<T> =>
 export const put = <T>(path: string, body: unknown): Promise<T> =>
   request<T>("PUT", path, { body });
 export const del = <T>(path: string): Promise<T> => request<T>("DELETE", path);
+export const patch = <T>(path: string, body: unknown): Promise<T> =>
+  request<T>("PATCH", path, { body });
 export const postForm = <T>(path: string, form: FormData): Promise<T> =>
   request<T>("POST", path, { form });
 
@@ -200,6 +205,22 @@ export const uploadAsset = (
 
 export const deleteAsset = (id: string): Promise<{ asset: AssetManifestEntry }> =>
   del(ADMIN_API.asset(id));
+
+// ---------------------------------------------------------------------------
+// Error events (recovery workflow)
+// ---------------------------------------------------------------------------
+
+export const listErrorEvents = (): Promise<{ events: ErrorEvent[] }> =>
+  get(ADMIN_API.errorEvents);
+
+export const createErrorEvent = (
+  body: ErrorEventCreate,
+): Promise<{ event: ErrorEvent }> => post(ADMIN_API.errorEvents, body);
+
+export const updateErrorEvent = (
+  id: string,
+  body: { status: ErrorEventStatus; note?: string },
+): Promise<{ event: ErrorEvent }> => patch(ADMIN_API.errorEvent(id), body);
 
 // ---------------------------------------------------------------------------
 // Audit

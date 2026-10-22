@@ -29,7 +29,12 @@ export function statusToAnimation(status: AgentStatus): ChibiAnimation {
     case "working":
       return "typing";
     case "thinking":
+    case "recovering":
+      // Recovering agents rest in the recovery room; the quiet "thinking"
+      // idle-set reads as calm recuperation (not a dead-still frame).
       return "thinking";
+    case "meeting":
+      return "meeting";
     case "idle":
     case "waiting":
     case "error":

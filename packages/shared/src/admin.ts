@@ -7,6 +7,7 @@
  * from them. Keep in sync with `apps/worker/migrations/*.sql`.
  */
 import { z } from 'zod';
+import { RecoveryConfigSchema } from './building';
 
 // ---------------------------------------------------------------------------
 // Workers
@@ -280,6 +281,7 @@ export type ThemePreset = (typeof THEME_PRESETS)[number];
 export const RoomConfigSchema = z.object({
   id: z.string().min(1).max(64),
   name: z.string().min(1).max(80),
+  description: z.string().max(500).default(''),
   visible: z.boolean().default(true),
 });
 export type RoomConfig = z.infer<typeof RoomConfigSchema>;
@@ -318,6 +320,8 @@ export const OFFICE_CONFIG_SCHEMAS = {
   'office.workstations': z.array(WorkstationConfigSchema).max(60),
   /** workerId -> workstationId assignments. */
   'office.assignments': z.record(z.string(), z.string()),
+  /** Recovery workflow: auto-recovery of errored agents to recovery beds. */
+  'office.recovery': RecoveryConfigSchema,
   'office.visibility': z.object({
     publicScene: z.boolean().default(true),
     showOffline: z.boolean().default(true),
@@ -432,6 +436,8 @@ export const ADMIN_API = {
   orderPayment: (id: string) => `/api/admin/orders/${encodeURIComponent(id)}/payment`,
   config: '/api/admin/config',
   configKey: (key: string) => `/api/admin/config/${encodeURIComponent(key)}`,
+  errorEvents: '/api/admin/error-events',
+  errorEvent: (id: string) => `/api/admin/error-events/${encodeURIComponent(id)}`,
   assets: '/api/admin/assets',
   asset: (id: string) => `/api/admin/assets/${encodeURIComponent(id)}`,
   audit: '/api/admin/audit',
@@ -444,5 +450,10 @@ export const PUBLIC_API = {
 } as const;
 
 /** Live-update message types broadcast by the Worker on admin changes. */
-export const ADMIN_BROADCAST_TYPES = ['config.update', 'workers.update', 'services.update'] as const;
+export const ADMIN_BROADCAST_TYPES = [
+  'config.update',
+  'workers.update',
+  'services.update',
+  'errorEvents.update',
+] as const;
 export type AdminBroadcastType = (typeof ADMIN_BROADCAST_TYPES)[number];

@@ -4,10 +4,15 @@ import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { useCameraStore } from "../../stores/useCameraStore";
+import { useBuildingViewStore } from "../../stores/useBuildingViewStore";
+import { CAMERA_PRESETS, ROOM_BY_ID } from "../building/floorPlan";
 
 const DEFAULT_POS = new THREE.Vector3(16, 13, 16);
 const DEFAULT_TARGET = new THREE.Vector3(0, 0, 0);
-const TWEEN_SECONDS = 1;
+const TWEEN_SECONDS = 1.2;
+/** Camera offset added to a room anchor for "navigate to room". */
+const ROOM_OFFSET = new THREE.Vector3(10, 9, 12);
+const FOCUS_OFFSET = new THREE.Vector3(4.5, 4.2, 6);
 
 interface Tween {
   t: number;
@@ -22,44 +27,68 @@ const easeInOut = (t: number) =>
 
 /**
  * OrbitControls plus store-driven camera tweens. Focus requests glide the
- * camera to a viewpoint near the agent; reset glides back to the default.
- * Any manual drag cancels the in-flight tween. Touch works via
- * OrbitControls defaults.
+ * camera to a viewpoint near the agent; reset glides back to the default;
+ * floor-view changes glide to the matching CAMERA_PRESETS entry; room
+ * requests glide to the room's anchor. Any manual drag cancels the
+ * in-flight tween. Touch works via OrbitControls defaults.
  */
 export const CameraRig = memo(function CameraRig() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const tween = useRef<Tween | null>(null);
   const seenFocus = useRef(0);
   const seenReset = useRef(0);
+  const seenView = useRef(0);
+  const seenRoom = useRef(0);
+
+  const tweenTo = (toPos: THREE.Vector3, toTarget: THREE.Vector3) => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    tween.current = {
+      t: 0,
+      fromPos: controls.object.position.clone(),
+      toPos,
+      fromTarget: controls.target.clone(),
+      toTarget,
+    };
+  };
+
+  const tweenToFloorPreset = () => {
+    const preset =
+      CAMERA_PRESETS[useBuildingViewStore.getState().floorMode];
+    tweenTo(
+      new THREE.Vector3(...preset.position),
+      new THREE.Vector3(...preset.target),
+    );
+  };
 
   // React to store requests (outside useFrame — no per-frame store reads).
   useEffect(() => {
+    // Glide to the active floor preset on mount.
+    tweenToFloorPreset();
     const unsub = useCameraStore.subscribe((s) => {
-      const controls = controlsRef.current;
       const req = s.focusRequest;
       if (req && req.nonce !== seenFocus.current) {
         seenFocus.current = req.nonce;
-        if (!controls) return;
         const toTarget = new THREE.Vector3(req.position[0], 1.1, req.position[2]);
-        const toPos = toTarget.clone().add(new THREE.Vector3(4.5, 4.2, 6));
-        tween.current = {
-          t: 0,
-          fromPos: controls.object.position.clone(),
-          toPos,
-          fromTarget: controls.target.clone(),
-          toTarget,
-        };
+        tweenTo(toTarget.clone().add(FOCUS_OFFSET), toTarget);
+      }
+      if (s.viewNonce !== seenView.current) {
+        seenView.current = s.viewNonce;
+        tweenToFloorPreset();
+      }
+      const roomReq = s.roomRequest;
+      if (roomReq && roomReq.nonce !== seenRoom.current) {
+        seenRoom.current = roomReq.nonce;
+        const room = ROOM_BY_ID[roomReq.roomId];
+        if (room) {
+          const toTarget = new THREE.Vector3(...room.anchor);
+          // anchor.y already includes the floor height.
+          tweenTo(toTarget.clone().add(ROOM_OFFSET), toTarget);
+        }
       }
       if (s.resetNonce !== seenReset.current) {
         seenReset.current = s.resetNonce;
-        if (!controls) return;
-        tween.current = {
-          t: 0,
-          fromPos: controls.object.position.clone(),
-          toPos: DEFAULT_POS.clone(),
-          fromTarget: controls.target.clone(),
-          toTarget: DEFAULT_TARGET.clone(),
-        };
+        tweenTo(DEFAULT_POS.clone(), DEFAULT_TARGET.clone());
       }
     });
     return unsub;
@@ -93,9 +122,9 @@ export const CameraRig = memo(function CameraRig() {
       makeDefault
       enableDamping
       dampingFactor={0.08}
-      minDistance={4}
-      maxDistance={40}
-      maxPolarAngle={1.45}
+      minDistance={3}
+      maxDistance={70}
+      maxPolarAngle={1.5}
       target={[0, 0, 0]}
     />
   );

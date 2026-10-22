@@ -1,5 +1,5 @@
 import type * as THREE from "three";
-import { findPath, type Point2D } from "./navigation";
+import { findPath, findPath3D, type FloorPoint, type Point2D } from "./navigation";
 import {
   usePresenceStore,
   type AgentActivity,
@@ -36,9 +36,10 @@ export interface MoveOptions {
 interface MotionState {
   group: THREE.Group | null;
   x: number;
+  y: number;
   z: number;
   facing: number;
-  path: Point2D[];
+  path: PathPoint[];
   pathIndex: number;
   speed: number;
   moving: boolean;
@@ -46,6 +47,13 @@ interface MotionState {
   arrivePose: AgentPose;
   arriveFacing: number | null;
   onArrive: (() => void) | null;
+}
+
+/** A path point; `y` defaults to the agent's current height when omitted. */
+export interface PathPoint {
+  x: number;
+  z: number;
+  y?: number;
 }
 
 /** Gentle stroll speed (units/sec). Chibi scale ≈ 2 units tall. */
@@ -68,6 +76,7 @@ class MovementRegistry {
     this.motions.set(agentId, {
       group,
       x,
+      y: 0,
       z,
       facing,
       path: [],
@@ -99,7 +108,7 @@ class MovementRegistry {
     if (!m) return;
     m.group = group;
     if (group) {
-      group.position.set(m.x, 0, m.z);
+      group.position.set(m.x, m.y, m.z);
       group.rotation.set(0, m.facing, 0);
     }
   }
@@ -118,7 +127,7 @@ class MovementRegistry {
   }
 
   /** Walk along an explicit waypoint path. */
-  moveTo(agentId: string, path: Point2D[], opts: MoveOptions = {}): boolean {
+  moveTo(agentId: string, path: PathPoint[], opts: MoveOptions = {}): boolean {
     const m = this.motions.get(agentId);
     if (!m || path.length === 0) return false;
     m.path = path;
@@ -147,6 +156,30 @@ class MovementRegistry {
     return this.moveTo(agentId, path, opts);
   }
 
+  /**
+   * Floor-aware pathfinding: walks the agent to a destination that may be
+   * on another floor, climbing the stair tower (y is interpolated along
+   * the stair chain). Returns false when the agent is unknown or no route
+   * exists.
+   */
+  navigateToFloor(agentId: string, target: FloorPoint, opts: MoveOptions = {}): boolean {
+    const m = this.motions.get(agentId);
+    if (!m) return false;
+    const fromFloor: 0 | 1 = m.y > 1 ? 1 : 0;
+    const path = findPath3D(
+      { x: m.x, z: m.z, floor: fromFloor },
+      { x: target.x, z: target.z, floor: target.floor },
+    );
+    if (path.length === 0) return false;
+    return this.moveTo(agentId, path, opts);
+  }
+
+  /** Current 3D position of an agent (null when unknown). */
+  getPosition3D(agentId: string): { x: number; y: number; z: number } | null {
+    const m = this.motions.get(agentId);
+    return m ? { x: m.x, y: m.y, z: m.z } : null;
+  }
+
   /** Cancel in-flight movement (agent stays where it is). */
   stop(agentId: string): void {
     const m = this.motions.get(agentId);
@@ -171,23 +204,27 @@ class MovementRegistry {
         this.finishMove(id, m);
         continue;
       }
+      const ty = target.y ?? m.y;
       const dx = target.x - m.x;
+      const dy = ty - m.y;
       const dz = target.z - m.z;
-      const dist = Math.hypot(dx, dz);
+      const dist = Math.hypot(dx, dy, dz);
       const step = m.speed * dt;
       if (dist <= step) {
         m.x = target.x;
+        m.y = ty;
         m.z = target.z;
         m.pathIndex += 1;
         if (m.pathIndex >= m.path.length) this.finishMove(id, m);
       } else {
         m.x += (dx / dist) * step;
+        m.y += (dy / dist) * step;
         m.z += (dz / dist) * step;
         // Face the movement direction (+z-local figure → world direction).
         m.facing = Math.atan2(dx, dz);
       }
       if (m.group) {
-        m.group.position.set(m.x, 0, m.z);
+        m.group.position.set(m.x, m.y, m.z);
         m.group.rotation.set(0, m.facing, 0);
       }
     }

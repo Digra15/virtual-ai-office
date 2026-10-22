@@ -2,10 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import type { ActivityEntry, AgentInfo } from "@virtual-ai-office/shared";
 import { useConnectionStore } from "../../stores/useConnectionStore";
 import { useSettingsStore } from "../../stores/useSettingsStore";
+import { useOccupancyStore } from "../../stores/useOccupancyStore";
 import { fetchEvents } from "../../services/api";
 import { STATUS_META } from "../../utils/status";
 import { formatTime, timeAgo } from "../../utils/format";
 import { CharacterPreview } from "./CharacterPreview";
+import {
+  canMarkResolved,
+  markResolved,
+  resolveError,
+  sendToRecovery,
+  simulateError,
+} from "../recovery/recoveryLogic";
 
 interface AgentDetailPanelProps {
   agent: AgentInfo;
@@ -53,6 +61,25 @@ export function AgentDetailPanel({ agent, onClose }: AgentDetailPanelProps) {
   }, [remoteEvents, agent.activityHistory]);
 
   const meta = STATUS_META[agent.status];
+
+  // --- Recovery section -------------------------------------------------
+  const bedId = useOccupancyStore((s) => s.bedOf(agent.id));
+  const workstationId = useOccupancyStore((s) =>
+    s.workstationOf(agent.id, agent.workstationId),
+  );
+  const room = useOccupancyStore((s) => s.roomOf(agent.id, agent.workstationId));
+  const [recoveryNote, setRecoveryNote] = useState<string | null>(null);
+  const showRecovery =
+    agent.status === "error" || agent.status === "recovering" || bedId !== null;
+
+  const runRecoveryAction = (label: string, fn: () => void) => {
+    setRecoveryNote(null);
+    try {
+      fn();
+    } catch (err) {
+      setRecoveryNote(`${label} failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
 
   return (
     <aside className="detail-panel" aria-label={`Details for ${agent.name}`}>
@@ -116,12 +143,107 @@ export function AgentDetailPanel({ agent, onClose }: AgentDetailPanelProps) {
       </div>
       <div className="detail-row">
         <span className="k">Workstation</span>
-        <span className="v">{agent.workstationId}</span>
+        <span className="v">{workstationId ?? agent.workstationId}</span>
+      </div>
+      <div className="detail-row">
+        <span className="k">Room</span>
+        <span className="v">
+          {room ? `${room.name} (floor ${room.floor})` : "Unknown"}
+        </span>
       </div>
       <div className="detail-row">
         <span className="k">Source</span>
         <span className="v">{agent.source === "demo" ? "Simulated" : "Live"}</span>
       </div>
+
+      {showRecovery && (
+        <div>
+          <h3 className="section-title" style={{ marginBottom: 8 }}>
+            Recovery
+          </h3>
+          <div className="detail-row">
+            <span className="k">Error</span>
+            <span className="v">Unknown error (simulated data)</span>
+          </div>
+          <div className="detail-row">
+            <span className="k">Recovery bed</span>
+            <span className="v">{bedId ?? "—"}</span>
+          </div>
+          {recoveryNote && (
+            <div className="empty-state" role="status">
+              {recoveryNote}
+            </div>
+          )}
+          <div
+            style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}
+          >
+            <button
+              type="button"
+              className="btn"
+              disabled={bedId !== null || agent.status !== "error"}
+              onClick={() =>
+                runRecoveryAction("Send to recovery", () => {
+                  const res = sendToRecovery(agent.id);
+                  setRecoveryNote(
+                    res.ok
+                      ? `Walking to ${res.bedId}…`
+                      : `Could not dispatch: ${res.reason}`,
+                  );
+                })
+              }
+              title="Walk this agent to a free recovery bed (manual action)"
+            >
+              Send to recovery
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={!canMarkResolved(agent.status)}
+              onClick={() =>
+                runRecoveryAction("Mark resolved", () => {
+                  markResolved(agent.id);
+                  setRecoveryNote("Marked resolved — returning to workstation.");
+                })
+              }
+              title="Mark the error resolved (manual action); the agent walks back to its desk"
+            >
+              Mark resolved
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={agent.status === "error" || agent.status === "recovering"}
+              onClick={() =>
+                runRecoveryAction("Simulate error", () => {
+                  simulateError(agent.id);
+                  setRecoveryNote("SIMULATED error injected.");
+                })
+              }
+              title="SIMULATED: inject a synthetic error for workflow testing"
+            >
+              Simulate error (SIMULATED)
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={agent.status !== "error"}
+              onClick={() =>
+                runRecoveryAction("Clear error", () => {
+                  resolveError(agent.id);
+                  setRecoveryNote("SIMULATED error cleared.");
+                })
+              }
+              title="SIMULATED: clear the synthetic error"
+            >
+              Clear error (SIMULATED)
+            </button>
+          </div>
+          <p className="seen" style={{ marginTop: 8 }}>
+            Simulation controls are labeled SIMULATED and only touch the local
+            demo store — they never claim a backend-confirmed recovery.
+          </p>
+        </div>
+      )}
 
       <div>
         <h3 className="section-title" style={{ marginBottom: 8 }}>

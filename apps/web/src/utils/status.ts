@@ -46,4 +46,14 @@ export const STATUS_META: Record<AgentStatus, StatusMeta> = {
     label: "Offline",
     description: "Not currently connected",
   },
+  meeting: {
+    color: "#38bdf8",
+    label: "In Meeting",
+    description: "In an agent-to-agent meeting right now",
+  },
+  recovering: {
+    color: "#f472b6",
+    label: "Recovering",
+    description: "Resting in the recovery room after an error",
+  },
 };

@@ -2,7 +2,13 @@ import { useEffect } from "react";
 import { useAgentStore } from "../../stores/useAgentStore";
 import { useMeetingStore } from "../../stores/useMeetingStore";
 import { movement } from "../../world/movement";
-import { WANDER_WAYPOINT_IDS, WAYPOINTS } from "../../world/navigation";
+import {
+  WANDER_WAYPOINT_IDS,
+  WANDER_WAYPOINT_IDS_2F,
+  WAYPOINTS,
+  WAYPOINTS_UPPER,
+  type Waypoint,
+} from "../../world/navigation";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
 
 /**
@@ -10,8 +16,10 @@ import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
  *
  * Every few seconds it looks for `idle` agents that are seated at their
  * desks and, if fewer than MAX_CONCURRENT are already wandering, sends one
- * for a gentle stroll to a random pleasant waypoint (lounge, mission
- * control, corridors). After a cooldown the agent strolls back to its desk.
+ * for a gentle stroll to a random pleasant waypoint — now including the
+ * upstairs lounge, terrace and reception via the stair tower
+ * (floor-aware `navigateToFloor`). After a cooldown the agent strolls back
+ * to its desk.
  *
  * Rules that keep it calm, not chaotic:
  * - max 2 agents wandering at once
@@ -36,6 +44,21 @@ interface WanderState {
 }
 
 const states = new Map<string, WanderState>();
+
+/** All wander destinations: ground floor + upstairs (terrace, lounge, reception). */
+const WANDER_SPOT_IDS: readonly string[] = [
+  ...WANDER_WAYPOINT_IDS,
+  ...WANDER_WAYPOINT_IDS_2F,
+];
+
+const ALL_WAYPOINTS: Record<string, Waypoint> = {
+  ...WAYPOINTS,
+  ...WAYPOINTS_UPPER,
+};
+
+function spotById(id: string): Waypoint {
+  return ALL_WAYPOINTS[id];
+}
 
 function getState(id: string): WanderState {
   let s = states.get(id);
@@ -99,18 +122,23 @@ function tick(): void {
 
   const agent = candidates[Math.floor(Math.random() * candidates.length)];
   const spotId =
-    WANDER_WAYPOINT_IDS[Math.floor(Math.random() * WANDER_WAYPOINT_IDS.length)];
-  const spot = WAYPOINTS[spotId];
-  const ok = movement.navigateTo(agent.id, spot.x, spot.z, {
-    speed: WANDER_SPEED,
-    arriveActivity: "standing",
-    arrivePose: "free",
-    arriveFacing: null,
-    onArrive: () => {
-      const st = getState(agent.id);
-      st.returnAt = Date.now() + STROLL_STAY_MS + rand(0, 15_000);
+    WANDER_SPOT_IDS[Math.floor(Math.random() * WANDER_SPOT_IDS.length)];
+  const spot = spotById(spotId);
+  // Floor-aware: upstairs spots route through the stair tower automatically.
+  const ok = movement.navigateToFloor(
+    agent.id,
+    { x: spot.x, z: spot.z, floor: spot.floor ?? 0 },
+    {
+      speed: WANDER_SPEED,
+      arriveActivity: "standing",
+      arrivePose: "free",
+      arriveFacing: null,
+      onArrive: () => {
+        const st = getState(agent.id);
+        st.returnAt = Date.now() + STROLL_STAY_MS + rand(0, 15_000);
+      },
     },
-  });
+  );
   if (ok) {
     const s = getState(agent.id);
     s.wandering = true;
