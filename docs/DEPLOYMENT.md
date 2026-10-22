@@ -34,10 +34,15 @@ Settings → Variables):
 **Deploy — option A: Workers Git integration (no CLI login needed)**
 
 1. Cloudflare dashboard → Workers & Pages → Create → Workers → **Connect to Git**.
-2. Select the `Digra15/virtual-ai-office` repo. It reads `apps/worker/wrangler.toml`
-   automatically (build is a no-op for Workers; the file sets everything).
-3. Set the root directory to `apps/worker` if prompted, then Deploy.
-4. Note the assigned URL, e.g. `https://virtual-ai-office-api.<you>.workers.dev`.
+2. Select the `Digra15/virtual-ai-office` repo.
+3. Build settings: **Root directory** `/`, **Build command** `npm install`,
+   **Deploy command** `npx wrangler deploy --config apps/worker/wrangler.toml`
+   (the `--config` flag is required — running plain `wrangler deploy` from the
+   monorepo root fails with "run in the root of a workspace" error).
+4. Free-plan note: `[[migrations]]` in `wrangler.toml` MUST use
+   `new_sqlite_classes` (not `new_classes`) or the deploy fails with API
+   error 10097.
+5. Note the assigned URL, e.g. `https://virtual-ai-office-api.<you>.workers.dev`.
 
 **Deploy — option B: wrangler CLI**
 

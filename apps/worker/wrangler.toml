@@ -15,6 +15,7 @@ class_name = "AgentRoom"
 
 [[migrations]]
 tag = "v1"
+# NOTE: free-plan accounts REQUIRE new_sqlite_classes (error 10097 otherwise)
 new_sqlite_classes = ["AgentRoom"]
 
 [vars]
