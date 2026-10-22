@@ -5,6 +5,7 @@ import { useSettingsStore } from "../../stores/useSettingsStore";
 import { fetchEvents } from "../../services/api";
 import { STATUS_META } from "../../utils/status";
 import { formatTime, timeAgo } from "../../utils/format";
+import { CharacterPreview } from "./CharacterPreview";
 
 interface AgentDetailPanelProps {
   agent: AgentInfo;
@@ -80,6 +81,8 @@ export function AgentDetailPanel({ agent, onClose }: AgentDetailPanelProps) {
           {meta.label}
         </span>
       </div>
+
+      <CharacterPreview agent={agent} />
 
       {agent.currentTask && (
         <div className="detail-task">

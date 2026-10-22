@@ -750,3 +750,46 @@ input {
 ::-webkit-scrollbar-thumb:hover {
   background: #31405f;
 }
+
+/* ---------- Character preview (detail panel) ---------- */
+
+.char-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.char-preview-canvas {
+  height: 190px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #1b2540 0%, #0b0f1a 70%);
+  border: 1px solid var(--panel-border);
+}
+
+.char-preview-canvas canvas {
+  display: block;
+}
+
+.char-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.char-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.char-swatch-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: inline-block;
+}

@@ -14,3 +14,4 @@ export const geoTorus = new THREE.TorusGeometry(0.5, 0.045, 10, 40);
 export const geoOctahedron = new THREE.OctahedronGeometry(0.5);
 export const geoCircle = new THREE.CircleGeometry(0.5, 40);
 export const geoPlane = new THREE.PlaneGeometry(1, 1);
+export const geoCone = new THREE.ConeGeometry(0.5, 1, 12);

@@ -178,3 +178,68 @@ export const matBookRed = new THREE.MeshStandardMaterial({ color: "#7f1d1d", rou
 export const matBookBlue = new THREE.MeshStandardMaterial({ color: "#1e40af", roughness: 0.8 });
 export const matBookGreen = new THREE.MeshStandardMaterial({ color: "#166534", roughness: 0.8 });
 export const matBookAmber = new THREE.MeshStandardMaterial({ color: "#92400e", roughness: 0.8 });
+
+// ---------------------------------------------------------------------------
+// Chibi character shared materials (color-neutral parts). Per-character
+// colors (hair, skin, iris, outfit) are created per ChibiFigure via useMemo.
+// ---------------------------------------------------------------------------
+
+/** Sclera — bright white, slightly glossy. */
+export const matChibiEyeWhite = new THREE.MeshStandardMaterial({
+  color: "#ffffff",
+  roughness: 0.15,
+});
+
+/** Eye highlight dot. */
+export const matChibiWhite = new THREE.MeshStandardMaterial({
+  color: "#f8fafc",
+  roughness: 0.2,
+  emissive: new THREE.Color("#ffffff"),
+  emissiveIntensity: 0.35,
+});
+
+/** Small cute mouth. */
+export const matChibiMouth = new THREE.MeshStandardMaterial({
+  color: "#8a4a5a",
+  roughness: 0.6,
+});
+
+/** Blush marks — soft pink, semi-transparent. */
+export const matChibiBlush = new THREE.MeshStandardMaterial({
+  color: "#f9a8d4",
+  transparent: true,
+  opacity: 0.55,
+  roughness: 0.9,
+});
+
+/** Dark neutral: glasses frames, headphone bands, mic booms. */
+export const matChibiDark = new THREE.MeshStandardMaterial({
+  color: "#1f2937",
+  roughness: 0.5,
+});
+
+/** Accessory red: ribbons, ties, mic tips. */
+export const matChibiRed = new THREE.MeshStandardMaterial({
+  color: "#e11d48",
+  roughness: 0.6,
+});
+
+/** Accessory gold: star pins. */
+export const matChibiGold = new THREE.MeshStandardMaterial({
+  color: "#fbbf24",
+  emissive: new THREE.Color("#fbbf24"),
+  emissiveIntensity: 0.3,
+  roughness: 0.4,
+});
+
+/** Shoes. */
+export const matChibiShoe = new THREE.MeshStandardMaterial({
+  color: "#1f2937",
+  roughness: 0.7,
+});
+
+/** Neckties. */
+export const matChibiTie = new THREE.MeshStandardMaterial({
+  color: "#991b1b",
+  roughness: 0.7,
+});
