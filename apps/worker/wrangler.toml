@@ -1,0 +1,27 @@
+# Cloudflare Workers backend for Virtual AI Office.
+# The Durable Object `AgentRoom` owns ALL agent state (registry + WebSocket
+# clients + demo simulator). The Worker itself is a thin router/CORS layer.
+#
+# Deploy: `npx wrangler deploy` (run `npx wrangler login` first), or connect
+# the GitHub repo in the Workers dashboard — it reads this file automatically.
+
+name = "virtual-ai-office-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-22"
+
+[[durable_objects.bindings]]
+name = "AGENT_ROOM"
+class_name = "AgentRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["AgentRoom"]
+
+[vars]
+# "true" = run the clearly-labeled demo simulator (8 demo agents).
+# Set to "false" once real agents report via POST /api/agents/:id/events.
+DEMO_MODE = "true"
+# Live agents silent longer than this (ms) are marked offline.
+OFFLINE_TIMEOUT_MS = "30000"
+# Max POST /api/agents/:id/events requests per IP per minute.
+RATE_LIMIT_PER_MINUTE = "60"

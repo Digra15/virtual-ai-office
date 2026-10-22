@@ -28,9 +28,28 @@ app is fully usable with no real agents connected.
 |---|---|---|
 | `packages/shared` | `@virtual-ai-office/shared` | Single source of truth: `AgentInfo`/`ActivityEntry`/message types + Zod `EventPostSchema` |
 | `apps/server` | `@virtual-ai-office/server` | Express REST + `ws` hub + in-memory `AgentRegistry` + `AgentAdapter` seam + demo simulator |
+| `apps/worker` | `@virtual-ai-office/worker` | Cloudflare Workers port of the backend: `AgentRoom` Durable Object (persisted registry) + same REST/WS contracts |
 | `apps/web` | `@virtual-ai-office/web` | Vite + React 19 + Three.js (`@react-three/fiber` 9, `@react-three/drei` 10) + Zustand |
 | `docs/` | — | Architecture, API, deployment, assets, smoke-test docs |
 | `.github/workflows/ci.yml` | — | lint → typecheck → test → build |
+
+## Backend targets
+
+Two interchangeable backends implement the **same** REST + WebSocket contract
+(validated by `packages/shared`); the frontend talks to either via
+`VITE_API_URL` / `VITE_WS_URL`.
+
+- **`apps/server` (Node)**: Express routes + `ws` upgrade on `/ws`. State in an
+  in-memory `AgentRegistry`. Run locally with `npm run dev:server`, or deploy
+  to any persistent Node host (VPS, Render, Fly.io…).
+- **`apps/worker` (Cloudflare Workers, recommended for Cloudflare hosting)**:
+  one `AgentRoom` Durable Object singleton (`idFromName("global")`) owns the
+  registry, the WS clients, the demo simulator and the offline sweeper. State
+  is persisted in `ctx.storage` (survives restarts — the Node server is
+  in-memory only); demo ticks + sweeps run on `alarm()` every 3 s. The Worker
+  itself is a thin CORS/routing layer. Local dev: `npm run dev:worker`
+  (http://localhost:4001, no login needed). Deploy with `npx wrangler deploy`
+  or the Workers Git integration.
 
 ## Backend (`apps/server`)
 

@@ -45,15 +45,19 @@ npm run dev:web
 Open http://localhost:5173. With no real agents connected you get the labeled
 demo simulation; connect a real agent (below) and it appears live.
 
+**Cloudflare alternative:** `npm run dev:worker` runs the Workers backend
+locally (http://localhost:4001, no login needed); deploy it with
+`npx wrangler deploy` and point the frontend at it — see `docs/DEPLOYMENT.md`.
+
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `npm install` | install all workspaces |
-| `npm run dev:server` / `npm run dev:web` | dev servers |
+| `npm run dev:server` / `npm run dev:web` / `npm run dev:worker` | dev servers (Node backend / frontend / Workers backend) |
 | `npm run lint` | ESLint (must be zero errors) |
 | `npm run typecheck` | `tsc --noEmit` in all workspaces |
-| `npm run test` | vitest in all workspaces (45 tests) |
+| `npm run test` | vitest in all workspaces (57 tests) |
 | `npm run build` | production builds (shared → server → web) |
 
 ## Connecting a real agent
