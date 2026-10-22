@@ -125,6 +125,28 @@ for (const p of PRESETS) {
 
 const BY_ID = new Map(PRESETS.map((p) => [p.agentId, p]));
 
+/**
+ * Admin/spawn-panel overrides: lets the UI assign a hand-designed look to
+ * an agent id that doesn't have one (e.g. a freshly spawned agent picking
+ * the "Design" style). Overrides win over generated fallbacks.
+ */
+const OVERRIDES = new Map<string, CharacterPreset>();
+
+export function setCharacterPresetOverride(
+  agentId: string,
+  preset: CharacterPreset,
+): void {
+  const problems = validateCharacterPreset({ ...preset, agentId });
+  if (problems.length > 0) {
+    throw new Error(`Invalid preset override: ${problems.join("; ")}`);
+  }
+  OVERRIDES.set(agentId, { ...preset, agentId });
+}
+
+export function clearCharacterPresetOverride(agentId: string): void {
+  OVERRIDES.delete(agentId);
+}
+
 /** Agent ids that have hand-designed presets. */
 export const PRESET_AGENT_IDS = PRESETS.map((p) => p.agentId);
 
@@ -154,6 +176,8 @@ const FALLBACK_ACCESSORY: AccessoryKind[] = ["none", "none", "starPin", "ribbon"
 export function getCharacterPreset(agentId: string): CharacterPreset {
   const known = BY_ID.get(agentId);
   if (known) return known;
+  const override = OVERRIDES.get(agentId);
+  if (override) return override;
   const h = hashString(agentId);
   const pick = <T>(arr: readonly T[]): T => arr[h % arr.length];
   const pick2 = <T>(arr: readonly T[]): T => arr[(h >> 4) % arr.length];

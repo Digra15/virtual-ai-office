@@ -15,6 +15,11 @@ import { useSettingsStore } from "./stores/useSettingsStore";
 import { connectSocket } from "./services/socket";
 import { buildLocalDemoAgents, buildStressAgents } from "./services/demoAgents";
 import { backendEnv } from "./env";
+import { KanbanBoard } from "./features/kanban/KanbanBoard";
+import { MeetingPanel } from "./features/meetings/MeetingPanel";
+import { SpawnPanel } from "./features/agents/SpawnPanel";
+import { WanderDirector } from "./features/wander/WanderDirector";
+import { useTaskStore } from "./stores/useTaskStore";
 
 // Code-split the 3D scene: the 2D dashboard stays interactive while three.js loads.
 const OfficeScene = React.lazy(() => import("./world/OfficeScene"));
@@ -32,11 +37,15 @@ function fallbackToLocalDemo(reason: string) {
   console.info(`[app] using local demo data (${reason})`);
   useAgentStore.getState().applySnapshot(buildLocalDemoAgents());
   applyStressExtrasIfEnabled();
+  useTaskStore.getState().seedFromAgents();
   useConnectionStore.getState().set({ status: "demo-local", demoMode: true });
 }
 
 function Dashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [kanbanOpen, setKanbanOpen] = useState(false);
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [spawnOpen, setSpawnOpen] = useState(false);
 
   const wsUrl = useSettingsStore((s) => s.wsUrl);
   const reconnectToken = useSettingsStore((s) => s.reconnectToken);
@@ -76,6 +85,7 @@ function Dashboard() {
         window.clearTimeout(snapshotTimer);
         useAgentStore.getState().applySnapshot(snapshotAgents);
         applyStressExtrasIfEnabled();
+        useTaskStore.getState().seedFromAgents();
         useConnectionStore.getState().set({
           status: "live",
           demoMode,
@@ -128,7 +138,13 @@ function Dashboard() {
 
   return (
     <div className="app">
-      <Header onOpenSettings={() => setSettingsOpen(true)} />
+      <WanderDirector />
+      <Header
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenKanban={() => setKanbanOpen(true)}
+        onOpenMeetings={() => setMeetingOpen(true)}
+        onOpenSpawn={() => setSpawnOpen(true)}
+      />
       {!backendConfigured && (
         <div className="config-error" role="alert">
           Backend not configured — set <code>VITE_API_URL</code> /{" "}
@@ -155,6 +171,9 @@ function Dashboard() {
       </div>
       <EventTimeline />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {kanbanOpen && <KanbanBoard onClose={() => setKanbanOpen(false)} />}
+      {meetingOpen && <MeetingPanel onClose={() => setMeetingOpen(false)} />}
+      {spawnOpen && <SpawnPanel onClose={() => setSpawnOpen(false)} />}
     </div>
   );
 }

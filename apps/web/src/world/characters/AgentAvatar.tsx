@@ -1,45 +1,76 @@
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import type { AgentInfo } from "@virtual-ai-office/shared";
 import { ChibiAvatar } from "./ChibiAvatar";
 import { getCharacterPreset } from "./characterPresets";
+import { movement } from "../movement";
+import {
+  DEFAULT_PRESENCE,
+  usePresenceStore,
+} from "../../stores/usePresenceStore";
+import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../layout";
+import type { ChibiAnimation } from "./characterTypes";
 
 interface AgentAvatarProps {
   agent: AgentInfo;
-  position: [number, number, number];
-  /** World Y rotation (desk rotation + PI so the avatar faces its monitor). */
-  rotationY: number;
-  /** Status color driving body tint, ring and label. */
+  /** Status color driving the ring, indicator and label. */
   color: string;
 }
 
 /**
  * AgentAvatar — public character component used by the office scene.
  *
- * Since the chibi redesign this is a thin wrapper: it resolves the agent's
- * visual identity via `getCharacterPreset(agent.id)` (stable across renames
- * — the preset is keyed by the integration id, never the display name) and
- * renders the procedural anime chibi (`ChibiAvatar`).
+ * Thin wrapper: resolves the agent's visual identity via
+ * `getCharacterPreset(agent.id)` (stable across renames — keyed by the
+ * integration id, never the display name), registers the avatar's
+ * scene-graph root with the movement system, and mirrors the discrete
+ * locomotion presence (seated/walking/meeting/standing) into the chibi's
+ * pose + animation override.
  *
- * The chibi is fully procedural Three.js (no downloaded assets): oversized
- * head, sparkling anime eyes with periodic blinking, layered per-agent hair,
- * varied outfits and accessories. See `characterTypes.ts` for the visual
- * identity schema (the contract the future admin character editor uses) and
- * the documented GLB swap-in point (`CharacterModelSource`).
+ * Locomotion design: per-frame positions are owned IMPERATIVELY by
+ * `world/movement.ts` (zero React re-renders while walking). Only discrete
+ * activity transitions flow through `usePresenceStore`, re-rendering just
+ * this avatar to swap its pose/animation.
+ *
+ * The chibi is fully procedural Three.js (no downloaded assets). See
+ * `characterTypes.ts` for the visual identity schema and the documented
+ * GLB swap-in point (`CharacterModelSource`).
  */
 export const AgentAvatar = memo(function AgentAvatar({
   agent,
-  position,
-  rotationY,
   color,
 }: AgentAvatarProps) {
   const preset = getCharacterPreset(agent.id);
+  const outerRef = useRef<import("three").Group>(null);
+  const presence =
+    usePresenceStore((s) => s.presences[agent.id]) ?? DEFAULT_PRESENCE;
+
+  // Register the scene-graph root with the movement system on mount.
+  // The registry sets the initial desk transform immediately.
+  useEffect(() => {
+    const [x, , z] = AGENT_SPAWN_POSITION(agent.workstationId);
+    const facing = AGENT_FACING(agent.workstationId);
+    movement.register(agent.id, outerRef.current, x, z, facing);
+    return () => {
+      movement.unregister(agent.id);
+    };
+  }, [agent.id, agent.workstationId]);
+
+  // Drive the chibi animation from live locomotion presence.
+  const animationOverride: ChibiAnimation | null =
+    presence.activity === "walking"
+      ? "walking"
+      : presence.activity === "meeting"
+        ? "meeting"
+        : null;
+
   return (
     <ChibiAvatar
       agent={agent}
       preset={preset}
-      position={position}
-      rotationY={rotationY}
       color={color}
+      groupRef={outerRef}
+      pose={presence.pose}
+      animationOverride={animationOverride}
     />
   );
 });

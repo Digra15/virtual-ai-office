@@ -409,6 +409,13 @@ interface ChibiFigureProps {
   preset: CharacterPreset;
   status: AgentInfo["status"];
   progress: number | null;
+  /**
+   * Override the status-derived animation (e.g. "walking" while the
+   * movement system drives the agent, "meeting" while seated in a
+   * meeting). Null = use the status mapping. Celebration on task
+   * completion still takes precedence over the override.
+   */
+  animationOverride?: ChibiAnimation | null;
 }
 
 const BASE_HEAD_POS: [number, number, number] = [0, 1.32, 0.02];
@@ -419,6 +426,7 @@ export const ChibiFigure = memo(function ChibiFigure({
   preset,
   status,
   progress,
+  animationOverride = null,
 }: ChibiFigureProps) {
   const rootG = useRef<THREE.Group>(null);
   const torsoG = useRef<THREE.Group>(null);
@@ -519,7 +527,8 @@ export const ChibiFigure = memo(function ChibiFigure({
     }
     const celebrating =
       celebrateStart.current >= 0 && t - celebrateStart.current < CELEBRATE_SECONDS;
-    const anim: ChibiAnimation = celebrating ? "celebrate" : statusToAnimation(status);
+    const anim: ChibiAnimation =
+      celebrating ? "celebrate" : (animationOverride ?? statusToAnimation(status));
     if (anim !== animRef.current) {
       resetPose();
       animRef.current = anim;
@@ -681,25 +690,42 @@ export const ChibiFigure = memo(function ChibiFigure({
 interface ChibiAvatarProps {
   agent: AgentInfo;
   preset: CharacterPreset;
-  position: [number, number, number];
-  /** World Y rotation (desk rotation + PI so the avatar faces its monitor). */
-  rotationY: number;
   /** Status color driving the ring, indicator and label. */
   color: string;
   /** Enable click-to-select + pointer cursor. Disable for static previews. */
   interactive?: boolean;
   /** Show the floating name + status label. */
   showLabel?: boolean;
+  /**
+   * Ref to the outer group. The movement system (`world/movement.ts`) owns
+   * the group's position/rotation imperatively — they are intentionally NOT
+   * React props, so per-frame walking never triggers re-renders and React
+   * never stomps the controller's transforms.
+   */
+  groupRef?: React.Ref<THREE.Group>;
+  /**
+   * How the figure is mounted on its root:
+   * - "desk": seated at a desk (offset toward the chair, facing the monitor)
+   * - "free": standing or sitting freely (centered on the root)
+   */
+  pose?: "desk" | "free";
+  /**
+   * Override the status-derived animation ("walking" while moving,
+   * "meeting" while in a meeting). Null = status mapping. Celebration on
+   * task completion still takes precedence.
+   */
+  animationOverride?: ChibiAnimation | null;
 }
 
 export const ChibiAvatar = memo(function ChibiAvatar({
   agent,
   preset,
-  position,
-  rotationY,
   color,
   interactive = true,
   showLabel = true,
+  groupRef,
+  pose = "desk",
+  animationOverride = null,
 }: ChibiAvatarProps) {
   const ring = useRef<THREE.Mesh>(null);
   const indicator = useRef<THREE.Mesh>(null);
@@ -827,13 +853,16 @@ export const ChibiAvatar = memo(function ChibiAvatar({
 
   return (
     <group
-      position={position}
-      rotation={[0, rotationY, 0]}
+      ref={groupRef}
       onClick={interactive ? handleClick : undefined}
       {...(interactive ? cursorHandlers : {})}
     >
-      {/* seated figure, faces desk-local -z (the monitor) */}
-      <group position={[0, 0, 0.95]} rotation={[0, Math.PI, 0]}>
+      {/* figure mount: desk = seated at desk (offset + turned to monitor),
+          free = standing/sitting centered on the root */}
+      <group
+        position={pose === "desk" ? [0, 0, 0.95] : [0, 0, 0]}
+        rotation={[0, pose === "desk" ? Math.PI : 0, 0]}
+      >
         {/* status ring at base — drives status readability, do not remove */}
         <mesh
           ref={ring}
@@ -843,7 +872,12 @@ export const ChibiAvatar = memo(function ChibiAvatar({
           position={[0, 0.06, 0]}
           rotation={[Math.PI / 2, 0, 0]}
         />
-        <ChibiFigure preset={preset} status={status} progress={agent.progress} />
+        <ChibiFigure
+          preset={preset}
+          status={status}
+          progress={agent.progress}
+          animationOverride={animationOverride}
+        />
         {renderIndicator()}
         {/* name + status label, always faces the camera */}
         {showLabel && (

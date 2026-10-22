@@ -793,3 +793,352 @@ input {
   border: 1px solid rgba(255, 255, 255, 0.25);
   display: inline-block;
 }
+
+/* ---------- Command control panels (Kanban / Meetings / Spawn) ---------- */
+
+.side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 92vw);
+  background: var(--bg-soft);
+  border-left: 1px solid var(--panel-border);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  box-shadow: -16px 0 48px rgba(0, 0, 0, 0.45);
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.side-panel-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.header-action {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.header-action:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.primary-btn {
+  background: var(--accent, #4f8ff7);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.text-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--text-dim);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.error-text {
+  color: #ff7a7a;
+  font-size: 13px;
+  margin: 0;
+}
+
+.success-text {
+  color: #7dffa8;
+  font-size: 13px;
+  margin: 0;
+}
+
+/** Honest "this is simulated" badge. */
+.sim-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* --- Kanban --- */
+
+.kanban-add {
+  display: flex;
+  gap: 8px;
+}
+
+.kanban-add .text-input {
+  flex: 1;
+}
+
+.kanban-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.kanban-column {
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 120px;
+}
+
+.kanban-column h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kanban-column .count {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+.kanban-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kanban-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.kanban-card-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kanban-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.kanban-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-select {
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 5px 6px;
+  font-size: 12px;
+  max-width: 130px;
+}
+
+.kanban-steppers {
+  display: flex;
+  gap: 4px;
+}
+
+.mini-btn {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mini-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.mini-btn.danger:hover {
+  border-color: #ff7a7a;
+  color: #ff7a7a;
+}
+
+.empty {
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* --- Meetings --- */
+
+.agent-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.agent-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.agent-pick:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.meeting-active h3,
+.meeting-new h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.meeting-new {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 45vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.a2a-msg p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.minutes {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--panel-border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.minutes pre {
+  white-space: pre-wrap;
+  font-size: 12px;
+  margin: 6px 0 0;
+  font-family: inherit;
+}
+
+.meeting-archive {
+  border-top: 1px solid var(--panel-border);
+  padding-top: 10px;
+}
+
+.meeting-archived-item {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.meeting-archived-item summary {
+  cursor: pointer;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 8px;
+}

@@ -4,8 +4,6 @@ import { Billboard, Text } from "@react-three/drei";
 import { useAgentStore } from "../stores/useAgentStore";
 import { STATUS_META } from "../utils/status";
 import {
-  AGENT_FACING,
-  AGENT_SPAWN_POSITION,
   EXTRA_DESKS,
   deskChairSlot,
   deskLocalToWorld,
@@ -14,6 +12,7 @@ import { geoPlane } from "./geometries";
 import { matFloor } from "./materials";
 import { CameraRig } from "./camera/CameraRig";
 import { AgentAvatar } from "./characters/AgentAvatar";
+import { MovementController } from "./MovementController";
 import { InstancedChairs } from "./furniture/Chair";
 import { Desk } from "./furniture/Desk";
 import { Monitor } from "./furniture/Monitor";
@@ -97,7 +96,8 @@ const OverflowDesks = memo(function OverflowDesks() {
   );
 });
 
-/** One avatar per agent, seated at its workstation. */
+/** One avatar per agent. Position/rotation are owned by the movement
+ *  system (registered on mount); this just maps the roster. */
 const AgentAvatars = memo(function AgentAvatars() {
   const agents = useAgentStore((s) => s.agents);
   const list = useMemo(() => Object.values(agents), [agents]);
@@ -107,8 +107,6 @@ const AgentAvatars = memo(function AgentAvatars() {
         <AgentAvatar
           key={agent.id}
           agent={agent}
-          position={AGENT_SPAWN_POSITION(agent.workstationId)}
-          rotationY={AGENT_FACING(agent.workstationId)}
           color={STATUS_META[agent.status].color}
         />
       ))}
@@ -150,6 +148,7 @@ export default function OfficeScene() {
         <AgentAvatars />
       </Suspense>
       <CameraRig />
+      <MovementController />
     </Canvas>
   );
 }
