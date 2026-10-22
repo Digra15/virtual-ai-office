@@ -17,6 +17,7 @@ import { buildLocalDemoAgents, buildStressAgents } from "./services/demoAgents";
 import { backendEnv } from "./env";
 import { DebugEvents } from "./debug/DebugEvents";
 import { DebugAvatar } from "./debug/DebugAvatar";
+import { DebugScene } from "./debug/DebugScene";
 
 // Code-split the 3D scene: the 2D dashboard stays interactive while three.js loads.
 const OfficeScene = React.lazy(() => import("./world/OfficeScene"));
@@ -169,6 +170,7 @@ export default function App() {
       : null;
   if (debugParam === "events") return <DebugEvents />;
   if (debugParam === "avatar") return <DebugAvatar />;
+  if (debugParam === "scene") return <DebugScene />;
   return (
     <ErrorBoundary>
       <Dashboard />
