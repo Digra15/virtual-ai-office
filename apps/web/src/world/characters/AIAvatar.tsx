@@ -56,6 +56,7 @@ export const AIAvatar = memo(function AIAvatar({
   const indicator = useRef<THREE.Mesh>(null);
   const texRef = useRef<THREE.Texture | null>(null);
   const typingTexRef = useRef<THREE.Texture | null>(null);
+  const typingBackTexRef = useRef<THREE.Texture | null>(null);
   const sittingTexRef = useRef<THREE.Texture | null>(null);
   const sleepingTexRef = useRef<THREE.Texture | null>(null);
 
@@ -103,10 +104,11 @@ export const AIAvatar = memo(function AIAvatar({
   const cursorHandlers = useMemo(() => agentCursorHandlers(), []);
   const tmpV = useMemo(() => new THREE.Vector3(), []);
 
-  // Load the AI sprite textures (standing + typing + sitting + sleeping).
+  // Load the AI sprite textures (standing + typing front/back + sitting + sleeping).
   useEffect(() => {
     texRef.current = null;
     typingTexRef.current = null;
+    typingBackTexRef.current = null;
     sittingTexRef.current = null;
     sleepingTexRef.current = null;
     let alive = true;
@@ -125,12 +127,14 @@ export const AIAvatar = memo(function AIAvatar({
     };
     loadTex(`/avatars/${agent.id}.png`, (t) => { texRef.current = t; });
     loadTex(`/avatars/${agent.id}-typing.png`, (t) => { typingTexRef.current = t; });
+    loadTex(`/avatars/${agent.id}-typing-back.png`, (t) => { typingBackTexRef.current = t; });
     loadTex(`/avatars/${agent.id}-sitting.png`, (t) => { sittingTexRef.current = t; });
     loadTex(`/avatars/${agent.id}-sleeping.png`, (t) => { sleepingTexRef.current = t; });
     return () => {
       alive = false;
       texRef.current?.dispose(); texRef.current = null;
       typingTexRef.current?.dispose(); typingTexRef.current = null;
+      typingBackTexRef.current?.dispose(); typingBackTexRef.current = null;
       sittingTexRef.current?.dispose(); sittingTexRef.current = null;
       sleepingTexRef.current?.dispose(); sleepingTexRef.current = null;
     };
@@ -159,7 +163,7 @@ export const AIAvatar = memo(function AIAvatar({
 
     // pick texture by pose/activity:
     // - sleeping: status recovering (in recovery bed)
-    // - typing: working/thinking at desk
+    // - typing: working/thinking at desk (front or back view depending on camera)
     // - sitting: idle at the lobby sofa (near 6.5,6.5)
     // - else: standing
     const pos = movement.getPosition3D(agent.id);
@@ -168,11 +172,21 @@ export const AIAvatar = memo(function AIAvatar({
     const useTyping = !isSleeping && (status === "working" || status === "thinking") && pose === "desk" && !walking && !praying;
     const useSitting = !isSleeping && !useTyping && pose === "free" && !walking && !praying && nearSofa && status === "idle";
 
+    // for typing: show back-view when camera is behind the agent
+    g.getWorldPosition(tmpV);
+    const camAz = Math.atan2(state.camera.position.x - tmpV.x, state.camera.position.z - tmpV.z);
+    const facing = praying ? QIBLA_FACING : g.rotation.y;
+    const camBehind = Math.abs(wrapAngle(camAz - facing)) > Math.PI / 2;
+    const useTypingBack = useTyping && camBehind && typingBackTexRef.current;
+
     let wantTex = texRef.current;
     let wantKey = `/avatars/${agent.id}.png`;
     if (isSleeping && sleepingTexRef.current) {
       wantTex = sleepingTexRef.current;
       wantKey = `/avatars/${agent.id}-sleeping.png`;
+    } else if (useTypingBack) {
+      wantTex = typingBackTexRef.current;
+      wantKey = `/avatars/${agent.id}-typing-back.png`;
     } else if (useTyping && typingTexRef.current) {
       wantTex = typingTexRef.current;
       wantKey = `/avatars/${agent.id}-typing.png`;
@@ -188,10 +202,8 @@ export const AIAvatar = memo(function AIAvatar({
       if (firstMap) mat.current.needsUpdate = true;
     }
 
-    // Y-billboard angle (applied in the animation block below; skipped when flat)
-    g.getWorldPosition(tmpV);
-    const camAz = Math.atan2(state.camera.position.x - tmpV.x, state.camera.position.z - tmpV.z);
-    const facing = praying ? QIBLA_FACING : g.rotation.y;
+    // Y-billboard angle (applied in the animation block below; skipped when flat/typing)
+    // (camAz/facing already computed above for the back-view check)
 
     // procedural animation
     const fig = figure.current;
@@ -252,12 +264,17 @@ export const AIAvatar = memo(function AIAvatar({
         fig.position.set(px, y, pz);
         fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
         fig.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+      } else if (useTyping) {
+        // typing: face the desk (group facing), front/back texture chosen above
+        fig.position.set(px, y, pz);
+        fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
+        fig.rotation.set(rx, 0, rz);
       } else {
         fig.position.set(px, y, pz);
         fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
         fig.rotation.z = rz;
         fig.rotation.x = rx;
-        // Y-billboard (skip when flat)
+        // Y-billboard (skip when flat or typing)
         fig.rotation.y = wrapAngle(camAz - facing + Math.PI);
       }
     }
