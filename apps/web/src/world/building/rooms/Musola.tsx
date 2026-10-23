@@ -1,8 +1,9 @@
 /**
- * Musola (x -16..-9, z -12..-4.5): the qibla is WEST — gold mihrab arch +
- * "ARAH KIBLAT" plaque on the west wall (x=-16), 6 prayer rugs
- * (3 columns × 2 rows) facing west, a plant. Prayer outfits are handled
- * by the character system — this file only builds the room.
+ * Musola (x -16..-9, z -12..-4.5): the qibla is WEST — gold mihrab arch on
+ * the west wall (x=-16), 6 prayer rugs (3 columns × 2 rows) facing west,
+ * a plant, and the "ARAH KIBLAT" plaque on the north wall (z=-12).
+ * Prayer outfits are handled by the character system — this file only
+ * builds the room.
  */
 import { memo } from "react";
 import * as THREE from "three";
@@ -59,17 +60,18 @@ const Mihrab = memo(function Mihrab() {
   );
 });
 
-/** "ARAH KIBLAT" plaque on the WEST wall (x=-16), facing +X (east) into
- *  the room. Points toward the mihrab (north = right when facing the plaque). */
+/** "ARAH KIBLAT" plaque on the NORTH wall (z=-12), facing +Z (south) into
+ *  the room. Kept separate from the mihrab (west wall); it points to the
+ *  qibla direction (west = left when facing the plaque). */
 const QiblaPlaque = memo(function QiblaPlaque() {
   return (
-    <group position={[-15.9, 1.9, -5.5]} rotation={[0, Math.PI / 2, 0]}>
+    <group position={[-14.2, 1.9, -11.86]}>
       <mesh geometry={geoBox} material={matPlaqueBg} scale={[2.4, 0.7, 0.08]} castShadow />
       <Text position={[0, 0.1, 0.05]} fontSize={0.28} color="#e8c468" anchorX="center" anchorY="middle">
         ARAH KIBLAT
       </Text>
       <Text position={[0, -0.2, 0.05]} fontSize={0.18} color="#a8a29e" anchorX="center" anchorY="middle">
-        ▶ menghadap mihrab
+        ◀ menghadap mihrab
       </Text>
     </group>
   );
