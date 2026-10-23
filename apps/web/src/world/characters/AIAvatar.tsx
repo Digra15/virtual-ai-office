@@ -55,6 +55,9 @@ export const AIAvatar = memo(function AIAvatar({
   const ring = useRef<THREE.Mesh>(null);
   const indicator = useRef<THREE.Mesh>(null);
   const texRef = useRef<THREE.Texture | null>(null);
+  const typingTexRef = useRef<THREE.Texture | null>(null);
+  const sittingTexRef = useRef<THREE.Texture | null>(null);
+  const sleepingTexRef = useRef<THREE.Texture | null>(null);
 
   const ringMat = useMemo(
     () =>
@@ -100,26 +103,37 @@ export const AIAvatar = memo(function AIAvatar({
   const cursorHandlers = useMemo(() => agentCursorHandlers(), []);
   const tmpV = useMemo(() => new THREE.Vector3(), []);
 
-  // Load the AI sprite texture.
+  // Load the AI sprite textures (standing + typing + sitting + sleeping).
   useEffect(() => {
     texRef.current = null;
+    typingTexRef.current = null;
+    sittingTexRef.current = null;
+    sleepingTexRef.current = null;
     let alive = true;
-    new THREE.TextureLoader().load(
-      `/avatars/${agent.id}.png`,
-      (t) => {
+    const loader = new THREE.TextureLoader();
+    const loadTex = (url: string, cb: (t: THREE.Texture) => void) => {
+      loader.load(url, (t) => {
         if (!alive) { t.dispose(); return; }
         t.colorSpace = THREE.SRGBColorSpace;
         t.minFilter = THREE.LinearFilter;
         t.magFilter = THREE.LinearFilter;
         t.anisotropy = 4;
         const img = t.image as HTMLImageElement | undefined;
-        if (img?.width && img?.height) aspectCache[agent.id] = img.width / img.height;
-        texRef.current = t;
-      },
-      undefined,
-      () => {},
-    );
-    return () => { alive = false; texRef.current?.dispose(); texRef.current = null; };
+        if (img?.width && img?.height) aspectCache[url] = img.width / img.height;
+        cb(t);
+      }, undefined, () => {});
+    };
+    loadTex(`/avatars/${agent.id}.png`, (t) => { texRef.current = t; });
+    loadTex(`/avatars/${agent.id}-typing.png`, (t) => { typingTexRef.current = t; });
+    loadTex(`/avatars/${agent.id}-sitting.png`, (t) => { sittingTexRef.current = t; });
+    loadTex(`/avatars/${agent.id}-sleeping.png`, (t) => { sleepingTexRef.current = t; });
+    return () => {
+      alive = false;
+      texRef.current?.dispose(); texRef.current = null;
+      typingTexRef.current?.dispose(); typingTexRef.current = null;
+      sittingTexRef.current?.dispose(); sittingTexRef.current = null;
+      sleepingTexRef.current?.dispose(); sleepingTexRef.current = null;
+    };
   }, [agent.id]);
 
   // celebrate edge-trigger
@@ -139,15 +153,40 @@ export const AIAvatar = memo(function AIAvatar({
     prevProgress.current = p;
     const celebrating = t < celebrateUntil.current;
 
-    // apply texture once loaded
-    if (mat.current && texRef.current && mat.current.map !== texRef.current) {
+    const walking = movement.isMoving(agent.id);
+    const inMusola = isInMusola(agent.id);
+    const praying = inMusola && !walking;
+
+    // pick texture by pose/activity:
+    // - sleeping: status recovering (in recovery bed)
+    // - typing: working/thinking at desk
+    // - sitting: idle at the lobby sofa (near 6.5,6.5)
+    // - else: standing
+    const pos = movement.getPosition3D(agent.id);
+    const nearSofa = pos && Math.hypot(pos.x - 6.5, pos.z - 6.5) < 1.2;
+    const isSleeping = status === "recovering" && !walking && !praying;
+    const useTyping = !isSleeping && (status === "working" || status === "thinking") && pose === "desk" && !walking && !praying;
+    const useSitting = !isSleeping && !useTyping && pose === "free" && !walking && !praying && nearSofa && status === "idle";
+
+    let wantTex = texRef.current;
+    let wantKey = `/avatars/${agent.id}.png`;
+    if (isSleeping && sleepingTexRef.current) {
+      wantTex = sleepingTexRef.current;
+      wantKey = `/avatars/${agent.id}-sleeping.png`;
+    } else if (useTyping && typingTexRef.current) {
+      wantTex = typingTexRef.current;
+      wantKey = `/avatars/${agent.id}-typing.png`;
+    } else if (useSitting && sittingTexRef.current) {
+      wantTex = sittingTexRef.current;
+      wantKey = `/avatars/${agent.id}-sitting.png`;
+    }
+    const wantAspect = aspectCache[wantKey] ?? 0.5;
+    // apply texture once loaded / on switch
+    if (mat.current && wantTex && mat.current.map !== wantTex) {
       const firstMap = mat.current.map == null;
-      mat.current.map = texRef.current;
+      mat.current.map = wantTex;
       if (firstMap) mat.current.needsUpdate = true;
     }
-
-    const inMusola = isInMusola(agent.id);
-    const praying = inMusola && !movement.isMoving(agent.id);
 
     // Y-billboard
     g.getWorldPosition(tmpV);
@@ -158,13 +197,16 @@ export const AIAvatar = memo(function AIAvatar({
     }
 
     // procedural animation
-    const walking = movement.isMoving(agent.id);
     const fig = figure.current;
     if (fig) {
       const baseY = 0.95;
-      const aspect = aspectCache[agent.id] ?? 0.5;
+      const aspect = wantAspect;
       let y = baseY, sx = 1, sy = 1, rz = 0, rx = 0;
-      if (praying) {
+      if (isSleeping) {
+        // lying in recovery bed: deep stillness, slow breathing
+        y = baseY - 0.25 + Math.sin(t * 0.8) * 0.012;
+        sy = 1 + Math.sin(t * 0.8) * 0.01;
+      } else if (praying) {
         y = baseY - 0.02 + Math.sin(t * 1.2) * 0.008;
         rx = 0.06;
       } else if (walking) {
