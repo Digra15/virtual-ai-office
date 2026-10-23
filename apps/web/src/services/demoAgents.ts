@@ -229,7 +229,9 @@ export function buildStressAgents(
         status === "idle" || status === "offline" ? "Awaiting assignment" : task,
       progress: working ? h % 100 : null,
       lastSeen: new Date(now - (h % 120_000)).toISOString(),
-      // Matches keys of EXTRA_DESKS in world/layout.ts.
+      // Virtual id: no physical hot desk exists anymore, so the avatar
+      // resolves to the lobby-grid fallback in world/layout.ts
+      // `AGENT_SPAWN_POSITION`.
       workstationId: id,
       activityHistory: [
         {

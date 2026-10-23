@@ -19,7 +19,7 @@ import {
   roomAt,
   type RoomDef,
 } from "../world/building/floorPlan";
-import { DESKS, EXTRA_DESKS } from "../world/layout";
+import { DESKS } from "../world/layout";
 import { useAgentStore } from "./useAgentStore";
 
 export type AssignResult = { ok: true } | { ok: false; reason: string };
@@ -78,7 +78,9 @@ export interface WorkstationLocation {
 /**
  * Resolve any known workstation id to its floor/position. Covers the
  * floorPlan WORKSTATIONS (ws-01..ws-08) plus the legacy layout DESKS
- * (ws-01..ws-08) and EXTRA_DESKS (stress-01..12).
+ * (ws-01..ws-08). Virtual ids (stress-*, spawn-*) have no desk — they
+ * resolve to null here and their avatars fall back to the lobby-grid
+ * position in world/layout.ts `AGENT_SPAWN_POSITION`.
  */
 export function workstationLocation(wsId: string): WorkstationLocation | null {
   const extra = WORKSTATIONS[wsId];
@@ -90,7 +92,7 @@ export function workstationLocation(wsId: string): WorkstationLocation | null {
       roomId: extra.roomId,
     };
   }
-  const desk = DESKS[wsId] ?? EXTRA_DESKS[wsId];
+  const desk = DESKS[wsId];
   if (desk) {
     return { floor: 0, x: desk.position[0], z: desk.position[2] };
   }

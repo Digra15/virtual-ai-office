@@ -5,7 +5,7 @@ import {
   getAllPresets,
   setCharacterPresetOverride,
 } from "../../world/characters/characterPresets";
-import { findFreeWorkstation } from "./spawnLogic";
+import { nextSpawnWorkstationId } from "./spawnLogic";
 
 const SPAWN_ROLES = [
   "Personal Assistant",
@@ -20,12 +20,11 @@ const SPAWN_ROLES = [
 ] as const;
 
 /**
- * Spawn a new simulated agent: name + role + visual style → a free
- * workstation from the hot desks. New agents are honestly labeled
- * source "Simulated" (same as the demo roster).
+ * Spawn a new simulated agent: name + role + visual style → a virtual
+ * workstation in the lobby area (no hot desks in the office). New agents
+ * are honestly labeled source "Simulated" (same as the demo roster).
  */
 export function SpawnPanel({ onClose }: { onClose: () => void }) {
-  const agents = useAgentStore((s) => s.agents);
   const upsertLocal = useAgentStore((s) => s.upsertLocal);
 
   const [name, setName] = useState("");
@@ -42,16 +41,10 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
       setError("Give the agent a name.");
       return;
     }
-    const freeDesk = findFreeWorkstation(agents);
-    if (!freeDesk) {
-      setError(
-        "No free workstation — all 12 hot desks are occupied. Remove an agent first.",
-      );
-      return;
-    }
 
     const id = `agent-${Date.now().toString(36)}`;
     const now = new Date().toISOString();
+    const workstationId = nextSpawnWorkstationId(id);
     const agent: AgentInfo = {
       id,
       name: cleanName,
@@ -60,14 +53,14 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
       currentTask: "Awaiting assignment",
       progress: null,
       lastSeen: now,
-      workstationId: freeDesk,
+      workstationId,
       activityHistory: [
         {
           id: `${id}-spawn`,
           agentId: id,
           timestamp: now,
           kind: "status",
-          message: `Spawned via Spawn Panel → ${freeDesk} (simulated)`,
+          message: `Spawned via Spawn Panel → ${workstationId} (simulated)`,
         },
       ],
       source: "demo",
@@ -94,7 +87,7 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="muted small">
-          Creates a simulated agent at a free hot desk.{" "}
+          Creates a simulated agent standing in the lobby area.{" "}
           <span className="sim-badge">SIMULATED</span>
         </p>
         <label className="field">
@@ -144,7 +137,7 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
         )}
         {spawnedId && (
           <p className="success-text" role="status">
-            Spawned! Find them at their new desk in the hot-desk area.
+            Spawned! Find them in the lobby area.
           </p>
         )}
         <button

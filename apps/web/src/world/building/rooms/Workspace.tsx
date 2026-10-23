@@ -1,8 +1,9 @@
 /**
  * Workspace (x -6.5..9.5, z -4.5..6): the 8 agent workstations from
  * WORKSTATIONS (floorPlan, never hardcoded) — each fully dressed — plus
- * the 12 compact hot-desks from layout.ts EXTRA_DESKS and planter strips
- * along x=±5.8.
+ * planter strips along x=±5.8. There are no hot-desks: the user's own
+ * office code has only these 8 workstations, so spawned agents resolve
+ * to the lobby-grid fallback in layout.AGENT_SPAWN_POSITION instead.
  *
  * Desk convention (layout.ts): rotationY 0, desk opens south; the chair
  * sits at desk-local +z (world z+0.95) with rotationY PI, facing the
@@ -12,7 +13,7 @@
 import { memo } from "react";
 import * as THREE from "three";
 import { WORKSTATIONS, type WorkstationDef } from "../floorPlan";
-import { EXTRA_DESKS, deskChairSlot } from "../../layout";
+import { deskChairSlot } from "../../layout";
 import { CozyChair, CozyPlant, Mug } from "../../cozy";
 import { useCozyTexture } from "../../cozy";
 import { geoBox, geoCylinder, geoPlane, geoTorus } from "../../geometries";
@@ -162,40 +163,9 @@ const WorkstationDressing = memo(function WorkstationDressing({
   );
 });
 
-/** Simple hot-desk: top + single screen + chair. */
-const HotDesk = memo(function HotDesk({
-  position,
-  tex,
-}: {
-  position: [number, number, number];
-  tex: THREE.CanvasTexture;
-}) {
-  const chair = deskChairSlot({ position, rotationY: 0, zone: "workspace" });
-  return (
-    <group position={position}>
-      <mesh geometry={geoBox} material={matDeskWood} scale={[1.2, 0.05, 0.6]} position={[0, 0.72, 0]} castShadow receiveShadow />
-      {[
-        [-0.55, -0.25],
-        [0.55, -0.25],
-        [-0.55, 0.25],
-        [0.55, 0.25],
-      ].map(([lx, lz]) => (
-        <mesh key={`${lx}:${lz}`} geometry={geoBox} material={matDeskLeg} scale={[0.06, 0.72, 0.06]} position={[lx, 0.36, lz]} />
-      ))}
-      <mesh geometry={geoBox} material={matScreenBack} scale={[0.04, 0.3, 0.04]} position={[0, 0.9, -0.2]} />
-      <mesh geometry={geoBox} material={matScreenBack} scale={[0.5, 0.32, 0.04]} position={[0, 1.1, -0.2]} castShadow />
-      <mesh geometry={geoPlane} position={[0, 1.1, -0.175]} scale={[0.46, 0.28, 1]}>
-        <meshBasicMaterial map={tex} toneMapped={false} />
-      </mesh>
-      <CozyChair position={[chair.position[0] - position[0], 0, chair.position[2] - position[2]]} rotationY={chair.rotationY} />
-    </group>
-  );
-});
-
 /**
- * Planter strip. Spec z range is -3.2..3.2, but the hot-desk band starts
- * at z=3.0 (EXTRA_DESKS, layout.ts — owned by another track), so the
- * strip ends at z=2.4 to avoid clipping desks.
+ * Planter strip: z -3.2..2.4, kept clear of the walkway and the
+ * project-room door approach.
  */
 const PlanterStrip = memo(function PlanterStrip({ x }: { x: number }) {
   return (
@@ -214,17 +184,12 @@ export const Workspace = memo(function Workspace() {
   const telemetry = useCozyTexture("telemetry");
   const keyboard = useCozyTexture("keyboard");
   const tex = { ide, telemetry, keyboard };
-  const hotDesks = Object.values(EXTRA_DESKS);
 
   return (
     <group>
       {/* 8 agent workstations from WORKSTATIONS */}
       {Object.values(WORKSTATIONS).map((ws) => (
         <WorkstationDressing key={ws.id} ws={ws} tex={tex} />
-      ))}
-      {/* 12 hot-desks */}
-      {hotDesks.map((d, i) => (
-        <HotDesk key={i} position={d.position} tex={ide} />
       ))}
       {/* planter strips */}
       <PlanterStrip x={-5.8} />

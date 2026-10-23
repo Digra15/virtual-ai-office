@@ -151,7 +151,10 @@ describe("roomOf / workstationOf", () => {
 describe("workstationLocation / roomOfWorkstation / isKnownBed", () => {
   it("locates floorPlan and legacy workstations", () => {
     expect(workstationLocation("ws-01")).toMatchObject({ floor: 0, roomId: "workspace" });
-    expect(workstationLocation("stress-01")).toMatchObject({ floor: 0 });
+    // Virtual ids (stress-*, spawn-*) have no physical desk → null; their
+    // avatars fall back to the lobby-grid position in AGENT_SPAWN_POSITION.
+    expect(workstationLocation("stress-01")).toBeNull();
+    expect(workstationLocation("spawn-agent-abc")).toBeNull();
     expect(workstationLocation("nope")).toBeNull();
   });
 

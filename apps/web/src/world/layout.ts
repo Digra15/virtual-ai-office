@@ -2,16 +2,14 @@
  * Office floor plan (legacy desk-layout module). The floor is 32 x 22
  * units (x: -16..16, z: -12..10) — single floor, y = 0 everywhere.
  *
- * NOTE: This file only keeps the LEGACY desk layout (ws-01..ws-08 plus
- * hot-desks). The authoritative building layout — rooms, doors, camera
- * presets — lives in world/building/floorPlan.ts (single floor, 10 rooms,
- * faithful port of the user's own code, 2026-10-23).
+ * NOTE: This file only keeps the LEGACY desk layout (ws-01..ws-08). The
+ * authoritative building layout — rooms, doors, camera presets — lives in
+ * world/building/floorPlan.ts (single floor, 10 rooms, faithful port of
+ * the user's own code, 2026-10-23).
  *
  * Zones (desk-placement only):
  * - Workspace: center (x -6.5..9.5, z -4.5..6) — 8 desks in two rows of
- *   four (ws-01..04 at z=-1.3, ws-05..08 at z=+1.3, all rotationY 0) plus
- *   12 compact hot-desks (stress-01..12) in the south band (z 3.0..5.4,
- *   west half kept clear for the project-room door approach).
+ *   four (ws-01..04 at z=-1.3, ws-05..08 at z=+1.3, all rotationY 0).
  * - Lobby:     south (x -6.5..9.5, z 6..10) — main entrance at (0,10).
  * - North band: z -12..-4.5 — musola | recovery | pantry | toilets | server.
  * - Project:   west (x -16..-6.5, z 1..10).
@@ -63,35 +61,8 @@ export const DESKS: Record<string, DeskSlot> = {
   "ws-08": { position: [4, 0, 1.3], rotationY: 0, zone: "workspace" },
 };
 
-/**
- * 12 compact hot-desk workstations (workspace south band), keyed
- * `stress-01`..`stress-12` so they line up with buildStressAgents() ids
- * and the SpawnPanel. Tidy 4×3 grid at x 1.5..7.5, z 3.0..5.4 — the west
- * half of the south band stays clear for the project-room door approach
- * (proj-w → proj-door at (-6.5, 3.0)), and no desk blocks the central
- * aisle (x=0) or the meeting approach (8.5,±2).
- */
-export const EXTRA_DESKS: Record<string, DeskSlot> = (() => {
-  const desks: Record<string, DeskSlot> = {};
-  const cols = [1.5, 3.5, 5.5, 7.5];
-  const rows = [3.0, 4.2, 5.4];
-  let n = 0;
-  for (let r = 0; r < rows.length; r++) {
-    for (let c = 0; c < cols.length; c++) {
-      n += 1;
-      const id = `stress-${String(n).padStart(2, "0")}`;
-      desks[id] = {
-        position: [cols[c], 0, rows[r]],
-        rotationY: 0,
-        zone: "workspace",
-      };
-    }
-  }
-  return desks;
-})();
-
 function slotFor(workstationId: string): DeskSlot | null {
-  return DESKS[workstationId] ?? EXTRA_DESKS[workstationId] ?? null;
+  return DESKS[workstationId] ?? null;
 }
 
 /**

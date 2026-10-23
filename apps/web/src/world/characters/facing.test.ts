@@ -28,9 +28,10 @@ describe("deskFacing", () => {
     }
   });
 
-  it("covers the hot-desk workstations", () => {
-    // stress desks also have rotationY 0 → nose PI.
+  it("covers virtual workstation ids (no physical desk)", () => {
+    // stress-/spawn- ids have no desk → AGENT_FACING falls back to 0 → nose PI.
     expect(deskFacing("stress-01")).toBeCloseTo(Math.PI, 10);
+    expect(deskFacing("spawn-agent-x1")).toBeCloseTo(Math.PI, 10);
   });
 
   it("falls back to PI (face the room) for unknown ids", () => {

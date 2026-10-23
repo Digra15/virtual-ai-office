@@ -2,7 +2,7 @@
  * Waypoint navigation graph for the single-floor office.
  *
  * The office is mostly open space with furniture footprints to avoid
- * (desk rows, meeting table, hot-desks). Instead of a full nav-mesh, we
+ * (desk rows, meeting table). Instead of a full nav-mesh, we
  * hand-place waypoints in open corridors and connect them explicitly —
  * simple, deterministic, and easy to extend.
  *

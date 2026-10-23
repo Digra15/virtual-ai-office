@@ -135,7 +135,7 @@ export const ROOMS: RoomDef[] = [
     "Perencanaan proyek: papan Kanban LIVE dan meja diskusi."),
   R("workspace", "Workspace", -6.5, 9.5, -4.5, 6, "workspace",
     null,
-    "Ruang kerja utama agen (ws-01..ws-08) plus hot-desk untuk spawned agents."),
+    "Ruang kerja utama agen (ws-01..ws-08); spawned agents di area lobby."),
   R("lobby", "Resepsionis", -6.5, 9.5, 6, 10, "reception",
     { x: 0, z: 10, wall: "south" },
     "Pintu masuk utama, meja resepsionis, dan ruang tunggu."),

@@ -1,47 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { findFreeWorkstation } from "./spawnLogic";
-import type { AgentInfo } from "@virtual-ai-office/shared";
+import { nextSpawnWorkstationId } from "./spawnLogic";
 
-function mkAgent(id: string, workstationId: string): AgentInfo {
-  return {
-    id,
-    name: id,
-    role: "Test",
-    status: "idle",
-    currentTask: "Awaiting assignment",
-    progress: null,
-    lastSeen: new Date().toISOString(),
-    workstationId,
-    activityHistory: [],
-    source: "demo",
-  };
-}
-
-describe("spawn workstation allocation", () => {
-  it("returns the first free overflow desk", () => {
-    const agents = {
-      a: mkAgent("a", "stress-01"),
-      b: mkAgent("b", "stress-02"),
-    };
-    // stress-01/02 taken → next free is stress-03.
-    expect(findFreeWorkstation(agents)).toBe("stress-03");
+describe("spawn workstation id allocation", () => {
+  it("returns a virtual id namespaced per agent", () => {
+    expect(nextSpawnWorkstationId("agent-abc123")).toBe("spawn-agent-abc123");
   });
 
-  it("ignores agents at the main desks", () => {
-    const agents = { a: mkAgent("a", "ws-01") };
-    expect(findFreeWorkstation(agents)).toBe("stress-01");
+  it("is unique per agent id", () => {
+    const a = nextSpawnWorkstationId("agent-1");
+    const b = nextSpawnWorkstationId("agent-2");
+    expect(a).not.toBe(b);
+    expect(a).toBe("spawn-agent-1");
+    expect(b).toBe("spawn-agent-2");
   });
 
-  it("returns null when all 12 overflow desks are taken", () => {
-    const agents: Record<string, AgentInfo> = {};
-    for (let i = 1; i <= 12; i++) {
-      const ws = `stress-${String(i).padStart(2, "0")}`;
-      agents[`a${i}`] = mkAgent(`a${i}`, ws);
+  it("never collides with the 8 physical workstations", () => {
+    for (let i = 1; i <= 8; i++) {
+      const ws = `ws-0${i}`;
+      expect(nextSpawnWorkstationId(ws)).not.toBe(ws);
     }
-    expect(findFreeWorkstation(agents)).toBeNull();
-  });
-
-  it("returns the first desk when the roster is empty", () => {
-    expect(findFreeWorkstation({})).toBe("stress-01");
   });
 });

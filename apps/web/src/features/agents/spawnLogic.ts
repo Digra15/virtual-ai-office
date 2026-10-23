@@ -1,14 +1,12 @@
-import type { AgentInfo } from "@virtual-ai-office/shared";
-import { EXTRA_DESKS } from "../../world/layout";
-
 /**
- * Workstation allocation for the spawn panel (pure, testable).
+ * Workstation id allocation for the spawn panel (pure, testable).
  *
- * Returns the first free hot desk, or null when every desk is taken.
+ * There are no hot desks anymore (the user's own office code has only
+ * the 8 workstations ws-01..ws-08), so spawned agents get a virtual
+ * workstation id. It is unique per agent id and resolves through the
+ * deterministic lobby-grid fallback in
+ * world/layout.ts `AGENT_SPAWN_POSITION`, so no two agents stack.
  */
-export function findFreeWorkstation(
-  agents: Record<string, AgentInfo>,
-): string | null {
-  const occupied = new Set(Object.values(agents).map((a) => a.workstationId));
-  return Object.keys(EXTRA_DESKS).find((ws) => !occupied.has(ws)) ?? null;
+export function nextSpawnWorkstationId(agentId: string): string {
+  return `spawn-${agentId}`;
 }
