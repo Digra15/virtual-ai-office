@@ -2,13 +2,6 @@ import { useEffect } from "react";
 import { useAgentStore } from "../../stores/useAgentStore";
 import { useMeetingStore } from "../../stores/useMeetingStore";
 import { movement } from "../../world/movement";
-import {
-  WANDER_WAYPOINT_IDS,
-  WANDER_WAYPOINT_IDS_2F,
-  WAYPOINTS,
-  WAYPOINTS_UPPER,
-  type Waypoint,
-} from "../../world/navigation";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
 
 /**
@@ -16,10 +9,12 @@ import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
  *
  * Every few seconds it looks for `idle` agents that are seated at their
  * desks and, if fewer than MAX_CONCURRENT are already wandering, sends one
- * for a gentle stroll to a random pleasant waypoint — including the
- * upstairs lounge, garden hall and reception via the stair tower
- * (floor-aware `navigateToFloor`). After a cooldown the agent strolls back
- * to its desk.
+ * for a gentle stroll to a random pleasant spot on the single floor.
+ * After a cooldown the agent strolls back to its desk.
+ *
+ * Wandering into the musola triggers the prayer state automatically —
+ * it is position-based (see facing.ts isInMusola), regardless of how the
+ * agent got there.
  *
  * Rules that keep it calm, not chaotic:
  * - max 2 agents wandering at once
@@ -45,20 +40,26 @@ interface WanderState {
 
 const states = new Map<string, WanderState>();
 
-/** All wander destinations: ground floor + upstairs (lounge, garden hall, reception). */
-const WANDER_SPOT_IDS: readonly string[] = [
-  ...WANDER_WAYPOINT_IDS,
-  ...WANDER_WAYPOINT_IDS_2F,
-];
-
-const ALL_WAYPOINTS: Record<string, Waypoint> = {
-  ...WAYPOINTS,
-  ...WAYPOINTS_UPPER,
-};
-
-function spotById(id: string): Waypoint {
-  return ALL_WAYPOINTS[id];
+export interface WanderSpot {
+  x: number;
+  z: number;
+  label: string;
 }
+
+/**
+ * Idle wander destinations (single floor, y = 0). Musola spots sit on the
+ * prayer rows (x -13.2..-10, z -9.5) so a stroll there becomes a prayer
+ * visit via the position-based trigger.
+ */
+export const WANDER_SPOTS: WanderSpot[] = [
+  { x: -13.2, z: -9.5, label: "musola" },
+  { x: -11.6, z: -9.5, label: "musola" },
+  { x: -10.0, z: -9.5, label: "musola" },
+  { x: 4.2, z: -7.5, label: "pantry" },
+  { x: 6.5, z: 6.5, label: "lobby sofa" },
+  { x: 0, z: -3, label: "corridor" },
+  { x: 0, z: 4.2, label: "aisle" },
+];
 
 function getState(id: string): WanderState {
   let s = states.get(id);
@@ -121,24 +122,17 @@ function tick(): void {
   if (candidates.length === 0) return;
 
   const agent = candidates[Math.floor(Math.random() * candidates.length)];
-  const spotId =
-    WANDER_SPOT_IDS[Math.floor(Math.random() * WANDER_SPOT_IDS.length)];
-  const spot = spotById(spotId);
-  // Floor-aware: upstairs spots route through the stair tower automatically.
-  const ok = movement.navigateToFloor(
-    agent.id,
-    { x: spot.x, z: spot.z, floor: spot.floor ?? 0 },
-    {
-      speed: WANDER_SPEED,
-      arriveActivity: "standing",
-      arrivePose: "free",
-      arriveFacing: null,
-      onArrive: () => {
-        const st = getState(agent.id);
-        st.returnAt = Date.now() + STROLL_STAY_MS + rand(0, 15_000);
-      },
+  const spot = WANDER_SPOTS[Math.floor(Math.random() * WANDER_SPOTS.length)];
+  const ok = movement.navigateTo(agent.id, spot.x, spot.z, {
+    speed: WANDER_SPEED,
+    arriveActivity: "standing",
+    arrivePose: "free",
+    arriveFacing: null,
+    onArrive: () => {
+      const st = getState(agent.id);
+      st.returnAt = Date.now() + STROLL_STAY_MS + rand(0, 15_000);
     },
-  );
+  });
   if (ok) {
     const s = getState(agent.id);
     s.wandering = true;

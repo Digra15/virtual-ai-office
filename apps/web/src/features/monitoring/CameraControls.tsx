@@ -7,9 +7,7 @@ import { movement } from "../../world/movement";
 import { ROOMS, type FloorMode } from "../../world/building/floorPlan";
 
 const FLOOR_BUTTONS: { mode: FloorMode; label: string }[] = [
-  { mode: "entire", label: "🏢 All" },
-  { mode: "ground", label: "🟫 Ground" },
-  { mode: "second", label: "🟦 Upper" },
+  { mode: "office", label: "🏢 Office" },
   { mode: "outdoor", label: "🌳 Outdoor" },
 ];
 
@@ -98,7 +96,7 @@ export function CameraControls() {
         <option value="">📍 Go to room…</option>
         {ROOMS.map((room) => (
           <option key={room.id} value={room.id}>
-            {room.name} — {room.floor === 0 ? "Ground" : "Upper"}
+            {room.name}
           </option>
         ))}
       </select>

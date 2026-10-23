@@ -7,8 +7,8 @@ import { useCameraStore } from "../../stores/useCameraStore";
 import { useBuildingViewStore } from "../../stores/useBuildingViewStore";
 import { CAMERA_PRESETS, ROOM_BY_ID } from "../building/floorPlan";
 
-const DEFAULT_POS = new THREE.Vector3(16, 13, 16);
-const DEFAULT_TARGET = new THREE.Vector3(0, 0, 0);
+const DEFAULT_POS = new THREE.Vector3(18, 13, 22);
+const DEFAULT_TARGET = new THREE.Vector3(0, 1, -1);
 const TWEEN_SECONDS = 1.2;
 /** Camera offset added to a room anchor for "navigate to room". */
 const ROOM_OFFSET = new THREE.Vector3(10, 9, 12);
@@ -82,7 +82,6 @@ export const CameraRig = memo(function CameraRig() {
         const room = ROOM_BY_ID[roomReq.roomId];
         if (room) {
           const toTarget = new THREE.Vector3(...room.anchor);
-          // anchor.y already includes the floor height.
           tweenTo(toTarget.clone().add(ROOM_OFFSET), toTarget);
         }
       }

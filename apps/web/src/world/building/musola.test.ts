@@ -1,8 +1,9 @@
 /**
- * Musola presence tests (2026-10-22 simplification).
+ * Musola contract tests (single floor, 2026-10-23).
  *
- * The floorPlan/navigation/store contracts below are final. The barrel
- * assertion requires the builder's rewritten rooms/ barrel to include
+ * The floorPlan contract below is final: the musola is a ground-floor
+ * room (x -16..-8, z -12..-4.5, id "musola"). The barrel assertion
+ * requires the room-visual track's rewritten rooms/ barrel to include
  * the Musola component.
  */
 import { describe, expect, it } from "vitest";
@@ -15,28 +16,34 @@ import {
 } from "./floorPlan";
 
 describe("musola room contract", () => {
-  it("ROOMS contains a musola room on the second floor", () => {
+  it("ROOMS contains the ground-floor musola room", () => {
     const musola = ROOMS.find((r) => r.id === "musola");
     expect(musola).toBeDefined();
-    expect(musola!.floor).toBe(1);
+    expect(musola!.floor).toBe(0);
     expect(musola!.type).toBe("musola");
     expect(ROOM_BY_ID["musola"]).toBe(musola);
   });
 
-  it("roomAt(7, -9, 1) resolves inside the musola rect", () => {
+  it("roomAt(-12, -8, 0) resolves inside the musola rect", () => {
     const musola = ROOM_BY_ID["musola"];
     expect(musola).toBeDefined();
-    expect(7).toBeGreaterThanOrEqual(musola.minX);
-    expect(7).toBeLessThanOrEqual(musola.maxX);
-    expect(-9).toBeGreaterThanOrEqual(musola.minZ);
-    expect(-9).toBeLessThanOrEqual(musola.maxZ);
-    expect(roomAt(7, -9, 1)?.id).toBe("musola");
+    expect(-12).toBeGreaterThanOrEqual(musola.minX);
+    expect(-12).toBeLessThanOrEqual(musola.maxX);
+    expect(-8).toBeGreaterThanOrEqual(musola.minZ);
+    expect(-8).toBeLessThanOrEqual(musola.maxZ);
+    expect(roomAt(-12, -8, 0)?.id).toBe("musola");
   });
 
-  it("RECOVERY_BEDS still all inside the recovery room", () => {
+  it("the musola door sits on its south wall into the corridor", () => {
+    const musola = ROOM_BY_ID["musola"];
+    expect(musola.door).toMatchObject({ x: -12.5, z: -4.5, wall: "south" });
+  });
+
+  it("RECOVERY_BEDS are all inside the ground-floor recovery room", () => {
     expect(RECOVERY_BEDS.length).toBeGreaterThan(0);
     const room = ROOM_BY_ID[RECOVERY_ROOM_ID];
     expect(room).toBeDefined();
+    expect(room.floor).toBe(0);
     for (const bed of RECOVERY_BEDS) {
       expect(bed.roomId).toBe(RECOVERY_ROOM_ID);
       const [x, , z] = bed.position;

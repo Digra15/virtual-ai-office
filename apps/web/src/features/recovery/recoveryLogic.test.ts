@@ -56,8 +56,8 @@ beforeEach(() => {
     makeAgent("r2", "idle"),
     makeAgent("r3", "working"),
   ]);
-  // r1 starts at its desk; r2/r3 unregistered (no scene presence).
-  movement.register("r1", mockGroup(), -7.5, -1.5, 0);
+  // r1 starts at its desk (ws-01); r2/r3 unregistered (no scene presence).
+  movement.register("r1", mockGroup(), -4, -1.3, 0);
 });
 
 describe("findFreeBed", () => {
@@ -117,12 +117,12 @@ describe("shouldAutoRecover", () => {
 });
 
 describe("recoveryTarget", () => {
-  it("targets the bed position on the second floor (Ruang Pemulihan)", () => {
+  it("targets the bed position on the ground floor (Ruang Recovery)", () => {
     const target = recoveryTarget(RECOVERY_BEDS[0]!);
     expect(target).toEqual({
       x: RECOVERY_BEDS[0]!.position[0],
       z: RECOVERY_BEDS[0]!.position[2],
-      floor: 1,
+      floor: 0,
     });
   });
 });

@@ -45,7 +45,7 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
     const freeDesk = findFreeWorkstation(agents);
     if (!freeDesk) {
       setError(
-        "No free workstation — all 22 hot desks are occupied. Remove an agent first.",
+        "No free workstation — all 12 hot desks are occupied. Remove an agent first.",
       );
       return;
     }

@@ -1,5 +1,5 @@
 /**
- * Data-driven floor plan for the two-story Virtual AI Office building.
+ * Data-driven floor plan for the single-floor Virtual AI Office.
  *
  * This file is the SINGLE SOURCE OF TRUTH for the building's spatial
  * design. Room components, the navigation graph, the occupancy store, the
@@ -7,45 +7,34 @@
  * hardcoded coordinates scattered across components.
  *
  * Conventions:
- * - Ground floor: y = 0. Second floor slab top: y = FLOOR_HEIGHT.
+ * - ONE floor only: y = 0 everywhere. (The two-story denah was dropped
+ *   2026-10-23 per the user's redirect: single floor, faithful port of
+ *   the user's own 10-room code.)
  * - Wall height: WALL_H. All room rects are in world units (x, z).
- * - The original open-workspace desk block (layout.ts DESKS ws-01..ws-08
- *   and EXTRA_DESKS) is preserved untouched so spawn/wander logic keeps
- *   working; new workstations get ids like `konten-01`, `focus-01`.
- * - Characters stay 2D pixel-art billboard sprites (user decision
- *   2026-10-22) — nothing in this file assumes 3D character rigs.
+ * - Characters stay 2D pixel-art billboard sprites — nothing in this file
+ *   assumes 3D character rigs.
  *
- * Redesigned 2026-10-22 from the user's dream-office reference
- * ("DENAH LANTAI 1 / 2"):
+ * Layout (user's code, faithful):
  *
- *   LANTAI 1 — Operasional & Kolaborasi (top edge -> bottom edge):
- *     top row:    Ruang Meeting | Ruang Server | Pantry | Toilet
- *     mid-left:   Ruang Project (live Kanban / task-management screens)
- *     center:     Workspace (ws-01..ws-08 + hot-desk bullpen annex)
- *     bottom-left: Resepsionis (main entrance "Pintu Masuk")
- *     right side: stair tower + open stair lobby (no room — circulation)
+ *   North band (z -12..-4.5), doors open south into the corridor (z=-3):
+ *     Musola | Ruang Recovery | Pantry | Toilet Pria | Toilet Wanita | Ruang Server
  *
- *   LANTAI 2 — Strategi & Pengembangan:
- *     top row:      Ruang Direksi | Ruang Konten | Musola
- *     mid-left:     Ruang Fokus
- *     center:       Lounge (idle agents wander here)
- *     bottom-left:  Ruang Pemulihan (recovery beds — moved up from L1)
- *     bottom-right: Ruang R&D (experiment / dev desks)
- *     right side:   stair landing + lobby (no room — circulation)
- *
- * Areas with no RoomDef (stair lobbies, the garden hall) are dressed by
- * rooms/Circulation.tsx — they are walkable circulation, not rooms.
+ *   Mid / south:
+ *     Ruang Project (west, x -16..-6.5, z 1..10; door on its east wall)
+ *     Workspace     (center, x -6.5..9.5, z -4.5..6; open, no door)
+ *     Resepsionis   (south, x -6.5..9.5, z 6..10; main entrance door)
+ *     Ruang Meeting (east, x 9.5..16, z -1.8..10; door on its west wall)
  */
 
-export const FLOOR_HEIGHT = 3.5;
+export const FLOOR_HEIGHT = 3.5; // kept for import compatibility (no second floor exists)
 export const WALL_H = 3.2;
 export const SLAB_T = 0.3;
 
 export const BUILDING = {
-  minX: -20,
-  maxX: 20,
-  minZ: -14,
-  maxZ: 14,
+  minX: -16,
+  maxX: 16,
+  minZ: -12,
+  maxZ: 10,
 } as const;
 
 export type RoomType =
@@ -57,17 +46,23 @@ export type RoomType =
   | "restroom"
   | "recovery"
   | "project"
-  | "direksi"
-  | "konten"
-  | "rnd"
-  | "focus"
-  | "lounge"
   | "musola";
+
+export interface DoorDef {
+  /** World position of the door opening. */
+  x: number;
+  z: number;
+  /** Which wall of the room rect the opening is cut into. */
+  wall: "north" | "south" | "east" | "west";
+  /** Open archway (no door leaf), e.g. the pantry. */
+  arch?: boolean;
+}
 
 export interface RoomDef {
   id: string;
   name: string;
-  /** Floor index: 0 = ground, 1 = second. */
+  /** Floor index: 0 = ground. The building is single-floor; the type stays
+   *  0|1 so shared/admin types keep compiling. */
   floor: 0 | 1;
   minX: number;
   maxX: number;
@@ -75,6 +70,8 @@ export interface RoomDef {
   maxZ: number;
   type: RoomType;
   description: string;
+  /** Door opening, or null for open rooms (workspace). */
+  door: DoorDef | null;
   /** Camera-friendly anchor for "navigate to room". */
   anchor: [number, number, number];
 }
@@ -82,58 +79,69 @@ export interface RoomDef {
 const R = (
   id: string,
   name: string,
-  floor: 0 | 1,
   minX: number,
   maxX: number,
   minZ: number,
   maxZ: number,
   type: RoomType,
+  door: DoorDef | null,
   description: string,
 ): RoomDef => {
   const cx = (minX + maxX) / 2;
   const cz = (minZ + maxZ) / 2;
-  const cy = floor === 0 ? 1.5 : FLOOR_HEIGHT + 1.5;
-  return { id, name, floor, minX, maxX, minZ, maxZ, type, description, anchor: [cx, cy, cz] };
+  return {
+    id,
+    name,
+    floor: 0,
+    minX,
+    maxX,
+    minZ,
+    maxZ,
+    type,
+    door,
+    description,
+    anchor: [cx, 1.5, cz],
+  };
 };
 
 /**
- * All 14 rooms. Ground floor (0): meeting, server, pantry, restroom
- * (north band), project (mid-left), workspace (center, incl. the hot-desk
- * bullpen annex), reception (bottom-left, main entrance). Second floor
- * (1): direksi, konten, musola (north band), fokus (mid-left), lounge
- * (center), pemulihan (bottom-left), rnd (bottom-right).
+ * All 10 rooms, single floor (the user's coordinates, faithful):
+ * north band = musola | recovery | pantry | toilet_pria | toilet_wanita |
+ * server (doors south into the corridor); project (west, door east);
+ * workspace (center, open); lobby/resepsionis (south, main entrance);
+ * meeting (east, door west).
  */
 export const ROOMS: RoomDef[] = [
-  // ---- Ground floor: Operasional & Kolaborasi ----
-  R("meeting", "Ruang Meeting", 0, -20, -11, -14, -5, "conference",
-    "Ruang rapat: meja besar, whiteboard, dan layar presentasi."),
-  R("server", "Ruang Server", 0, -11, -2, -14, -5, "server",
-    "Rak server, perangkat jaringan, dan pendingin. Akses terbatas."),
-  R("pantry", "Pantry", 0, -2, 6, -14, -5, "pantry",
-    "Dapur kecil: mesin kopi, kulkas, dan meja makan."),
-  R("restroom", "Toilet", 0, 6, 13, -14, -5, "restroom",
-    "Fasilitas toilet."),
-  R("project", "Ruang Project", 0, -20, -10, -5, 6, "project",
-    "Perencanaan proyek: papan Kanban LIVE dan meja diskusi."),
-  R("openWorkspace", "Workspace", 0, -10, 10, -5, 14, "workspace",
-    "Ruang kerja utama agen (ws-01..ws-08) plus hot-desk untuk spawned agents."),
-  R("reception", "Resepsionis", 0, -20, -10, 6, 14, "reception",
-    "Pintu masuk utama, meja resepsionis, dan ruang tunggu."),
-  // ---- Second floor: Strategi & Pengembangan ----
-  R("direksi", "Ruang Direksi", 1, -20, -9, -14, -4, "direksi",
-    "Ruang direktur: meja kerja dan layar strategi/analitik."),
-  R("konten", "Ruang Konten", 1, -9, 2, -14, -4, "konten",
-    "Studio konten: meja kreator untuk writing, desain, dan video."),
-  R("musola", "Musola", 1, 2, 13, -14, -4, "musola",
-    "Ruang salat: barisan sajadah menghadap penanda kiblat, rak sepatu, tempat wudu."),
-  R("fokus", "Ruang Fokus", 1, -20, -12, -4, 5, "focus",
-    "Ruang kerja individual yang tenang."),
-  R("lounge", "Lounge", 1, -12, 6, -4, 5, "lounge",
-    "Sofa, tanaman, dan area diskusi santai. Agen idle bersantai di sini."),
-  R("pemulihan", "Ruang Pemulihan", 1, -20, -9, 5, 14, "recovery",
+  R("musola", "Musola", -16, -8, -12, -4.5, "musola",
+    { x: -12.5, z: -4.5, wall: "south" },
+    "Ruang salat: barisan sajadah, rak sepatu, dan tempat wudu."),
+  R("recovery", "Ruang Recovery", -8, 0.5, -12, -4.5, "recovery",
+    { x: -0.3, z: -4.5, wall: "south" },
     "Ruang tenang dengan pod pemulihan untuk agen yang error."),
-  R("rnd", "Ruang R&D", 1, 1, 16, 5, 14, "rnd",
-    "Ruang riset & pengembangan: meja eksperimen dan multi-monitor."),
+  R("pantry", "Pantry", 0.5, 8, -12, -4.5, "pantry",
+    { x: 1.8, z: -4.5, wall: "south", arch: true },
+    "Dapur kecil: mesin kopi, kulkas, dan meja makan."),
+  R("toilet_pria", "Toilet Pria", 8, 10, -12, -4.5, "restroom",
+    { x: 8.8, z: -4.5, wall: "south" },
+    "Fasilitas toilet pria."),
+  R("toilet_wanita", "Toilet Wanita", 10, 12, -12, -4.5, "restroom",
+    { x: 10.8, z: -4.5, wall: "south" },
+    "Fasilitas toilet wanita."),
+  R("server", "Ruang Server", 12, 16, -12, -4.5, "server",
+    { x: 13.2, z: -4.5, wall: "south" },
+    "Rak server, perangkat jaringan, dan pendingin. Akses terbatas."),
+  R("project", "Ruang Project", -16, -6.5, 1, 10, "project",
+    { x: -6.5, z: 3.0, wall: "east" },
+    "Perencanaan proyek: papan Kanban LIVE dan meja diskusi."),
+  R("workspace", "Workspace", -6.5, 9.5, -4.5, 6, "workspace",
+    null,
+    "Ruang kerja utama agen (ws-01..ws-08) plus hot-desk untuk spawned agents."),
+  R("lobby", "Resepsionis", -6.5, 9.5, 6, 10, "reception",
+    { x: 0, z: 10, wall: "south" },
+    "Pintu masuk utama, meja resepsionis, dan ruang tunggu."),
+  R("meeting", "Ruang Meeting", 9.5, 16, -1.8, 10, "conference",
+    { x: 9.5, z: 2.0, wall: "west" },
+    "Ruang rapat: meja besar, whiteboard, dan layar presentasi."),
 ];
 
 export const ROOM_BY_ID: Record<string, RoomDef> = Object.fromEntries(
@@ -160,17 +168,33 @@ export interface WorkstationDef {
   rotationY: number;
 }
 
-/** New workstations (the original ws-01..ws-08 + stress desks live in layout.ts). */
-const EXTRA_WORKSTATIONS: WorkstationDef[] = [
-  // Ruang Konten — two creator desks.
-  { id: "konten-01", roomId: "konten", floor: 1, position: [-5.5, FLOOR_HEIGHT, -9], rotationY: Math.PI },
-  { id: "konten-02", roomId: "konten", floor: 1, position: [-0.5, FLOOR_HEIGHT, -9], rotationY: Math.PI },
-  // Ruang Fokus — one desk.
-  { id: "focus-01", roomId: "fokus", floor: 1, position: [-16, FLOOR_HEIGHT, 0], rotationY: Math.PI / 2 },
-];
-
+/**
+ * The 8 agent desks in the Workspace (the user's layout): two rows of
+ * four — row 1 (ws-01..04) at z=-1.3, row 2 (ws-05..08) at z=+1.3, all
+ * with rotationY 0 (desk opens south; the agent sits south of the desk at
+ * z±0.68 and faces north toward the monitor — see facing.ts deskFacing =
+ * deskRot + PI). Ids are stable: agent assignments depend on them.
+ */
 export const WORKSTATIONS: Record<string, WorkstationDef> = Object.fromEntries(
-  EXTRA_WORKSTATIONS.map((w) => [w.id, w]),
+  [
+    ["ws-01", -4, -1.3],
+    ["ws-02", -2, -1.3],
+    ["ws-03", 2, -1.3],
+    ["ws-04", 4, -1.3],
+    ["ws-05", -4, 1.3],
+    ["ws-06", -2, 1.3],
+    ["ws-07", 2, 1.3],
+    ["ws-08", 4, 1.3],
+  ].map(([id, x, z]) => [
+    id,
+    {
+      id: id as string,
+      roomId: "workspace",
+      floor: 0 as const,
+      position: [x as number, 0, z as number] as [number, number, number],
+      rotationY: 0,
+    },
+  ]),
 );
 
 export function workstationFloor(id: string): 0 | 1 {
@@ -178,7 +202,7 @@ export function workstationFloor(id: string): 0 | 1 {
 }
 
 // ---------------------------------------------------------------------------
-// Recovery beds / pods (second floor — Ruang Pemulihan)
+// Recovery beds (ground floor — Ruang Recovery, west end of the north band)
 // ---------------------------------------------------------------------------
 
 export interface BedDef {
@@ -190,68 +214,40 @@ export interface BedDef {
 }
 
 export const RECOVERY_BEDS: BedDef[] = [
-  { id: "bed-01", roomId: "pemulihan", position: [-18.5, 0, 7], rotationY: Math.PI / 2 },
-  { id: "bed-02", roomId: "pemulihan", position: [-18.5, 0, 9.5], rotationY: Math.PI / 2 },
-  { id: "bed-03", roomId: "pemulihan", position: [-18.5, 0, 12], rotationY: Math.PI / 2 },
-  { id: "bed-04", roomId: "pemulihan", position: [-15.5, 0, 12], rotationY: -Math.PI / 2 },
+  { id: "bed-01", roomId: "recovery", position: [-7.3, 0, -10.8], rotationY: 0 },
+  { id: "bed-02", roomId: "recovery", position: [-5.45, 0, -10.8], rotationY: 0 },
+  { id: "bed-03", roomId: "recovery", position: [-3.6, 0, -10.8], rotationY: 0 },
+  { id: "bed-04", roomId: "recovery", position: [-1.75, 0, -10.8], rotationY: 0 },
 ];
 
-export const RECOVERY_ROOM_ID = "pemulihan";
+export const RECOVERY_ROOM_ID = "recovery";
 
 // ---------------------------------------------------------------------------
-// Stairs (right / east side of the building, per the reference denah).
-// Visual-only tower — agents always use the stair chain below.
+// Camera presets (single floor)
 // ---------------------------------------------------------------------------
 
-/**
- * Stair tower attached to the EAST facade (x 20..24, z -2..6), full height.
- * Agents enter at ground level through the east wall door (x=20, z≈2) and
- * exit upstairs into the upper stair lobby.
- */
-export const STAIR_TOWER = {
-  minX: 20,
-  maxX: 24,
-  minZ: -2,
-  maxZ: 6,
-  /** Waypoint chain with heights: base → mid-landing → top. */
-  base: { x: 22, z: 2, y: 0 },
-  mid: { x: 22, z: 2, y: FLOOR_HEIGHT / 2 },
-  top: { x: 22, z: 2, y: FLOOR_HEIGHT },
-  /** Door positions through the east wall. */
-  groundDoor: { x: 20, z: 2 },
-  upperDoor: { x: 20, z: 4.5 },
-} as const;
-
-// ---------------------------------------------------------------------------
-// Camera presets
-// ---------------------------------------------------------------------------
-
-export type FloorMode = "entire" | "ground" | "second" | "outdoor";
+/** Single floor: "office" (whole-building overview) or "outdoor". */
+export type FloorMode = "office" | "outdoor";
 
 export interface CameraPreset {
   position: [number, number, number];
   target: [number, number, number];
 }
 
-/**
- * Default camera per floor mode. `entire` is the dollhouse cutaway:
- * viewed from the south-east with roof + south walls hidden so both
- * floors read at once.
- */
 export const CAMERA_PRESETS: Record<FloorMode, CameraPreset> = {
-  entire: { position: [30, 19, 36], target: [0, 2.2, 0] },
-  ground: { position: [17, 9, 21], target: [0, 1, 0] },
-  second: { position: [17, 12.5, 21], target: [0, FLOOR_HEIGHT + 1, 0] },
-  outdoor: { position: [-34, 13, 42], target: [2, 3, 0] },
+  office: { position: [18, 13, 22], target: [0, 1, -1] },
+  outdoor: { position: [-26, 11, 32], target: [0, 2, -1] },
 };
 
-/** Which building parts are visible per floor mode. */
+/**
+ * Which building parts are visible per floor mode. Kept in the old shape
+ * so Building.tsx (owned by the room-visual track) keeps compiling: the
+ * second floor is always hidden in the single-floor plan.
+ */
 export const FLOOR_VISIBILITY: Record<
   FloorMode,
   { ground: boolean; second: boolean; roof: boolean; cutSouthWalls: boolean }
 > = {
-  entire: { ground: true, second: true, roof: false, cutSouthWalls: true },
-  ground: { ground: true, second: false, roof: false, cutSouthWalls: false },
-  second: { ground: false, second: true, roof: false, cutSouthWalls: false },
-  outdoor: { ground: true, second: true, roof: true, cutSouthWalls: false },
+  office: { ground: true, second: false, roof: false, cutSouthWalls: false },
+  outdoor: { ground: true, second: false, roof: true, cutSouthWalls: false },
 };

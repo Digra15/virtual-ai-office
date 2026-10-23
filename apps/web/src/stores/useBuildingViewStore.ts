@@ -12,6 +12,6 @@ interface BuildingViewState {
 }
 
 export const useBuildingViewStore = create<BuildingViewState>()((set) => ({
-  floorMode: "entire",
+  floorMode: "office",
   setFloorMode: (floorMode) => set({ floorMode }),
 }));

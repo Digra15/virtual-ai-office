@@ -33,8 +33,8 @@ export const MUSOLA_ROOM_ID = "musola";
 /**
  * Nose direction (world-space Y rotation, THREE convention) of an agent
  * seated at `workstationId`: the desk rotation turned PI so the character
- * faces desk-local −z (the monitor). Covers the new floorPlan
- * WORKSTATIONS (konten-*, focus-*) and the legacy layout DESKS.
+ * faces desk-local −z (the monitor). Covers the floorPlan WORKSTATIONS
+ * (ws-01..ws-08, all rotationY 0 → nose PI) and the legacy layout DESKS.
  */
 export function deskFacing(workstationId: string): number {
   const ws = WORKSTATIONS[workstationId];
@@ -44,16 +44,15 @@ export function deskFacing(workstationId: string): number {
 
 /**
  * Room id at a world position, or null when outside every room.
- * Floor is derived from height the same way the movement registry does
- * (y > 1 → upstairs).
+ * The building is single-floor, so this always resolves on floor 0
+ * (the `y` parameter is kept for signature compatibility).
  */
 export function roomIdAtPosition(
   x: number,
-  y: number,
+  _y: number,
   z: number,
 ): string | null {
-  const floor = (y > 1 ? 1 : 0) as 0 | 1;
-  return roomAt(x, z, floor)?.id ?? null;
+  return roomAt(x, z, 0)?.id ?? null;
 }
 
 /** Room id of an agent's current physical position (null when unknown). */

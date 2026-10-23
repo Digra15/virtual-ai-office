@@ -1,61 +1,43 @@
 /**
- * Barrel for the building room interiors. `ROOM_COMPONENTS` maps every
+ * Barrel for the single-floor room interiors. `ROOM_COMPONENTS` maps every
  * floorPlan room id to its interior component so the Building composer (and
  * tests) can stay data-driven.
  *
- * Redesigned 2026-10-22 from the user's dream-office denah: 14 rooms.
- * Circulation dressing (stair lobbies, garden hall) is exported separately
- * — it is not a room and is rendered explicitly by Building.tsx.
+ * The two toilet rooms share one `Restrooms` component (it renders both
+ * units); Building.tsx mounts each component only once.
  */
 import type { ComponentType } from "react";
 import { Reception } from "./Reception";
-import { OpenWorkspace } from "./OpenWorkspace";
-import { ConferenceRoom } from "./ConferenceRoom";
-import { ServerRoom } from "./ServerRoom";
-import { Restrooms } from "./Restrooms";
-import { Pantry } from "./Pantry";
+import { Workspace } from "./Workspace";
 import { ProjectRoom } from "./ProjectRoom";
-import { DireksiRoom } from "./DireksiRoom";
-import { KontenRoom } from "./KontenRoom";
-import { RnDRoom } from "./RnDRoom";
 import { Musola } from "./Musola";
-import { Lounge } from "./Lounge";
-import { FocusRoom } from "./FocusRoom";
 import { RecoveryRoom } from "./RecoveryRoom";
-import { GroundCirculation, UpperCirculation } from "./Circulation";
+import { Pantry } from "./Pantry";
+import { Restrooms } from "./Restrooms";
+import { ServerRoom } from "./ServerRoom";
+import { MeetingRoom } from "./MeetingRoom";
 
 export {
   Reception,
-  OpenWorkspace,
-  ConferenceRoom,
-  ServerRoom,
-  Restrooms,
-  Pantry,
+  Workspace,
   ProjectRoom,
-  DireksiRoom,
-  KontenRoom,
-  RnDRoom,
   Musola,
-  Lounge,
-  FocusRoom,
   RecoveryRoom,
-  GroundCirculation,
-  UpperCirculation,
+  Pantry,
+  Restrooms,
+  ServerRoom,
+  MeetingRoom,
 };
 
 export const ROOM_COMPONENTS: Record<string, ComponentType> = {
-  reception: Reception,
-  openWorkspace: OpenWorkspace,
-  meeting: ConferenceRoom,
-  server: ServerRoom,
-  restroom: Restrooms,
-  pantry: Pantry,
-  project: ProjectRoom,
-  direksi: DireksiRoom,
-  konten: KontenRoom,
-  rnd: RnDRoom,
   musola: Musola,
-  lounge: Lounge,
-  fokus: FocusRoom,
-  pemulihan: RecoveryRoom,
+  recovery: RecoveryRoom,
+  pantry: Pantry,
+  toilet_pria: Restrooms,
+  toilet_wanita: Restrooms,
+  server: ServerRoom,
+  project: ProjectRoom,
+  workspace: Workspace,
+  lobby: Reception,
+  meeting: MeetingRoom,
 };

@@ -1,28 +1,25 @@
 /**
- * Ruang Project (ground floor, x -20..-10, z -5..6; authored at local y=0):
- * the collaboration room — a planning table with chairs, a whiteboard, and
- * a LIVE project board wall screen subscribed to the real useTaskStore
- * (per-column counts + top card titles; the old PM room's screen, folded
- * back here from the workspace wall).
- *
- * North edge (z=-5): owned by the meeting room (door gap x -16..-14) —
- * this room hangs the door. West/south edges are the building perimeter
- * (shell walls); the east partition (x=-10) is owned by this room.
+ * Ruang Project (x -16..-6.5, z 1..10): boss desk + pink rug + bookshelf,
+ * boss chair + 2 guest chairs, and the LIVE Kanban board subscribed to
+ * the real useTaskStore (per-column counts + top card titles) — the
+ * wiring from the old room, restyled with a cozy wood frame and mounted
+ * on the north wall (z=1.0).
  */
 import { memo, useMemo } from "react";
-import { Text } from "@react-three/drei";
+import * as THREE from "three";
+import { RoundedBox, Text } from "@react-three/drei";
 import { useTaskStore, type TaskStatus } from "../../../stores/useTaskStore";
-import { CeilingLamp } from "../../furniture/CeilingLamp";
-import { Door } from "../../furniture/Door";
-import { InstancedChairs } from "../../furniture/Chair";
-import { MeetingTable } from "../../furniture/MeetingTable";
-import { Plant } from "../../furniture/Plant";
-import { Rug } from "../../furniture/Rug";
-import { Signage } from "../../furniture/Signage";
-import { Whiteboard } from "../../furniture/Whiteboard";
-import { geoBox, geoPlane } from "../../geometries";
-import { matPanelDark } from "./_fallback";
-import { WallSegments } from "./_helpers";
+import { CozyChair, CozyPlant } from "../../cozy";
+import { geoBox, geoCircle, geoPlane } from "../../geometries";
+
+const matDeskWood = new THREE.MeshStandardMaterial({ color: "#9a6a3b", roughness: 0.6 });
+const matDeskLeg = new THREE.MeshStandardMaterial({ color: "#2b323e", roughness: 0.5, metalness: 0.5 });
+const matRugPink = new THREE.MeshStandardMaterial({ color: "#f9a8d4", roughness: 0.95 });
+const matShelf = new THREE.MeshStandardMaterial({ color: "#6b4a2f", roughness: 0.8 });
+const matBoardFrame = new THREE.MeshStandardMaterial({ color: "#8a5a33", roughness: 0.65 });
+const matBoardBg = new THREE.MeshStandardMaterial({ color: "#0b1526", roughness: 0.6 });
+
+const BOOK_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7"];
 
 const COLUMNS: { status: TaskStatus; label: string; color: string; x: number }[] = [
   { status: "todo", label: "TODO", color: "#fbbf24", x: -1.95 },
@@ -31,7 +28,10 @@ const COLUMNS: { status: TaskStatus; label: string; color: string; x: number }[]
   { status: "done", label: "DONE", color: "#34d399", x: 1.95 },
 ];
 
-/** Live project board — re-renders only when the task list changes. */
+/**
+ * Live project board — re-renders only when the task list changes.
+ * Mounted flat on the north wall (z=1.0), facing +Z into the room.
+ */
 const ProjectBoard = memo(function ProjectBoard() {
   const tasks = useTaskStore((s) => s.tasks);
   const byStatus = useMemo(() => {
@@ -41,25 +41,28 @@ const ProjectBoard = memo(function ProjectBoard() {
     return map;
   }, [tasks]);
   return (
-    <group position={[-19.85, 0, 0.5]} rotation={[0, Math.PI / 2, 0]}>
-      <mesh geometry={geoBox} material={matPanelDark} scale={[6.4, 3.1, 0.12]} position={[0, 2.0, 0]} />
-      <mesh geometry={geoPlane} position={[0, 2.0, 0.07]} scale={[6.1, 2.85, 1]}>
-        <meshBasicMaterial color="#0b1526" />
+    <group position={[-11.5, 0, 1.16]}>
+      {/* cozy wood frame */}
+      <RoundedBox args={[6.7, 3.4, 0.14]} radius={0.04} smoothness={4} position={[0, 2.0, -0.02]} castShadow>
+        <meshStandardMaterial color={matBoardFrame.color} roughness={0.65} />
+      </RoundedBox>
+      <mesh geometry={geoPlane} position={[0, 2.0, 0.06]} scale={[6.4, 3.1, 1]}>
+        <meshBasicMaterial color={matBoardBg.color} />
       </mesh>
-      <Text position={[0, 3.28, 0.09]} fontSize={0.3} color="#7dd3fc" anchorX="center" anchorY="middle">
+      <Text position={[0, 3.28, 0.08]} fontSize={0.3} color="#7dd3fc" anchorX="center" anchorY="middle">
         PROJECT BOARD — LIVE
       </Text>
       {COLUMNS.map((c) => {
         const cards = byStatus.get(c.status) ?? [];
         return (
           <group key={c.status} position={[c.x, 0, 0]}>
-            <Text position={[0, 2.78, 0.09]} fontSize={0.24} color={c.color} anchorX="center" anchorY="middle">
+            <Text position={[0, 2.78, 0.08]} fontSize={0.24} color={c.color} anchorX="center" anchorY="middle">
               {`${c.label} ${cards.length}`}
             </Text>
             {cards.slice(0, 4).map((t, i) => (
               <Text
                 key={t.title}
-                position={[0, 2.3 - i * 0.42, 0.09]}
+                position={[0, 2.3 - i * 0.42, 0.08]}
                 fontSize={0.17}
                 color="#cbd5e1"
                 anchorX="center"
@@ -72,50 +75,70 @@ const ProjectBoard = memo(function ProjectBoard() {
           </group>
         );
       })}
-      <Text position={[0, 0.62, 0.09]} fontSize={0.16} color="#64748b" anchorX="center" anchorY="middle">
+      <Text position={[0, 0.62, 0.08]} fontSize={0.16} color="#64748b" anchorX="center" anchorY="middle">
         synced with the Kanban store
       </Text>
     </group>
   );
 });
 
-const TABLE_CHAIRS = [
-  { position: [-16.6, 0, 0.5] as const, rot: Math.PI / 2 },
-  { position: [-13.4, 0, 0.5] as const, rot: -Math.PI / 2 },
-  { position: [-15.6, 0, -1.1] as const, rot: 0 },
-  { position: [-14.4, 0, -1.1] as const, rot: 0 },
-  { position: [-15.6, 0, 2.1] as const, rot: Math.PI },
-  { position: [-14.4, 0, 2.1] as const, rot: Math.PI },
-];
+/** Boss desk at (-11.5,5.5) on the pink rug. */
+const BossDesk = memo(function BossDesk() {
+  return (
+    <group position={[-11.5, 0, 5.5]}>
+      {/* pink rug */}
+      <mesh geometry={geoCircle} material={matRugPink} rotation={[-Math.PI / 2, 0, 0]} scale={[2.2, 2.2, 1]} position={[0, 0.015, 0.4]} receiveShadow />
+      {/* desk */}
+      <mesh geometry={geoBox} material={matDeskWood} scale={[1.8, 0.07, 0.9]} position={[0, 0.73, 0]} castShadow receiveShadow />
+      {[
+        [-0.82, -0.38],
+        [0.82, -0.38],
+        [-0.82, 0.38],
+        [0.82, 0.38],
+      ].map(([lx, lz]) => (
+        <mesh key={`${lx}:${lz}`} geometry={geoBox} material={matDeskLeg} scale={[0.07, 0.73, 0.07]} position={[lx, 0.365, lz]} />
+      ))}
+    </group>
+  );
+});
+
+/** Bookshelf against the west wall. */
+const Bookshelf = memo(function Bookshelf() {
+  return (
+    <group position={[-15.55, 0, 5.5]} rotation={[0, Math.PI / 2, 0]}>
+      <mesh geometry={geoBox} material={matShelf} scale={[1.8, 2.0, 0.4]} position={[0, 1.0, 0]} castShadow />
+      {[0.5, 1.0, 1.5].map((y) => (
+        <mesh key={y} geometry={geoBox} material={matDeskWood} scale={[1.7, 0.05, 0.36]} position={[0, y, 0.01]} />
+      ))}
+      {[0.5, 1.0, 1.5].map((y, si) =>
+        Array.from({ length: 7 }, (_, i) => (
+          <mesh
+            key={`${si}:${i}`}
+            geometry={geoBox}
+            scale={[0.16, 0.32, 0.26]}
+            position={[-0.7 + i * 0.22, y + 0.21, 0.01]}
+          >
+            <meshStandardMaterial color={BOOK_COLORS[(i + si) % BOOK_COLORS.length]} roughness={0.85} />
+          </mesh>
+        )),
+      )}
+    </group>
+  );
+});
 
 export const ProjectRoom = memo(function ProjectRoom() {
   return (
     <group>
-      {/* east partition against the workspace, door gap z -1..1 */}
-      <WallSegments axis="z" fixed={-10} from={-5} to={6} gaps={[[-1, 1]]} />
-      {/* south partition (reception is beyond, no door) */}
-      <WallSegments axis="x" fixed={6} from={-20} to={-10} />
-      {/* door on the north edge (wall owned by the meeting room) */}
-      <Door position={[-15, 0, -5]} width={2} />
-      <Signage text="RUANG PROJECT" position={[-15, 2.35, -4.82]} rotationY={Math.PI} scale={0.75} />
-
-      {/* live project board on the west wall */}
       <ProjectBoard />
-
-      {/* planning table */}
-      <Rug position={[-15, 0, 0.5]} radius={3} />
-      <MeetingTable position={[-15, 0, 0.5]} />
-      <InstancedChairs
-        slots={TABLE_CHAIRS.map(({ position: [x, , z], rot }) => ({
-          position: [x, 0, z] as [number, number, number],
-          rotationY: rot,
-        }))}
-      />
-
-      <Whiteboard position={[-12, 0, 5.4]} rotationY={Math.PI} />
-      <Plant position={[-19.2, 0, 5.2]} />
-      <Plant position={[-10.8, 0, 5.2]} scale={0.85} />
-      <CeilingLamp position={[-15, 0.5]} />
+      <BossDesk />
+      <Bookshelf />
+      {/* boss chair north of the desk, pink-striped, faces the guests */}
+      <CozyChair position={[-11.5, 0, 4.8]} rotationY={0} pinkStripe />
+      {/* 2 guest chairs facing north toward the boss desk */}
+      <CozyChair position={[-12.5, 0, 6.4]} rotationY={Math.PI} />
+      <CozyChair position={[-10.5, 0, 6.4]} rotationY={Math.PI} />
+      <CozyPlant position={[-7.3, 0, 8.8]} scale={1.1} />
+      <CozyPlant position={[-15.2, 0, 2.0]} scale={0.9} />
     </group>
   );
 });

@@ -56,7 +56,7 @@ const FirstFrameSignal = memo(function FirstFrameSignal() {
  * shadow-casting light (the directional); everything else is
  * ambient/hemisphere fill or emissive decoration.
  *
- * Initial camera matches the "entire building" cutaway preset so the
+ * Initial camera matches the Track-1 "office" preset ([18,13,22]) so the
  * CameraRig's mount glide starts from the right viewpoint.
  */
 export default function OfficeScene() {
@@ -64,7 +64,7 @@ export default function OfficeScene() {
     <Canvas
       shadows
       dpr={[1, 1.75]}
-      camera={{ position: [30, 19, 36], fov: 45 }}
+      camera={{ position: [18, 13, 22], fov: 45 }}
       onCreated={() => useSceneReadyStore.getState().reset()}
     >
       <DayNightRig />

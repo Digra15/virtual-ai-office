@@ -46,9 +46,10 @@ const TYPE_TONES: Record<string, string> = {
   workspace: "ok",
   server: "bad",
   project: "info",
-  direksi: "ok",
-  konten: "info",
-  rnd: "info",
+  pantry: "info",
+  restroom: "info",
+  reception: "ok",
+  musola: "info",
 };
 
 export function RoomsPage() {

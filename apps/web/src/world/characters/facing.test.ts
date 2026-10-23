@@ -7,7 +7,7 @@ import {
   roomIdAtPosition,
 } from "./facing";
 import { movement } from "../movement";
-import { FLOOR_HEIGHT, ROOM_BY_ID } from "../building/floorPlan";
+import { ROOM_BY_ID } from "../building/floorPlan";
 
 const MUSOLA = ROOM_BY_ID["musola"];
 const MUSOLA_CX = (MUSOLA.minX + MUSOLA.maxX) / 2;
@@ -22,17 +22,15 @@ describe("MUSOLA_ROOM_ID contract", () => {
 
 describe("deskFacing", () => {
   it("points a seated agent at the monitor (desk rotation + PI)", () => {
-    // ws-01..04 face desk rotation 0 → nose toward −z (monitor side).
-    expect(deskFacing("ws-01")).toBeCloseTo(Math.PI, 10);
-    // ws-05..08 face desk rotation PI → nose toward +z.
-    expect(deskFacing("ws-05")).toBeCloseTo(0, 10);
+    // All 8 desks have rotationY 0 → nose toward −z (monitor side) = PI.
+    for (const id of ["ws-01", "ws-02", "ws-03", "ws-04", "ws-05", "ws-06", "ws-07", "ws-08"]) {
+      expect(deskFacing(id), id).toBeCloseTo(Math.PI, 10);
+    }
   });
 
-  it("covers the new floorPlan workstations", () => {
-    // konten-01 rotationY = PI → nose +z (0).
-    expect(deskFacing("konten-01")).toBeCloseTo(0, 10);
-    // focus-01 rotationY = PI/2 → nose wraps to −PI/2.
-    expect(deskFacing("focus-01")).toBeCloseTo(-Math.PI / 2, 10);
+  it("covers the hot-desk workstations", () => {
+    // stress desks also have rotationY 0 → nose PI.
+    expect(deskFacing("stress-01")).toBeCloseTo(Math.PI, 10);
   });
 
   it("falls back to PI (face the room) for unknown ids", () => {
@@ -41,12 +39,13 @@ describe("deskFacing", () => {
 });
 
 describe("roomIdAtPosition", () => {
-  it("resolves the musola center on the upper floor", () => {
-    expect(roomIdAtPosition(MUSOLA_CX, FLOOR_HEIGHT, MUSOLA_CZ)).toBe("musola");
+  it("resolves the musola center on the single floor", () => {
+    expect(roomIdAtPosition(MUSOLA_CX, 0, MUSOLA_CZ)).toBe("musola");
   });
 
-  it("does not report musola at ground level under it", () => {
-    expect(roomIdAtPosition(MUSOLA_CX, 0, MUSOLA_CZ)).not.toBe("musola");
+  it("ignores the y parameter (single floor — no upstairs)", () => {
+    expect(roomIdAtPosition(MUSOLA_CX, 5, MUSOLA_CZ)).toBe("musola");
+    expect(roomIdAtPosition(MUSOLA_CX, 3.5, MUSOLA_CZ)).toBe("musola");
   });
 
   it("returns null outside every room", () => {
@@ -69,8 +68,8 @@ describe("prayer trigger (isInMusola / agentRoomId)", () => {
   it("becomes true when the agent arrives inside the musola", () => {
     movement.register(AGENT, null, 0, 0, 0);
     expect(isInMusola(AGENT)).toBe(false);
-    // Walk (teleport via a huge dt) to the musola's upper-floor center.
-    movement.moveTo(AGENT, [{ x: MUSOLA_CX, z: MUSOLA_CZ, y: FLOOR_HEIGHT }]);
+    // Walk (teleport via a huge dt) to the musola center.
+    movement.moveTo(AGENT, [{ x: MUSOLA_CX, z: MUSOLA_CZ, y: 0 }]);
     movement.update(1000);
     expect(agentRoomId(AGENT)).toBe("musola");
     expect(isInMusola(AGENT)).toBe(true);

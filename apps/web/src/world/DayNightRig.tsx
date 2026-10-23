@@ -1,14 +1,21 @@
 /**
- * Day/night lighting rig for the 3D office (rendered inside the Canvas).
+ * Day/night lighting rig (rendered inside the Canvas): the user's 3-point
+ * rig, driven by the existing useDayNightStore (store + toggle UI
+ * untouched).
  *
- * - Exactly ONE shadow-casting light: warm sun by day, cool moonlight by
- *   night (same directional light, colors/position/intensity lerped).
- * - ambient + hemisphere fill, lerped too.
- * - scene.background + scene.fog color: day blue <-> night near-black.
- * - Night interior warmth: 3 shadowless warm pointLights (open workspace,
- *   lounge, musola) so the scene stays clearly visible and attractive at
- *   night — a guard against black-viewport-class bugs.
- * - All transitions ease over ~1s (exponential lerp in useFrame).
+ * 1. Sun: ONE shadow-casting directional light — warm 0xfff2df × 2.2 by
+ *    day, cool 0xc9d8ee × 1.1 by night (2048 shadow map, ±34 ortho
+ *    frustum, bias -0.0006, normalBias 0.02).
+ * 2. Sky fill: hemisphere 0xbfd4e6 / 0x8a7a5f, 0.9 day / 0.5 night.
+ * 3. Warm points: 0xffc98a, 8 day / 30 night, distance 12, decay 2 —
+ *    8 fixtures over the rooms so the night scene stays clearly visible
+ *    (never pitch black).
+ *
+ * scene.background + scene.fog lerp with the mode; all transitions ease
+ * over ~1s (exponential lerp in useFrame). The first frame never flashes
+ * the wrong sky: values snapshot the mount-time mode, and the honest
+ * loading overlay is flipped off by FirstFrameSignal in OfficeScene only
+ * after a real frame renders.
  *
  * The 2D pixel-art agents use THREE.SpriteMaterial (unlit) — they stay
  * visible automatically; no action needed here.
@@ -17,57 +24,70 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useDayNightStore } from "../stores/useDayNightStore";
-import { FLOOR_HEIGHT } from "./building/floorPlan";
 
 const DAY_BG = "#87b5e0";
 const NIGHT_BG = "#060a14";
 
-/** Warm interior lights (no shadows, low cost): [x, y, z]. */
-const INTERIOR_LIGHTS: Array<[number, number, number]> = [
-  [0, 2.8, 1], // open workspace
-  [9, FLOOR_HEIGHT + 2.8, -5], // lounge
-  [-11, FLOOR_HEIGHT + 2.8, -5], // musola
+/** Warm interior fixtures (no shadows, low cost): [x, y, z]. */
+export const WARM_POINT_POSITIONS: Array<[number, number, number]> = [
+  [0, 2.7, 7.2], // lobby
+  [6.5, 2.7, 6.5], // lobby east
+  [0, 2.7, 0], // workspace
+  [-11.5, 2.7, 5.5], // project room
+  [-11.5, 2.7, -7.0], // musola
+  [-3.5, 2.7, -7.0], // recovery
+  [3.8, 2.7, -7.0], // pantry
+  [13.0, 2.7, 3.5], // meeting
 ];
 
-interface RigTargets {
+export interface DayNightTargets {
+  bg: string;
+  sunColor: string;
+  sunIntensity: number;
+  sunPosition: [number, number, number];
+  hemiSky: string;
+  hemiGround: string;
+  hemiIntensity: number;
+  pointColor: string;
+  pointIntensity: number;
+}
+
+/** Pure target computation — tested without WebGL. */
+export function dayNightTargets(night: boolean): DayNightTargets {
+  return {
+    bg: night ? NIGHT_BG : DAY_BG,
+    sunColor: night ? "#c9d8ee" : "#fff2df",
+    sunIntensity: night ? 1.1 : 2.2,
+    sunPosition: [18, 26, 12],
+    hemiSky: "#bfd4e6",
+    hemiGround: "#8a7a5f",
+    hemiIntensity: night ? 0.5 : 0.9,
+    pointColor: "#ffc98a",
+    pointIntensity: night ? 30 : 8,
+  };
+}
+
+interface Lerped {
   bg: THREE.Color;
-  dirColor: THREE.Color;
-  dirIntensity: number;
-  dirPos: THREE.Vector3;
-  ambColor: THREE.Color;
-  ambIntensity: number;
+  sunColor: THREE.Color;
+  sunIntensity: number;
   hemiSky: THREE.Color;
   hemiGround: THREE.Color;
   hemiIntensity: number;
-  interiorIntensity: number;
+  pointIntensity: number;
 }
 
-function makeTargets(night: boolean): RigTargets {
-  return night
-    ? {
-        bg: new THREE.Color(NIGHT_BG),
-        dirColor: new THREE.Color("#8fb4ff"),
-        dirIntensity: 0.4,
-        dirPos: new THREE.Vector3(-12, 20, -8),
-        ambColor: new THREE.Color("#93a7d8"),
-        ambIntensity: 0.22,
-        hemiSky: new THREE.Color("#1a2340"),
-        hemiGround: new THREE.Color("#05070d"),
-        hemiIntensity: 0.3,
-        interiorIntensity: 30,
-      }
-    : {
-        bg: new THREE.Color(DAY_BG),
-        dirColor: new THREE.Color("#fff1d6"),
-        dirIntensity: 1.5,
-        dirPos: new THREE.Vector3(14, 22, 10),
-        ambColor: new THREE.Color("#ffffff"),
-        ambIntensity: 0.5,
-        hemiSky: new THREE.Color("#bcd6f5"),
-        hemiGround: new THREE.Color("#3a4250"),
-        hemiIntensity: 0.4,
-        interiorIntensity: 0,
-      };
+function makeLerped(night: boolean): Lerped {
+  const t = dayNightTargets(night);
+  return {
+    bg: new THREE.Color(t.bg),
+    sunColor: new THREE.Color(t.sunColor),
+    sunIntensity: t.sunIntensity,
+    hemiSky: new THREE.Color(t.hemiSky),
+    hemiGround: new THREE.Color(t.hemiGround),
+    hemiIntensity: t.hemiIntensity,
+    pointIntensity: t.pointIntensity,
+  };
 }
 
 export const DayNightRig = memo(function DayNightRig() {
@@ -78,15 +98,14 @@ export const DayNightRig = memo(function DayNightRig() {
   const [initialNight] = useState(() => useDayNightStore.getState().isNight);
 
   const dirRef = useRef<THREE.DirectionalLight>(null);
-  const ambRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const pointRefs = useRef<Array<THREE.PointLight | null>>([]);
   const bgRef = useRef<THREE.Color | null>(null);
 
   // Current (lerped) values — start exactly at the mount-time targets.
-  const cur = useRef<RigTargets | null>(null);
-  if (!cur.current) cur.current = makeTargets(initialNight);
-  const target = useMemo(() => makeTargets(isNight), [isNight]);
+  const cur = useRef<Lerped | null>(null);
+  if (!cur.current) cur.current = makeLerped(initialNight);
+  const target = useMemo(() => dayNightTargets(isNight), [isNight]);
 
   // scene.background + scene.fog share one Color instance we lerp in useFrame.
   useEffect(() => {
@@ -101,7 +120,7 @@ export const DayNightRig = memo(function DayNightRig() {
       scene.fog = null;
       bgRef.current = null;
     };
-  }, [scene]);
+  }, [scene, initialNight]);
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1);
@@ -110,28 +129,19 @@ export const DayNightRig = memo(function DayNightRig() {
     if (!c) return;
     const t = target;
 
-    c.bg.lerp(t.bg, k);
-    c.dirColor.lerp(t.dirColor, k);
-    c.dirPos.lerp(t.dirPos, k);
-    c.dirIntensity += (t.dirIntensity - c.dirIntensity) * k;
-    c.ambColor.lerp(t.ambColor, k);
-    c.ambIntensity += (t.ambIntensity - c.ambIntensity) * k;
-    c.hemiSky.lerp(t.hemiSky, k);
-    c.hemiGround.lerp(t.hemiGround, k);
+    c.bg.lerp(new THREE.Color(t.bg), k);
+    c.sunColor.lerp(new THREE.Color(t.sunColor), k);
+    c.sunIntensity += (t.sunIntensity - c.sunIntensity) * k;
+    c.hemiSky.lerp(new THREE.Color(t.hemiSky), k);
+    c.hemiGround.lerp(new THREE.Color(t.hemiGround), k);
     c.hemiIntensity += (t.hemiIntensity - c.hemiIntensity) * k;
-    c.interiorIntensity += (t.interiorIntensity - c.interiorIntensity) * k;
+    c.pointIntensity += (t.pointIntensity - c.pointIntensity) * k;
 
     if (bgRef.current) bgRef.current.copy(c.bg);
     const dir = dirRef.current;
     if (dir) {
-      dir.color.copy(c.dirColor);
-      dir.position.copy(c.dirPos);
-      dir.intensity = c.dirIntensity;
-    }
-    const amb = ambRef.current;
-    if (amb) {
-      amb.color.copy(c.ambColor);
-      amb.intensity = c.ambIntensity;
+      dir.color.copy(c.sunColor);
+      dir.intensity = c.sunIntensity;
     }
     const hemi = hemiRef.current;
     if (hemi) {
@@ -140,44 +150,46 @@ export const DayNightRig = memo(function DayNightRig() {
       hemi.intensity = c.hemiIntensity;
     }
     for (const p of pointRefs.current) {
-      if (p) p.intensity = c.interiorIntensity;
+      if (p) p.intensity = c.pointIntensity;
     }
   });
 
-  const init = cur.current as RigTargets;
+  const init = dayNightTargets(initialNight);
 
   return (
     <group>
       <directionalLight
         ref={dirRef}
         castShadow
-        position={[init.dirPos.x, init.dirPos.y, init.dirPos.z]}
-        intensity={init.dirIntensity}
-        color={init.dirColor}
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        position={init.sunPosition}
+        intensity={init.sunIntensity}
+        color={init.sunColor}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-radius={4}
+        shadow-bias={-0.0006}
+        shadow-normalBias={0.02}
         shadow-camera-left={-34}
         shadow-camera-right={34}
         shadow-camera-top={34}
         shadow-camera-bottom={-34}
         shadow-camera-near={1}
-        shadow-camera-far={70}
+        shadow-camera-far={90}
       />
-      <ambientLight ref={ambRef} intensity={init.ambIntensity} color={init.ambColor} />
       <hemisphereLight
         ref={hemiRef}
-        args={[init.hemiSky.getStyle(), init.hemiGround.getStyle(), init.hemiIntensity]}
+        args={[init.hemiSky, init.hemiGround, init.hemiIntensity]}
       />
-      {INTERIOR_LIGHTS.map(([x, y, z], i) => (
+      {WARM_POINT_POSITIONS.map(([x, y, z], i) => (
         <pointLight
           key={i}
           ref={(el) => {
             pointRefs.current[i] = el;
           }}
           position={[x, y, z]}
-          color="#ffd9a0"
-          intensity={init.interiorIntensity}
-          distance={18}
+          color={init.pointColor}
+          intensity={init.pointIntensity}
+          distance={12}
           decay={2}
         />
       ))}

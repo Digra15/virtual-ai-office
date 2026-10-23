@@ -9,18 +9,18 @@ beforeEach(() => {
     viewNonce: 0,
     roomRequest: null,
   });
-  useBuildingViewStore.setState({ floorMode: "entire" });
+  useBuildingViewStore.setState({ floorMode: "office" });
 });
 
 describe("camera store (rig request logic)", () => {
   it("requestView sets the building floor mode and bumps viewNonce", () => {
     const before = useCameraStore.getState().viewNonce;
-    useCameraStore.getState().requestView("ground");
-    expect(useBuildingViewStore.getState().floorMode).toBe("ground");
+    useCameraStore.getState().requestView("office");
+    expect(useBuildingViewStore.getState().floorMode).toBe("office");
     expect(useCameraStore.getState().viewNonce).toBe(before + 1);
 
-    useCameraStore.getState().requestView("second");
-    expect(useBuildingViewStore.getState().floorMode).toBe("second");
+    useCameraStore.getState().requestView("outdoor");
+    expect(useBuildingViewStore.getState().floorMode).toBe("outdoor");
     expect(useCameraStore.getState().viewNonce).toBe(before + 2);
   });
 
@@ -36,9 +36,9 @@ describe("camera store (rig request logic)", () => {
     const first = useCameraStore.getState().roomRequest;
     expect(first).toMatchObject({ roomId: "musola" });
 
-    useCameraStore.getState().requestRoom("lounge");
+    useCameraStore.getState().requestRoom("pantry");
     const second = useCameraStore.getState().roomRequest;
-    expect(second).toMatchObject({ roomId: "lounge" });
+    expect(second).toMatchObject({ roomId: "pantry" });
     expect(second!.nonce).toBeGreaterThan(first!.nonce);
   });
 

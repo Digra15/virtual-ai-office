@@ -134,13 +134,13 @@ describe("roomOf / workstationOf", () => {
 
   it("resolves the room of a legacy desk", () => {
     const room = useOccupancyStore.getState().roomOf("a", "ws-01");
-    expect(room?.id).toBe("openWorkspace");
+    expect(room?.id).toBe("workspace");
   });
 
   it("resolves the room of a floorPlan workstation", () => {
     const s = useOccupancyStore.getState();
-    s.assignWorkstation("a", "konten-01", { force: true });
-    expect(s.roomOf("a")?.id).toBe("konten");
+    s.assignWorkstation("a", "ws-05", { force: true });
+    expect(s.roomOf("a")?.id).toBe("workspace");
   });
 
   it("returns null for unknown workstations", () => {
@@ -150,15 +150,15 @@ describe("roomOf / workstationOf", () => {
 
 describe("workstationLocation / roomOfWorkstation / isKnownBed", () => {
   it("locates floorPlan and legacy workstations", () => {
-    expect(workstationLocation("konten-01")).toMatchObject({ floor: 1, roomId: "konten" });
-    expect(workstationLocation("ws-01")).toMatchObject({ floor: 0 });
+    expect(workstationLocation("ws-01")).toMatchObject({ floor: 0, roomId: "workspace" });
+    expect(workstationLocation("stress-01")).toMatchObject({ floor: 0 });
     expect(workstationLocation("nope")).toBeNull();
   });
 
   it("maps a bed workstation to the recovery room", () => {
     expect(roomOfWorkstation("bed-01" as never)).toBeNull(); // beds aren't workstations
     expect(roomOfWorkstation("nope")).toBeNull();
-    expect(roomOfWorkstation("ws-05")?.id).toBe("openWorkspace");
+    expect(roomOfWorkstation("ws-05")?.id).toBe("workspace");
   });
 
   it("knows the scene's recovery beds", () => {

@@ -1,53 +1,256 @@
 /**
- * Building composer: renders the shell, the exterior, and all room
- * interiors, with floor-group visibility driven by the floor mode.
+ * Building composer (single floor): the shell — floor, outer + interior
+ * walls, doorways, room plaques — plus the 10 room interiors and the
+ * exterior, with visibility driven by the floor mode.
  *
- * Rooms are authored at local y=0; the second-floor group is offset by
- * FLOOR_HEIGHT.
+ * The wall/door layout is a faithful port of the user's own builder code
+ * (wall height 3.2, thickness 0.25, warm white #f5f1eb). Doorways are the
+ * cozy `Doorway` primitive; door yaw follows the Doorway contract —
+ * local +Z mounted pointing INTO the room — so leaves swing inward and
+ * labels face the room.
  */
 import { memo, useMemo } from "react";
+import * as THREE from "three";
 import { useBuildingViewStore } from "../../stores/useBuildingViewStore";
-import { FLOOR_HEIGHT, FLOOR_VISIBILITY, ROOMS } from "./floorPlan";
-import { BuildingShell } from "./BuildingShell";
+import { FLOOR_VISIBILITY, WALL_H } from "./floorPlan";
 import { Exterior } from "../exterior/Exterior";
-import { GroundCirculation, ROOM_COMPONENTS, UpperCirculation } from "./rooms";
+import { ROOM_COMPONENTS } from "./rooms";
+import { Doorway, Plaque, useCozyTexture, type DoorwayVariant } from "../cozy";
+import { geoBox, geoPlane } from "../geometries";
+import type { ComponentType } from "react";
+
+// ---------------------------------------------------------------------------
+// Shared materials (module-level: one instance per material, mesh-budget
+// discipline — the black-viewport lesson).
+// ---------------------------------------------------------------------------
+
+const matWall = new THREE.MeshStandardMaterial({ color: "#f5f1eb", roughness: 0.92 });
+const matGlassWall = new THREE.MeshStandardMaterial({
+  color: "#cfe8f5",
+  roughness: 0.08,
+  metalness: 0.1,
+  transparent: true,
+  opacity: 0.35,
+});
+const matRoof = new THREE.MeshStandardMaterial({ color: "#d9d2c4", roughness: 0.95 });
+
+// ---------------------------------------------------------------------------
+// Wall segments — the user's layout, faithful.
+// ---------------------------------------------------------------------------
+
+export interface WallSeg {
+  x: number;
+  z: number;
+  /** Length along the run axis. */
+  length: number;
+  axis: "x" | "z";
+  height?: number;
+  /** Glass panel above the wall, from `height` up to WALL_H. */
+  glassAbove?: boolean;
+}
+
+/** center-x/center-z, width — corridor-wall shorthand from the spec. */
+const CORRIDOR: Array<[number, number, number?, boolean?]> = [
+  // [centerX, width, height?, glassAbove?]
+  [-14.5, 3.0],
+  [-10.75, 2.4],
+  [-5.0, 7.0, 1.1, true],
+  [0.4, 0.2],
+  [1.0, 0.8],
+  [5.1, 5.2],
+  [8.05, 0.5],
+  [9.8, 0.9],
+  [11.55, 0.5],
+  [12.35, 1.1],
+  [15.0, 1.8, 1.1, true],
+];
+
+export const WALL_SEGMENTS: WallSeg[] = [
+  // outer shell
+  { x: 0, z: -12, length: 32, axis: "x" }, // north
+  { x: -16, z: -1, length: 22, axis: "z" }, // west
+  { x: 16, z: -1, length: 22, axis: "z" }, // east
+  { x: -8.6, z: 10, length: 14.8, axis: "x", height: 1.1 }, // front low (west of entrance)
+  { x: 8.6, z: 10, length: 14.8, axis: "x", height: 1.1 }, // front low (east of entrance)
+  // north-band dividers (z -12..-4.5)
+  ...[-9.0, 0.5, 7.8, 9.8, 11.8].map(
+    (x): WallSeg => ({ x, z: -8.25, length: 7.5, axis: "z" }),
+  ),
+  // corridor wall (z=-4.5)
+  ...CORRIDOR.map(
+    ([cx, w, h, glass]): WallSeg => ({
+      x: cx,
+      z: -4.5,
+      length: w,
+      axis: "x",
+      height: h,
+      glassAbove: glass,
+    }),
+  ),
+  // project room: north wall + east wall (door gap z 2.3..3.7)
+  { x: -11.25, z: 1.0, length: 9.5, axis: "x" },
+  { x: -6.5, z: 1.65, length: 1.3, axis: "z" },
+  { x: -6.5, z: 6.85, length: 6.3, axis: "z" },
+  // meeting room: north wall + west wall (h1.2 + glass, door gap z 1.3..2.7)
+  { x: 12.75, z: -1.8, length: 6.5, axis: "x" },
+  { x: 9.5, z: -0.25, length: 3.1, axis: "z", height: 1.2, glassAbove: true },
+  { x: 9.5, z: 6.35, length: 7.3, axis: "z", height: 1.2, glassAbove: true },
+];
+
+/** One solid wall run: box [length|0.25, height, 0.25|length]. */
+const WallRun = memo(function WallRun({ x, z, length, axis, height = WALL_H, glassAbove }: WallSeg) {
+  const h = height;
+  return (
+    <group>
+      <mesh
+        geometry={geoBox}
+        material={matWall}
+        scale={axis === "x" ? [length, h, 0.25] : [0.25, h, length]}
+        position={[x, h / 2, z]}
+        castShadow
+        receiveShadow
+      />
+      {glassAbove && (
+        <mesh
+          geometry={geoBox}
+          material={matGlassWall}
+          scale={axis === "x" ? [length, WALL_H - h, 0.12] : [0.12, WALL_H - h, length]}
+          position={[x, h + (WALL_H - h) / 2, z]}
+        />
+      )}
+    </group>
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Doors — the user's placements. Yaw follows the Doorway contract:
+// local +Z points INTO the room.
+// ---------------------------------------------------------------------------
+
+export interface DoorSpec {
+  position: [number, number, number];
+  /** Yaw so that Doorway local +Z faces into the room. */
+  yaw: number;
+  variant: DoorwayVariant;
+  label?: string;
+  width?: number;
+  height?: number;
+}
+
+export const DOOR_SPECS: DoorSpec[] = [
+  { position: [0, 0, 10], yaw: Math.PI, variant: "double_glass", label: "ENTRANCE", width: 2.2, height: 2.7 },
+  { position: [-12.5, 0, -4.5], yaw: Math.PI, variant: "wood", label: "MUSOLA" },
+  { position: [-0.3, 0, -4.5], yaw: Math.PI, variant: "hospital", label: "RECOVERY" },
+  { position: [1.8, 0, -4.5], yaw: Math.PI, variant: "open_arch", label: "PANTRY" },
+  { position: [8.8, 0, -4.5], yaw: Math.PI, variant: "restroom_m" },
+  { position: [10.8, 0, -4.5], yaw: Math.PI, variant: "restroom_f" },
+  { position: [13.2, 0, -4.5], yaw: Math.PI, variant: "security", label: "SERVER" },
+  { position: [-6.5, 0, 3.0], yaw: -Math.PI / 2, variant: "wood", label: "PROJECT" },
+  { position: [9.5, 0, 2.0], yaw: Math.PI / 2, variant: "glass", label: "MEETING" },
+];
+
+// ---------------------------------------------------------------------------
+// Room plaques — mounted on the nearest wall face, never floating.
+// ---------------------------------------------------------------------------
+
+export interface PlaqueSpec {
+  title: string;
+  subtitle: string;
+  icon: string;
+  accent: string;
+  position: [number, number, number];
+  rotationY: number;
+}
+
+export const PLAQUE_SPECS: PlaqueSpec[] = [
+  { title: "Resepsionis", subtitle: "Penerima Tamu", icon: "👤", accent: "#ff6b9d", position: [-3.0, 0.7, 9.87], rotationY: Math.PI },
+  { title: "Workspace Agent", subtitle: "Area Kerja Utama", icon: "💻", accent: "#0284c7", position: [-6.37, 1.9, 4.5], rotationY: Math.PI / 2 },
+  { title: "Ruang Project (DIFIA)", subtitle: "Manajemen Tugas", icon: "📁", accent: "#ea580c", position: [-6.63, 1.9, 5.0], rotationY: -Math.PI / 2 },
+  { title: "Musola", subtitle: "Ibadah", icon: "🕌", accent: "#16a34a", position: [-10.5, 1.9, -4.37], rotationY: 0 },
+  { title: "Ruang Recovery", subtitle: "Agent Error / Istirahat", icon: "🛏️", accent: "#ec4899", position: [-2.8, 0.65, -4.37], rotationY: 0 },
+  { title: "Pantry", subtitle: "Makan & Istirahat", icon: "☕", accent: "#ca8a04", position: [4.2, 1.9, -4.37], rotationY: 0 },
+  { title: "Toilet", subtitle: "Pria & Wanita", icon: "🚻", accent: "#7c3aed", position: [9.8, 2.55, -4.37], rotationY: 0 },
+  { title: "Ruang Server", subtitle: "Infrastruktur", icon: "🗄️", accent: "#4338ca", position: [12.35, 2.55, -4.37], rotationY: 0 },
+  { title: "Ruang Meeting", subtitle: "Diskusi & Presentasi", icon: "👥", accent: "#e11d48", position: [9.63, 0.75, 5.0], rotationY: Math.PI / 2 },
+];
+
+// ---------------------------------------------------------------------------
+// Composer
+// ---------------------------------------------------------------------------
 
 export const Building = memo(function Building() {
   const floorMode = useBuildingViewStore((s) => s.floorMode);
   const v = FLOOR_VISIBILITY[floorMode];
 
-  const groundIds = useMemo(
-    () => ROOMS.filter((r) => r.floor === 0).map((r) => r.id),
-    [],
-  );
-  const secondIds = useMemo(
-    () => ROOMS.filter((r) => r.floor === 1).map((r) => r.id),
-    [],
-  );
+  const tile = useCozyTexture("tile", {
+    colorA: "#f7f0e6",
+    colorB: "#ebd8c5",
+    repeat: [14, 10],
+  });
+
+  // ROOM_COMPONENTS maps both toilet ids to one Restrooms component —
+  // mount each component once.
+  const roomEntries = useMemo(() => {
+    const seen = new Set<ComponentType>();
+    const out: Array<[string, ComponentType]> = [];
+    for (const id of Object.keys(ROOM_COMPONENTS)) {
+      const C = ROOM_COMPONENTS[id];
+      if (!seen.has(C)) {
+        seen.add(C);
+        out.push([id, C]);
+      }
+    }
+    return out;
+  }, []);
 
   return (
     <group>
-      <BuildingShell
-        showGround={v.ground}
-        showSecond={v.second}
-        showRoof={v.roof}
-        cutSouthWalls={v.cutSouthWalls}
-      />
-      <Exterior />
+      {/* marble-tile floor: 32×22 plane at (0,0,-1) */}
+      <mesh geometry={geoPlane} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -1]} receiveShadow>
+        <meshStandardMaterial map={tile} roughness={0.5} metalness={0.05} />
+      </mesh>
+
+      {/* walls + glass panels */}
       <group visible={v.ground}>
-        {groundIds.map((id) => {
-          const C = ROOM_COMPONENTS[id];
-          return C ? <C key={id} /> : null;
-        })}
-        <GroundCirculation />
+        {WALL_SEGMENTS.map((s, i) => (
+          <WallRun key={i} {...s} />
+        ))}
+        {/* doors */}
+        {DOOR_SPECS.map((d, i) => (
+          <Doorway
+            key={i}
+            position={d.position}
+            rotationY={d.yaw}
+            variant={d.variant}
+            label={d.label}
+            width={d.width}
+            height={d.height}
+          />
+        ))}
+        {/* room plaques */}
+        {PLAQUE_SPECS.map((p, i) => (
+          <Plaque
+            key={i}
+            title={p.title}
+            subtitle={p.subtitle}
+            icon={p.icon}
+            accent={p.accent}
+            position={p.position}
+            rotationY={p.rotationY}
+          />
+        ))}
+        {/* room interiors */}
+        {roomEntries.map(([id, C]) => (
+          <C key={id} />
+        ))}
       </group>
-      <group position={[0, FLOOR_HEIGHT, 0]} visible={v.second}>
-        {secondIds.map((id) => {
-          const C = ROOM_COMPONENTS[id];
-          return C ? <C key={id} /> : null;
-        })}
-        <UpperCirculation />
-      </group>
+
+      {/* roof slab: only in outdoor mode */}
+      {v.roof && (
+        <mesh geometry={geoBox} material={matRoof} scale={[32.6, 0.25, 22.6]} position={[0, WALL_H + 0.125, -1]} castShadow />
+      )}
+
+      <Exterior />
     </group>
   );
 });

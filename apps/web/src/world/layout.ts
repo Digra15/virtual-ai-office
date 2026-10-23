@@ -1,26 +1,28 @@
 /**
- * Office floor plan. The floor is 40 x 28 units (x: -20..20, z: -14..14).
+ * Office floor plan (legacy desk-layout module). The floor is 32 x 22
+ * units (x: -16..16, z: -12..10) — single floor, y = 0 everywhere.
  *
  * NOTE: This file only keeps the LEGACY desk layout (ws-01..ws-08 plus
- * stress desks). The authoritative building layout — rooms, walls,
- * stairs, camera presets — lives in world/building/floorPlan.ts
- * (redesigned 2026-10-22 from the user's dream-office denah: 14 rooms,
- * recovery moved to the second floor, stair tower on the east/right side).
+ * hot-desks). The authoritative building layout — rooms, doors, camera
+ * presets — lives in world/building/floorPlan.ts (single floor, 10 rooms,
+ * faithful port of the user's own code, 2026-10-23).
  *
- * Zones (legacy, desk-placement only):
- * - Open workspace: center (x -10..10, z -5..14) — 8 desks in two rows of
- *   four, plus the hot-desk bullpen annex (x -8..8, z 6..13) holding
- *   EXTRA_DESKS for the 22 stress-mode agents.
- * - Meeting room:    north-west (x -20..-11, z -14..-5).
- * - Mission control: north-east (x 8..20, z -14..-5).
- * - Lounge:          south (x 2..14, z 8..13).
+ * Zones (desk-placement only):
+ * - Workspace: center (x -6.5..9.5, z -4.5..6) — 8 desks in two rows of
+ *   four (ws-01..04 at z=-1.3, ws-05..08 at z=+1.3, all rotationY 0) plus
+ *   12 compact hot-desks (stress-01..12) in the south band (z 3.0..5.4,
+ *   west half kept clear for the project-room door approach).
+ * - Lobby:     south (x -6.5..9.5, z 6..10) — main entrance at (0,10).
+ * - North band: z -12..-4.5 — musola | recovery | pantry | toilets | server.
+ * - Project:   west (x -16..-6.5, z 1..10).
+ * - Meeting:   east (x 9.5..16, z -1.8..10).
  *
  * Desk convention: a desk's local -z is the "back" (monitor side), local +z
  * is where the chair and the seated avatar go (avatar faces -z, i.e. its
  * inner rotationY is Math.PI relative to the desk group).
  */
 
-export const FLOOR = { width: 40, depth: 28 } as const;
+export const FLOOR = { width: 32, depth: 22 } as const;
 
 export interface DeskSlot {
   position: [number, number, number];
@@ -37,40 +39,50 @@ export interface ZoneRect {
 }
 
 export const ZONES: Record<string, ZoneRect> = {
-  openWorkspace: { minX: -10, maxX: 10, minZ: -4, maxZ: 7, label: "Open Workspace" },
-  meetingRoom: { minX: -20, maxX: -8, minZ: -14, maxZ: -5, label: "Meeting Room" },
-  missionControl: { minX: 8, maxX: 20, minZ: -14, maxZ: -5, label: "Mission Control" },
-  lounge: { minX: 2, maxX: 14, minZ: 8, maxZ: 13, label: "Lounge" },
-  bullpen: { minX: -8, maxX: 8, minZ: 6, maxZ: 14, label: "Hot-desk bullpen" },
+  workspace: { minX: -6.5, maxX: 9.5, minZ: -4.5, maxZ: 6, label: "Workspace" },
+  lobby: { minX: -6.5, maxX: 9.5, minZ: 6, maxZ: 10, label: "Lobby / Resepsionis" },
+  northBand: { minX: -16, maxX: 16, minZ: -12, maxZ: -4.5, label: "North service band" },
+  project: { minX: -16, maxX: -6.5, minZ: 1, maxZ: 10, label: "Ruang Project" },
+  meeting: { minX: 9.5, maxX: 16, minZ: -1.8, maxZ: 10, label: "Ruang Meeting" },
 };
 
-/** Main roster: two rows of four desks in the open workspace. */
+/**
+ * Main roster: two rows of four desks in the workspace (the user's
+ * layout). Row 1 (ws-01..04): x -4,-2,2,4 at z=-1.3. Row 2 (ws-05..08):
+ * x -4,-2,2,4 at z=+1.3. All rotationY 0 — the desk opens south, so the
+ * agent sits south of the desk (z±0.68) and faces north at the monitor.
+ */
 export const DESKS: Record<string, DeskSlot> = {
-  "ws-01": { position: [-7.5, 0, -1.5], rotationY: 0, zone: "openWorkspace" },
-  "ws-02": { position: [-2.5, 0, -1.5], rotationY: 0, zone: "openWorkspace" },
-  "ws-03": { position: [2.5, 0, -1.5], rotationY: 0, zone: "openWorkspace" },
-  "ws-04": { position: [7.5, 0, -1.5], rotationY: 0, zone: "openWorkspace" },
-  "ws-05": { position: [-7.5, 0, 3.5], rotationY: Math.PI, zone: "openWorkspace" },
-  "ws-06": { position: [-2.5, 0, 3.5], rotationY: Math.PI, zone: "openWorkspace" },
-  "ws-07": { position: [2.5, 0, 3.5], rotationY: Math.PI, zone: "openWorkspace" },
-  "ws-08": { position: [7.5, 0, 3.5], rotationY: Math.PI, zone: "openWorkspace" },
+  "ws-01": { position: [-4, 0, -1.3], rotationY: 0, zone: "workspace" },
+  "ws-02": { position: [-2, 0, -1.3], rotationY: 0, zone: "workspace" },
+  "ws-03": { position: [2, 0, -1.3], rotationY: 0, zone: "workspace" },
+  "ws-04": { position: [4, 0, -1.3], rotationY: 0, zone: "workspace" },
+  "ws-05": { position: [-4, 0, 1.3], rotationY: 0, zone: "workspace" },
+  "ws-06": { position: [-2, 0, 1.3], rotationY: 0, zone: "workspace" },
+  "ws-07": { position: [2, 0, 1.3], rotationY: 0, zone: "workspace" },
+  "ws-08": { position: [4, 0, 1.3], rotationY: 0, zone: "workspace" },
 };
 
-/** 22 hot-desk workstations (workspace bullpen annex, x -8..8, z 6..14)
- *  for stress-mode agents, keyed `stress-01`..`stress-22` so they line up
- *  with buildStressAgents() ids. Rendered by the OpenWorkspace room. */
+/**
+ * 12 compact hot-desk workstations (workspace south band), keyed
+ * `stress-01`..`stress-12` so they line up with buildStressAgents() ids
+ * and the SpawnPanel. Tidy 4×3 grid at x 1.5..7.5, z 3.0..5.4 — the west
+ * half of the south band stays clear for the project-room door approach
+ * (proj-w → proj-door at (-6.5, 3.0)), and no desk blocks the central
+ * aisle (x=0) or the meeting approach (8.5,±2).
+ */
 export const EXTRA_DESKS: Record<string, DeskSlot> = (() => {
   const desks: Record<string, DeskSlot> = {};
-  const cols = [-6.25, -3.75, -1.25, 1.25, 3.75, 6.25];
-  const rows = [8, 9.75, 11.5, 13.25];
+  const cols = [1.5, 3.5, 5.5, 7.5];
+  const rows = [3.0, 4.2, 5.4];
   let n = 0;
-  for (let r = 0; r < rows.length && n < 22; r++) {
-    for (let c = 0; c < cols.length && n < 22; c++) {
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < cols.length; c++) {
       n += 1;
       const id = `stress-${String(n).padStart(2, "0")}`;
       desks[id] = {
         position: [cols[c], 0, rows[r]],
-        rotationY: r % 2 === 0 ? 0 : Math.PI,
+        rotationY: 0,
         zone: "workspace",
       };
     }
@@ -85,7 +97,7 @@ function slotFor(workstationId: string): DeskSlot | null {
 /**
  * World-space floor position for an agent's workstation.
  * Unknown workstation ids fall back to a deterministic slot in a spare
- * west-corridor grid so the avatar still appears somewhere sensible.
+ * lobby grid so the avatar still appears somewhere sensible.
  */
 export function AGENT_SPAWN_POSITION(
   workstationId: string,
@@ -98,8 +110,8 @@ export function AGENT_SPAWN_POSITION(
   }
   const col = h % 6;
   const row = Math.floor(h / 6) % 4;
-  // Inside the project room (open area west of the workspace).
-  return [-19 + col * 1.5, 0, -2 + row * 2];
+  // Inside the lobby (open area south of the workspace).
+  return [-4 + col * 1.6, 0, 7 + row * 0.8];
 }
 
 /** World-space Y rotation for an agent's avatar. The avatar's outer group

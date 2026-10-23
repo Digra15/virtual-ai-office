@@ -20,7 +20,6 @@ import type {
 } from "@virtual-ai-office/shared";
 import {
   RECOVERY_BEDS,
-  ROOM_BY_ID,
   type BedDef,
 } from "../../world/building/floorPlan";
 import type { FloorPoint } from "../../world/navigation";
@@ -78,10 +77,10 @@ export function shouldAutoRecover(input: AutoRecoverInput): boolean {
   );
 }
 
-/** Floor-aware destination for a recovery bed (all beds are upstairs in Ruang Pemulihan). */
+/** Floor-aware destination for a recovery bed (all beds are on the ground
+ *  floor in Ruang Recovery — single-floor building, no stairs). */
 export function recoveryTarget(bed: BedDef): FloorPoint {
-  const floor = ROOM_BY_ID[bed.roomId]?.floor ?? 0;
-  return { x: bed.position[0], z: bed.position[2], floor };
+  return { x: bed.position[0], z: bed.position[2], floor: 0 };
 }
 
 /** Manual resolution is allowed from 'error' or 'recovering' only. */

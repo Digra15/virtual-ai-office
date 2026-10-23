@@ -77,8 +77,8 @@ export interface WorkstationLocation {
 
 /**
  * Resolve any known workstation id to its floor/position. Covers the
- * floorPlan WORKSTATIONS (konten-*, focus-*) plus the legacy layout DESKS
- * (ws-01..ws-08) and EXTRA_DESKS (stress-01..22).
+ * floorPlan WORKSTATIONS (ws-01..ws-08) plus the legacy layout DESKS
+ * (ws-01..ws-08) and EXTRA_DESKS (stress-01..12).
  */
 export function workstationLocation(wsId: string): WorkstationLocation | null {
   const extra = WORKSTATIONS[wsId];

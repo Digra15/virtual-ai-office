@@ -159,7 +159,7 @@ export function buildLocalDemoAgents(now: number = Date.now()): AgentInfo[] {
 }
 
 // ---------------------------------------------------------------------------
-// Stress-mode extras: 22 deterministic filler agents for load testing the UI.
+// Stress-mode extras: 12 deterministic filler agents for load testing the UI.
 // ---------------------------------------------------------------------------
 
 function hashString(s: string): number {
@@ -209,7 +209,7 @@ const STRESS_STATUSES: AgentStatus[] = [
  * agent, so toggling stress mode on/off is stable and repeatable.
  */
 export function buildStressAgents(
-  count = 22,
+  count = 12,
   now: number = Date.now(),
 ): AgentInfo[] {
   return Array.from({ length: count }, (_, i) => {

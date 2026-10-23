@@ -32,9 +32,9 @@ describe("spawn workstation allocation", () => {
     expect(findFreeWorkstation(agents)).toBe("stress-01");
   });
 
-  it("returns null when all 22 overflow desks are taken", () => {
+  it("returns null when all 12 overflow desks are taken", () => {
     const agents: Record<string, AgentInfo> = {};
-    for (let i = 1; i <= 22; i++) {
+    for (let i = 1; i <= 12; i++) {
       const ws = `stress-${String(i).padStart(2, "0")}`;
       agents[`a${i}`] = mkAgent(`a${i}`, ws);
     }

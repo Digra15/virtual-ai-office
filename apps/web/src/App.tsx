@@ -80,7 +80,7 @@ function DayNightSync() {
 function applyStressExtrasIfEnabled() {
   if (useSettingsStore.getState().stressMode) {
     const store = useAgentStore.getState();
-    buildStressAgents(22).forEach((a) => store.upsertLocal(a));
+    buildStressAgents().forEach((a) => store.upsertLocal(a));
   }
 }
 
@@ -188,10 +188,10 @@ function Dashboard() {
     };
   }, [wsUrl, reconnectToken]);
 
-  // --- Stress mode: 22 deterministic extra agents ---------------------------
+  // --- Stress mode: 12 deterministic extra agents ---------------------------
   useEffect(() => {
     const store = useAgentStore.getState();
-    const extras = buildStressAgents(22);
+    const extras = buildStressAgents();
     if (stressMode) {
       extras.forEach((a) => store.upsertLocal(a));
     } else {

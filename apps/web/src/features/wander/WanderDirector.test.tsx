@@ -36,7 +36,7 @@ function seedAgents(): void {
     { ...mk("w4"), status: "working" },
   ]);
   for (const id of ["w1", "w2", "w3", "w4"]) {
-    movement.register(id, mockGroup(), -7.5, -1.5, 0);
+    movement.register(id, mockGroup(), -4, -1.3, 0); // ws-01
   }
 }
 

@@ -1,40 +1,77 @@
 /**
- * Resepsionis (ground floor, x -20..-10, z 6..14): the main entrance
- * ("Pintu Masuk") — welcome counter with DIFIA branding, waiting sofas,
- * visitor info screen, and the glass entrance doors on the south wall
- * (the shell owns the wall gap at x -16..-12 and hangs the doors).
+ * Resepsionis (lobby, x -6.5..9.5, z 6..10): welcome counter with emissive
+ * DIFIA logo, receptionist chair, pink waiting sofa + coffee table with
+ * mugs, plants.
  */
 import { memo } from "react";
-import { Text } from "@react-three/drei";
-import { CeilingLamp } from "../../furniture/CeilingLamp";
-import { CoffeeTable } from "../../furniture/CoffeeTable";
-import { Plant } from "../../furniture/Plant";
-import { Rug } from "../../furniture/Rug";
-import { Sofa } from "../../furniture/Sofa";
-import { geoBox, geoPlane } from "../../geometries";
-import { Door } from "../../furniture/Door";
-import { ReceptionCounter } from "../../furniture/ReceptionCounter";
-import { Signage } from "../../furniture/Signage";
-import { matPanelDark } from "./_fallback";
-import { WallSegments } from "./_helpers";
+import * as THREE from "three";
+import { RoundedBox } from "@react-three/drei";
+import { CozyChair, CozyPlant, Mug, useCozyTexture } from "../../cozy";
+import { geoBox, geoCylinder, geoPlane } from "../../geometries";
 
-/** Visitor info screen on the west wall (emissive plane + text). */
-const InfoScreen = memo(function InfoScreen() {
+const matCounterWhite = new THREE.MeshStandardMaterial({ color: "#faf8f4", roughness: 0.4 });
+const matCounterTrim = new THREE.MeshStandardMaterial({ color: "#f472b6", roughness: 0.5 });
+const matSofaPink = new THREE.MeshStandardMaterial({ color: "#f9a8d4", roughness: 0.9 });
+const matPillowA = new THREE.MeshStandardMaterial({ color: "#fdf2f8", roughness: 0.9 });
+const matPillowB = new THREE.MeshStandardMaterial({ color: "#fbcfe8", roughness: 0.9 });
+const matTableWood = new THREE.MeshStandardMaterial({ color: "#8a5a33", roughness: 0.6 });
+const matTableDark = new THREE.MeshStandardMaterial({ color: "#5d3d22", roughness: 0.7 });
+
+/** Welcome counter at (0,7.4): white 3.8×1.05×1.1 with pink trim. */
+const Counter = memo(function Counter() {
   return (
-    <group position={[-19.82, 0, 10]} rotation={[0, Math.PI / 2, 0]}>
-      <mesh geometry={geoBox} material={matPanelDark} scale={[3.4, 2.0, 0.1]} position={[0, 1.9, 0]} />
-      <mesh geometry={geoPlane} position={[0, 1.9, 0.06]} scale={[3.1, 1.7, 1]}>
-        <meshBasicMaterial color="#0e7490" />
-      </mesh>
-      <Text position={[0, 2.35, 0.08]} fontSize={0.3} color="#ecfeff" anchorX="center" anchorY="middle">
-        SELAMAT DATANG
-      </Text>
-      <Text position={[0, 1.95, 0.08]} fontSize={0.22} color="#a5f3fc" anchorX="center" anchorY="middle">
-        VIRTUAL AI OFFICE
-      </Text>
-      <Text position={[0, 1.55, 0.08]} fontSize={0.15} color="#cffafe" anchorX="center" anchorY="middle">
-        silakan check-in di meja resepsionis
-      </Text>
+    <group position={[0, 0, 7.4]}>
+      <mesh geometry={geoBox} material={matCounterWhite} scale={[3.8, 1.0, 1.1]} position={[0, 0.5, 0]} castShadow receiveShadow />
+      <mesh geometry={geoBox} material={matCounterTrim} scale={[3.82, 0.08, 1.12]} position={[0, 0.96, 0]} />
+      <mesh geometry={geoBox} material={matTableWood} scale={[4.0, 0.07, 1.3]} position={[0, 1.04, 0]} castShadow />
+    </group>
+  );
+});
+
+/** Emissive DIFIA logo on the counter's south face. */
+const CounterLogo = memo(function CounterLogo() {
+  const logo = useCozyTexture("logo");
+  return (
+    <mesh geometry={geoPlane} position={[0, 0.55, 7.96]} scale={[2.2, 0.55, 1]}>
+      <meshBasicMaterial map={logo} transparent toneMapped={false} />
+    </mesh>
+  );
+});
+
+/** Pink two-seat sofa + 2 pillows at (6.5,6.5), facing north (-Z). */
+const Sofa = memo(function Sofa() {
+  return (
+    <group position={[6.5, 0, 6.5]} rotation={[0, Math.PI, 0]}>
+      <RoundedBox args={[2.0, 0.42, 0.9]} radius={0.1} smoothness={4} position={[0, 0.35, 0]} castShadow>
+        <meshStandardMaterial color={matSofaPink.color} roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[2.0, 0.75, 0.28]} radius={0.1} smoothness={4} position={[0, 0.72, -0.42]} castShadow>
+        <meshStandardMaterial color={matSofaPink.color} roughness={0.9} />
+      </RoundedBox>
+      {[-1.0, 1.0].map((x) => (
+        <RoundedBox key={x} args={[0.24, 0.55, 0.9]} radius={0.08} smoothness={4} position={[x, 0.5, 0]} castShadow>
+          <meshStandardMaterial color={matSofaPink.color} roughness={0.9} />
+        </RoundedBox>
+      ))}
+      <RoundedBox args={[0.42, 0.42, 0.16]} radius={0.08} smoothness={4} position={[-0.5, 0.72, -0.28]} rotation={[0, 0, 0.15]}>
+        <meshStandardMaterial color={matPillowA.color} roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[0.42, 0.42, 0.16]} radius={0.08} smoothness={4} position={[0.5, 0.72, -0.28]} rotation={[0, 0, -0.12]}>
+        <meshStandardMaterial color={matPillowB.color} roughness={0.9} />
+      </RoundedBox>
+    </group>
+  );
+});
+
+/** Round coffee table at (6.5,8.2) with two mugs. */
+const CoffeeTable = memo(function CoffeeTable() {
+  return (
+    <group position={[6.5, 0, 8.2]}>
+      <mesh geometry={geoCylinder} material={matTableWood} scale={[1.1, 0.07, 1.1]} position={[0, 0.42, 0]} castShadow />
+      <mesh geometry={geoCylinder} material={matTableDark} scale={[0.12, 0.4, 0.12]} position={[0, 0.2, 0]} />
+      <mesh geometry={geoCylinder} material={matTableDark} scale={[0.5, 0.05, 0.5]} position={[0, 0.025, 0]} />
+      <Mug position={[-0.25, 0.455, 0.1]} />
+      <Mug position={[0.28, 0.455, -0.12]} />
     </group>
   );
 });
@@ -42,25 +79,17 @@ const InfoScreen = memo(function InfoScreen() {
 export const Reception = memo(function Reception() {
   return (
     <group>
-      {/* north partition (z=6) is owned by the project room */}
-      {/* east partition: door gap z 9..11 into the workspace bullpen */}
-      <WallSegments axis="z" fixed={-10} from={6} to={14} gaps={[[9, 11]]} />
-      <Door position={[-10, 0, 10]} rotationY={Math.PI / 2} width={2} />
-      <Signage text="PINTU MASUK" position={[-14, 2.9, 13.82]} rotationY={Math.PI} scale={0.6} />
-
-      <ReceptionCounter position={[-14, 0, 11.5]} />
-      <Signage text="DIFIA" subtext="RESEPSIONIS" position={[-14, 2.3, 11.1]} scale={0.9} />
-
+      <Counter />
+      <CounterLogo />
+      {/* receptionist chair behind the counter, faces the visitors */}
+      <CozyChair position={[0, 0, 6.7]} rotationY={0} pinkStripe />
+      {/* flanking plants */}
+      <CozyPlant position={[-2.4, 0, 7.4]} />
+      <CozyPlant position={[2.4, 0, 7.4]} />
       {/* waiting area */}
-      <Rug position={[-17, 0, 8.2]} radius={2} />
-      <Sofa position={[-17, 0, 7.3]} rotationY={Math.PI} />
-      <CoffeeTable position={[-17, 0, 8.8]} />
-      <InfoScreen />
-      <Plant position={[-19.2, 0, 13.2]} />
-      <Plant position={[-10.8, 0, 13.2]} />
-      <Plant position={[-19.2, 0, 6.8]} scale={0.85} />
-      <CeilingLamp position={[-16, 10]} />
-      <CeilingLamp position={[-12, 8]} />
+      <Sofa />
+      <CoffeeTable />
+      <CozyPlant position={[8.6, 0, 6.5]} scale={1.2} />
     </group>
   );
 });
