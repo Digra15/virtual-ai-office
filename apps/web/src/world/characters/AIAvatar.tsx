@@ -202,19 +202,27 @@ export const AIAvatar = memo(function AIAvatar({
       let px = 0, pz = 0; // figure local offset
       let flat = false; // lay the plane horizontal (sleeping)
       if (isSleeping) {
-        // lying flat on the recovery bed: mattress top y≈0.68, head north
+        // lying flat on the recovery bed: mattress top y≈0.68, head NORTH (pillow)
         flat = true;
-        y = 0.78;
+        y = 0.7;
         // scale to fit bed length (2.1): image is wide (lying down)
-        const len = 1.95;
+        const len = 1.9;
         sx = len / FIGURE_H;
         sy = len / FIGURE_H / aspect;
       } else if (useTyping) {
-        // sitting at the desk typing: seat height, nudged toward the desk
-        // (north, -z), hands near the keyboard; subtle key-bounce
-        y = 0.82 + Math.sin(t * 8) * 0.008;
-        pz = -0.3;
+        // sitting at the desk typing: upper-body at sitting height
+        const H = 1.1;
+        sy = H / FIGURE_H;
+        sx = sy; // uniform scale
+        y = 1.0 + Math.sin(t * 8) * 0.008;
+        pz = -0.15; // nudge toward desk
         rx = 0.04;
+      } else if (useSitting) {
+        // sitting on sofa: seat ~0.45, scale to sitting height ~1.15
+        const Hs = 1.15;
+        sy = Hs / FIGURE_H;
+        sx = sy;
+        y = 0.45 + Hs / 2;
       } else if (praying) {
         y = baseY - 0.02 + Math.sin(t * 1.2) * 0.008;
         rx = 0.06;
@@ -240,10 +248,10 @@ export const AIAvatar = memo(function AIAvatar({
         sy = 1 + Math.sin(t * 1.6) * 0.008;
       }
       if (flat) {
-        // sleeping: plane lies flat on the bed, head north, no billboard
+        // sleeping: plane lies flat on the bed, head north (pillow), no billboard
         fig.position.set(px, y, pz);
         fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
-        fig.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
+        fig.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
       } else {
         fig.position.set(px, y, pz);
         fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
