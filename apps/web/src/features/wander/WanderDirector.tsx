@@ -44,6 +44,8 @@ export interface WanderSpot {
   x: number;
   z: number;
   label: string;
+  /** Y rotation (radians) the agent should face when arriving; null = keep travel direction. */
+  facing?: number | null;
 }
 
 /**
@@ -56,7 +58,9 @@ export const WANDER_SPOTS: WanderSpot[] = [
   { x: -11.6, z: -9.5, label: "musola" },
   { x: -10.0, z: -9.5, label: "musola" },
   { x: 4.2, z: -7.5, label: "pantry" },
-  { x: 6.5, z: 6.5, label: "lobby sofa" },
+  // Lobby sofa at (6.5,6.5) faces south (+Z) toward the coffee table —
+  // sit facing the table (facing 0), not into the backrest.
+  { x: 6.5, z: 6.5, label: "lobby sofa", facing: 0 },
   { x: 0, z: -3, label: "corridor" },
   { x: 0, z: 4.2, label: "aisle" },
 ];
@@ -127,7 +131,7 @@ function tick(): void {
     speed: WANDER_SPEED,
     arriveActivity: "standing",
     arrivePose: "free",
-    arriveFacing: null,
+    arriveFacing: spot.facing ?? null,
     onArrive: () => {
       const st = getState(agent.id);
       st.returnAt = Date.now() + STROLL_STAY_MS + rand(0, 15_000);

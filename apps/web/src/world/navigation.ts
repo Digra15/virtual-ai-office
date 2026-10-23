@@ -6,6 +6,19 @@
  * hand-place waypoints in open corridors and connect them explicitly —
  * simple, deterministic, and easy to extend.
  *
+ * Collision awareness (2026-10-23):
+ * - `findPath` picks the nearest waypoint *in the same zone* as each
+ *   endpoint (zone = room id from floorPlan.roomAt, or null for open
+ *   space). Because the graph routes through door waypoints
+ *   ("musola-in" inside, "cor-musola" outside, ...), same-zone selection
+ *   forces paths through doors instead of through walls.
+ * - Straight legs (endpoint ↔ waypoint) are validated against circular
+ *   furniture obstacles (`segmentBlocked`, agent radius 0.35). If the
+ *   nearest same-zone waypoint is blocked, the next-nearest clear one is
+ *   used; if none is clear, the nearest is kept (best effort).
+ * - Obstacles that contain an endpoint are ignored, so agents can start
+ *   at / arrive at furniture (e.g. walk up to their desk).
+ *
  * Conventions:
  * - All coordinates are floor-plane (x, z); y is always 0 (ONE floor).
  * - `findPath(from, to)` returns a list of {x,z} points: the nearest
@@ -25,6 +38,8 @@
  *   via ws-e (8.5,-2) → meet-out (8.5,2).
  * - Lobby (south): entrance door at (0,10).
  */
+
+import { roomAt } from "./building/floorPlan";
 
 export interface Waypoint {
   id: string;
@@ -80,6 +95,130 @@ export interface Point2D {
   z: number;
 }
 
+// ---------------------------------------------------------------------------
+// Furniture obstacles (circles on the floor plane).
+//
+// Positions mirror the room components (Workspace, Reception, MeetingRoom,
+// Pantry, ServerRoom, RecoveryRoom, ProjectRoom). Radii approximate the
+// furniture footprint; `segmentBlocked` adds AGENT_RADIUS on top.
+// ---------------------------------------------------------------------------
+
+export interface Obstacle {
+  /** Stable id for debugging / tests. */
+  id: string;
+  x: number;
+  z: number;
+  r: number;
+}
+
+/** Agent body radius (world units) added to every obstacle radius. */
+export const AGENT_RADIUS = 0.35;
+
+const DESK_XS = [-4, -2, 2, 4];
+const DESK_ZS = [-1.3, 1.3];
+
+export const OBSTACLES: Obstacle[] = [
+  // 8 workspace desks (1.7 × 0.85) — Workspace.tsx / floorPlan WORKSTATIONS
+  ...DESK_XS.flatMap((x) =>
+    DESK_ZS.map((z, zi): Obstacle => ({
+      id: `desk-${x}-${zi}`,
+      x,
+      z,
+      r: 1.0,
+    })),
+  ),
+  // Lobby: pink sofa (2.0 × 0.9) + round coffee table (r≈1.1) — Reception.tsx
+  { id: "lobby-sofa", x: 6.5, z: 6.5, r: 1.2 },
+  { id: "lobby-coffee-table", x: 6.5, z: 8.2, r: 1.1 },
+  // Reception counter (3.8 × 1.1) — Reception.tsx
+  { id: "reception-counter", x: 0, z: 7.4, r: 1.5 },
+  // Meeting table (2.4 × 5.0) — MeetingRoom.tsx (moderate radius: the
+  // table ends stay walkable, the middle is blocked)
+  { id: "meeting-table", x: 12.8, z: 4.4, r: 2.0 },
+  // Pantry: counter (4.8 × 0.65) + round dining table (r≈1.6) — Pantry.tsx
+  { id: "pantry-counter", x: 4.2, z: -11.4, r: 2.0 },
+  { id: "pantry-table", x: 4.2, z: -7.5, r: 1.2 },
+  // Server racks (0.9 × 0.8) — ServerRoom.tsx SERVER_RACKS
+  { id: "server-rack-0", x: 13.8, z: -10, r: 0.6 },
+  { id: "server-rack-1", x: 13.8, z: -8.5, r: 0.6 },
+  { id: "server-rack-2", x: 13.8, z: -7, r: 0.6 },
+  // Recovery beds (1.05 × 2.1) — floorPlan RECOVERY_BEDS
+  { id: "recovery-bed-0", x: -7.3, z: -10.8, r: 1.1 },
+  { id: "recovery-bed-1", x: -5.45, z: -10.8, r: 1.1 },
+  { id: "recovery-bed-2", x: -3.6, z: -10.8, r: 1.1 },
+  { id: "recovery-bed-3", x: -1.75, z: -10.8, r: 1.1 },
+  // Project room discussion table (1.8 × 0.9) — ProjectRoom.tsx
+  { id: "project-table", x: -11.5, z: 5.5, r: 1.1 },
+];
+
+/** Distance from point p to the segment a→b (floor plane). */
+function distPointToSegment(p: Point2D, a: Point2D, b: Point2D): number {
+  const abx = b.x - a.x;
+  const abz = b.z - a.z;
+  const lenSq = abx * abx + abz * abz;
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.z - a.z);
+  const t = Math.max(
+    0,
+    Math.min(1, ((p.x - a.x) * abx + (p.z - a.z) * abz) / lenSq),
+  );
+  return Math.hypot(p.x - (a.x + t * abx), p.z - (a.z + t * abz));
+}
+
+/**
+ * True when the straight segment a→b passes within (r + AGENT_RADIUS) of
+ * any furniture obstacle. Obstacles containing either endpoint are
+ * ignored so agents can start at / walk up to furniture (e.g. their desk).
+ */
+export function segmentBlocked(a: Point2D, b: Point2D): boolean {
+  for (const o of OBSTACLES) {
+    if (Math.hypot(a.x - o.x, a.z - o.z) < o.r) continue;
+    if (Math.hypot(b.x - o.x, b.z - o.z) < o.r) continue;
+    if (distPointToSegment(o, a, b) < o.r + AGENT_RADIUS) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Zone-aware waypoint selection.
+//
+// A "zone" is the room id containing a point (floorPlan.roomAt), or null
+// for open space (corridor / gaps between rooms). Picking the nearest
+// waypoint in the SAME zone as the endpoint keeps the straight first/last
+// legs inside one convex room — they cannot cross a wall — and the BFS
+// middle is forced to route through the room's door waypoints.
+// ---------------------------------------------------------------------------
+
+/** Zone id of a floor point: room id, or null for open space. */
+export function zoneOf(p: Point2D): string | null {
+  return roomAt(p.x, p.z, 0)?.id ?? null;
+}
+
+/** Precomputed zone for every waypoint. */
+const WAYPOINT_ZONES: Record<string, string | null> = Object.fromEntries(
+  Object.values(WAYPOINTS).map((w) => [w.id, zoneOf(w)]),
+);
+
+/**
+ * Nearest waypoint in the same zone as `p`, preferring one whose straight
+ * segment from `p` is not blocked by furniture. Falls back to the global
+ * nearest waypoint when the zone has none (best effort, never throws).
+ */
+export function nearestWaypointInZone(p: Point2D): Waypoint {
+  const zone = zoneOf(p);
+  const sameZone = Object.values(WAYPOINTS).filter(
+    (w) => WAYPOINT_ZONES[w.id] === zone,
+  );
+  const pool = sameZone.length > 0 ? sameZone : Object.values(WAYPOINTS);
+  const sorted = [...pool].sort(
+    (w1, w2) =>
+      Math.hypot(w1.x - p.x, w1.z - p.z) - Math.hypot(w2.x - p.x, w2.z - p.z),
+  );
+  for (const w of sorted) {
+    if (!segmentBlocked(p, w)) return w;
+  }
+  return sorted[0]; // WAYPOINTS is non-empty by construction.
+}
+
 /** Nearest waypoint to a floor point (straight-line distance). */
 export function nearestWaypoint(p: Point2D): Waypoint {
   let best: Waypoint | null = null;
@@ -124,13 +263,14 @@ export function bfsPath(fromId: string, toId: string): string[] {
 }
 
 /**
- * Full walking path from `from` to `to`: nearest waypoint to `from`,
- * BFS hops, then the exact destination. Duplicate consecutive points are
- * collapsed. Returns [] only if the graph has no route.
+ * Full walking path from `from` to `to`: nearest same-zone waypoint to
+ * `from` (collision-aware), BFS hops, then the exact destination.
+ * Duplicate consecutive points are collapsed. Returns [] only if the
+ * graph has no route.
  */
 export function findPath(from: Point2D, to: Point2D): Point2D[] {
-  const fromW = nearestWaypoint(from);
-  const toW = nearestWaypoint(to);
+  const fromW = nearestWaypointInZone(from);
+  const toW = nearestWaypointInZone(to);
   const hopIds = bfsPath(fromW.id, toW.id);
   if (hopIds.length === 0) return [];
   const pts: Point2D[] = hopIds.map((id) => {
