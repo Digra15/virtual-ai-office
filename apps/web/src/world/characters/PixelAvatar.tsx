@@ -16,7 +16,7 @@ import type {
   SpriteDirection,
 } from "./characterTypes";
 import { selectSpriteDirection, wrapAngle } from "./characterTypes";
-import { isInMusola } from "./facing";
+import { isInMusola, QIBLA_FACING } from "./facing";
 import { prayerWearFor } from "./characterPresets";
 import {
   CELEBRATE_SECONDS,
@@ -283,7 +283,7 @@ export const PixelAvatar = memo(function PixelAvatar({
         state.camera.position.x - tmpV.x,
         state.camera.position.z - tmpV.z,
       );
-      const facing = g.rotation.y;
+      const facing = praying ? QIBLA_FACING : g.rotation.y;
       // Yaw the plane toward the camera (never edge-on)...
       if (figure.current) {
         figure.current.rotation.y = wrapAngle(camAz - facing);

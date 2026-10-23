@@ -1,8 +1,8 @@
 /**
- * Musola (x -16..-8, z -12..-4.5): gold mihrab arch on the north wall,
- * 6 prayer rugs (prayerRug texture) in 3 columns × 2 rows, a plant, and
- * an "ARAH KIBLAT" plaque on the north wall. Prayer outfits are handled
- * by the character system — this file only builds the room.
+ * Musola (x -16..-9, z -12..-4.5): the qibla is the EAST wall (x=-9) —
+ * gold mihrab arch + "ARAH KIBLAT" plaque there, 6 prayer rugs
+ * (3 columns × 2 rows) rotated to face east, a plant. Prayer outfits
+ * are handled by the character system — this file only builds the room.
  */
 import { memo } from "react";
 import * as THREE from "three";
@@ -30,10 +30,11 @@ export const PRAYER_RUG_POSITIONS: Array<[number, number]> = [
   [-10.0, -7.3],
 ];
 
-/** Gold mihrab arch at (-11.5,-11.8): two pillars + half-torus arch. */
+/** Gold mihrab arch on the EAST wall (x=-9) — the qibla wall.
+ *  Two pillars + half-torus arch, facing -X (west) into the room. */
 const Mihrab = memo(function Mihrab() {
   return (
-    <group position={[-11.5, 0, -11.8]}>
+    <group position={[-9.2, 0, -8.25]} rotation={[0, -Math.PI / 2, 0]}>
       {[-1.1, 1.1].map((x) => (
         <group key={x}>
           <mesh geometry={geoCylinder} material={matGold} scale={[0.22, 2.2, 0.22]} position={[x, 1.1, 0]} castShadow />
@@ -59,18 +60,17 @@ const Mihrab = memo(function Mihrab() {
   );
 });
 
-/** "ARAH KIBLAT" plaque on the north wall (z=-12), facing +Z into the room.
- *  Placed left of the mihrab (x=-14.2, clear of its pillars at -12.6/-10.4)
- *  so it sits fully visible on the wall, never hidden behind the arch. */
+/** "ARAH KIBLAT" plaque on the EAST wall (x=-9, the qibla wall), facing
+ *  -X (west) into the room. Placed south of the mihrab, fully visible. */
 const QiblaPlaque = memo(function QiblaPlaque() {
   return (
-    <group position={[-14.2, 1.9, -11.86]}>
+    <group position={[-9.1, 1.9, -5.5]} rotation={[0, -Math.PI / 2, 0]}>
       <mesh geometry={geoBox} material={matPlaqueBg} scale={[2.4, 0.7, 0.08]} castShadow />
       <Text position={[0, 0.1, 0.05]} fontSize={0.28} color="#e8c468" anchorX="center" anchorY="middle">
         ARAH KIBLAT
       </Text>
       <Text position={[0, -0.2, 0.05]} fontSize={0.18} color="#a8a29e" anchorX="center" anchorY="middle">
-        ▲ menghadap mihrab
+        ◀ menghadap mihrab
       </Text>
     </group>
   );
@@ -83,7 +83,14 @@ export const Musola = memo(function Musola() {
       <Mihrab />
       <QiblaPlaque />
       {PRAYER_RUG_POSITIONS.map(([x, z], i) => (
-        <mesh key={i} geometry={geoBox} position={[x, 0.02, z]} scale={[1.15, 0.04, 0.7]} receiveShadow>
+        <mesh
+          key={i}
+          geometry={geoBox}
+          position={[x, 0.02, z]}
+          rotation={[0, -Math.PI / 2, 0]}
+          scale={[1.15, 0.04, 0.7]}
+          receiveShadow
+        >
           <meshStandardMaterial map={rugTex} roughness={0.95} />
         </mesh>
       ))}
