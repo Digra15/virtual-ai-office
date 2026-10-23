@@ -111,7 +111,7 @@ describe("useOfficeConfigStore", () => {
         hairColor: "#111111",
         eyeColor: "#222222",
         skinTone: "#ffd9b8",
-        outfitStyle: "sweater",
+        outfitStyle: "blazer",
         outfitPrimary: "#333333",
         outfitSecondary: "#444444",
         accessory: "ribbon",

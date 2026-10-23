@@ -1,7 +1,6 @@
 import { memo, useEffect, useRef } from "react";
 import type { AgentInfo } from "@virtual-ai-office/shared";
-import { PixelAvatar } from "./PixelAvatar";
-import { getCharacterPreset } from "./characterPresets";
+import { AIAvatar } from "./AIAvatar";
 import { movement } from "../movement";
 import {
   DEFAULT_PRESENCE,
@@ -40,7 +39,6 @@ export const AgentAvatar = memo(function AgentAvatar({
   agent,
   color,
 }: AgentAvatarProps) {
-  const preset = getCharacterPreset(agent.id);
   const outerRef = useRef<import("three").Group>(null);
   const presence =
     usePresenceStore((s) => s.presences[agent.id]) ?? DEFAULT_PRESENCE;
@@ -65,9 +63,8 @@ export const AgentAvatar = memo(function AgentAvatar({
         : null;
 
   return (
-    <PixelAvatar
+    <AIAvatar
       agent={agent}
-      preset={preset}
       color={color}
       groupRef={outerRef}
       pose={presence.pose}

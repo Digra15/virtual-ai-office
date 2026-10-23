@@ -5,17 +5,17 @@ import { prayerWearFor } from "../characterPresets";
 import {
   FRAME_COUNTS,
   FRAME_FPS,
-  PIXEL_ANIMATIONS,
-  SPRITE_H,
-  SPRITE_W,
-  getPixelFrame,
+  VECTOR_ANIMATIONS,
+  VECTOR_H,
+  VECTOR_W,
+  getVectorFrame,
   type PrayerVariant,
-} from "./pixelSprites";
+} from "../vector/vectorSprites";
 
 /**
  * Animated 2D preview of a character preset: a plain <canvas> that cycles
  * through every animation's frame set (idle → typing → thinking → walking
- * → meeting → celebrate → praying), drawn pixelated (image smoothing off).
+ * → meeting → celebrate → praying), drawn smooth (vector art).
  *
  * Direction buttons preview the 2.5D sprite views (front / side / back);
  * the prayer toggle previews the musola outfit (mukena / sarung+peci).
@@ -36,8 +36,8 @@ export function PixelPreview({
   const [prayerOn, setPrayerOn] = useState(false);
   const scratch = useMemo(() => {
     const c = document.createElement("canvas");
-    c.width = SPRITE_W;
-    c.height = SPRITE_H;
+    c.width = VECTOR_W;
+    c.height = VECTOR_H;
     return c;
   }, []);
 
@@ -48,7 +48,7 @@ export function PixelPreview({
     if (!ctx) return;
     const sctx = scratch.getContext("2d");
     if (!sctx) return;
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
 
     const prayer: PrayerVariant = prayerOn ? prayerWearFor(preset) : null;
     let tick = 0;
@@ -56,14 +56,14 @@ export function PixelPreview({
     const id = window.setInterval(() => {
       tick++;
       const anim =
-        PIXEL_ANIMATIONS[
-          Math.floor(tick / TICKS_PER_ANIM) % PIXEL_ANIMATIONS.length
+        VECTOR_ANIMATIONS[
+          Math.floor(tick / TICKS_PER_ANIM) % VECTOR_ANIMATIONS.length
         ];
       const inAnim = tick % TICKS_PER_ANIM;
       const frame =
         Math.floor(inAnim * 0.1 * FRAME_FPS[anim]) % FRAME_COUNTS[anim];
-      const buf = getPixelFrame(preset, dir, anim, frame, false, prayer);
-      sctx.putImageData(new ImageData(buf, SPRITE_W, SPRITE_H), 0, 0);
+      const buf = getVectorFrame(preset, dir, anim, frame, false, prayer);
+      sctx.putImageData(new ImageData(buf, VECTOR_W, VECTOR_H), 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(scratch, 0, 0, canvas.width, canvas.height);
       if (labelRef.current) {
@@ -78,10 +78,10 @@ export function PixelPreview({
     <div className="pixel-preview">
       <canvas
         ref={canvasRef}
-        width={SPRITE_W * scale}
-        height={SPRITE_H * scale}
-        style={{ imageRendering: "pixelated" }}
-        aria-label="Animated pixel-art character preview"
+        width={VECTOR_W * scale}
+        height={VECTOR_H * scale}
+        style={{ imageRendering: "auto" }}
+        aria-label="Animated character preview"
       />
       <div ref={labelRef} className="pixel-preview-anim">
         idle

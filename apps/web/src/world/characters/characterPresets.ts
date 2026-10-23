@@ -14,16 +14,16 @@ import {
 /**
  * Visual identities for the 8 demo agents. Each agent gets a UNIQUE
  * combination of hairstyle, hair color, eye color, outfit, and accessory,
- * designed to read as a personality matching their role:
+ * designed as polished professionals matching their role:
  *
- * - Nika (Personal Assistant): warm & welcoming — hime hair, ribbon
- * - Research (Research Agent): studious — neat bob, round glasses
- * - Coding (Coding Agent): focused hacker — messy hair, hoodie, headphones
- * - Writing (Writing Agent): dreamy creative — wavy lavender hair, beret
- * - Design (Design Agent): stylish — twintails, star hairpin
- * - Data (Data Analyst): sharp — spiky hair, shirt+tie, rectangular glasses
- * - Automation (Automation Agent): energetic — ponytail, work jacket, cap
- * - Monitoring (Monitoring Agent): alert — silver crop, uniform, headset mic
+ * - Nika (Personal Assistant): poised — hime hair, navy blazer, ribbon
+ * - Research (Research Agent): studious — neat bob, vest + tie, round glasses
+ * - Coding (Coding Agent): smart-casual — textured crop, button-up shirt, headphones
+ * - Writing (Writing Agent): creative professional — wavy lavender hair, cardigan, beret
+ * - Design (Design Agent): stylish — low twintails, teal blazer, star pin
+ * - Data (Data Analyst): sharp — swept hair, full suit + tie, rectangular glasses
+ * - Automation (Automation Agent): energetic — sleek ponytail, polo shirt, cap
+ * - Monitoring (Monitoring Agent): alert — tidy crop, professional uniform, headset mic
  */
 
 const PRESETS: CharacterPreset[] = [
@@ -31,10 +31,10 @@ const PRESETS: CharacterPreset[] = [
     agentId: "nika",
     hairStyle: "hime",
     hairColor: "#6b4226",
-    eyeColor: "#b06a2c",
+    eyeColor: "#8a5a2b",
     skinTone: "#ffd9b8",
-    outfitStyle: "sweater",
-    outfitPrimary: "#f5ead9",
+    outfitStyle: "blazer",
+    outfitPrimary: "#2b3a55",
     outfitSecondary: "#d98a9e",
     accessory: "ribbon",
     prayerWear: "mukena",
@@ -57,9 +57,9 @@ const PRESETS: CharacterPreset[] = [
     hairColor: "#2d3a55",
     eyeColor: "#4ade80",
     skinTone: "#e8b48a",
-    outfitStyle: "hoodie",
-    outfitPrimary: "#3a4356",
-    outfitSecondary: "#232a3a",
+    outfitStyle: "smartShirt",
+    outfitPrimary: "#4a6fa5",
+    outfitSecondary: "#2d3a55",
     accessory: "headphones",
     prayerWear: "sarungPeci",
   },
@@ -67,10 +67,10 @@ const PRESETS: CharacterPreset[] = [
     agentId: "writing",
     hairStyle: "wavy",
     hairColor: "#b9a7e6",
-    eyeColor: "#a78bfa",
+    eyeColor: "#7c5cbf",
     skinTone: "#ffe0c2",
-    outfitStyle: "cozy",
-    outfitPrimary: "#c9a7c7",
+    outfitStyle: "cardigan",
+    outfitPrimary: "#f5ead9",
     outfitSecondary: "#a37fa3",
     accessory: "beret",
     prayerWear: "mukena",
@@ -78,11 +78,11 @@ const PRESETS: CharacterPreset[] = [
   {
     agentId: "design",
     hairStyle: "twintails",
-    hairColor: "#ff8c42",
-    eyeColor: "#38bdf8",
+    hairColor: "#b45a1f",
+    eyeColor: "#2b8fd4",
     skinTone: "#ffd9b8",
-    outfitStyle: "jacket",
-    outfitPrimary: "#2aa198",
+    outfitStyle: "blazer",
+    outfitPrimary: "#1f6f6b",
     outfitSecondary: "#ff8c42",
     accessory: "starPin",
     prayerWear: "mukena",
@@ -90,11 +90,11 @@ const PRESETS: CharacterPreset[] = [
   {
     agentId: "data",
     hairStyle: "spiky",
-    hairColor: "#8fa3b8",
-    eyeColor: "#60a5fa",
+    hairColor: "#5a6b7d",
+    eyeColor: "#3b82c4",
     skinTone: "#d9a06f",
-    outfitStyle: "shirtTie",
-    outfitPrimary: "#dbe7f3",
+    outfitStyle: "suit",
+    outfitPrimary: "#232b3d",
     outfitSecondary: "#1f3a5f",
     accessory: "rectGlasses",
     prayerWear: "sarungPeci",
@@ -102,10 +102,10 @@ const PRESETS: CharacterPreset[] = [
   {
     agentId: "automation",
     hairStyle: "ponytail",
-    hairColor: "#a34a2a",
-    eyeColor: "#f59e0b",
+    hairColor: "#7c3a1a",
+    eyeColor: "#b45309",
     skinTone: "#e8b48a",
-    outfitStyle: "workJacket",
+    outfitStyle: "polo",
     outfitPrimary: "#e07b39",
     outfitSecondary: "#3a3f4a",
     accessory: "cap",
@@ -114,13 +114,29 @@ const PRESETS: CharacterPreset[] = [
   {
     agentId: "monitoring",
     hairStyle: "short",
-    hairColor: "#d7dde8",
+    hairColor: "#9aa3b5",
     eyeColor: "#ef4444",
     skinTone: "#f2c9a0",
     outfitStyle: "uniform",
     outfitPrimary: "#232b3d",
     outfitSecondary: "#b91c1c",
     accessory: "headsetMic",
+    prayerWear: "sarungPeci",
+  },
+  {
+    // Reference character (user-supplied image 2026-10-23): cool chibi
+    // with wild black spikes, white tee, blue cargo pants, sneakers,
+    // and a black messenger bag. "Plek ketiplek" recreation.
+    agentId: "reference",
+    hairStyle: "wildSpikes",
+    hairColor: "#23232e",
+    eyeColor: "#26262e",
+    skinTone: "#ffd9b8",
+    outfitStyle: "streetTee",
+    outfitPrimary: "#f2f2f5",
+    outfitSecondary: "#5b6b8c",
+    accessory: "messengerBag",
+    expression: "cool",
     prayerWear: "sarungPeci",
   },
 ];
@@ -204,9 +220,9 @@ const FALLBACK_HAIR: HairStyle[] = ["bob", "messy", "short", "ponytail"];
 const FALLBACK_HAIR_COLORS = ["#4a3728", "#2d3a55", "#6b7280", "#7c4a21"];
 const FALLBACK_EYE_COLORS = ["#4ade80", "#38bdf8", "#f59e0b", "#a78bfa"];
 const FALLBACK_SKIN = ["#ffd9b8", "#f2c9a0", "#e8b48a", "#d9a06f"];
-const FALLBACK_OUTFIT: OutfitStyle[] = ["sweater", "hoodie", "cozy", "jacket"];
-const FALLBACK_OUTFIT_A = ["#3a4356", "#2aa198", "#c9a7c7", "#e07b39"];
-const FALLBACK_OUTFIT_B = ["#232a3a", "#ff8c42", "#a37fa3", "#3a3f4a"];
+const FALLBACK_OUTFIT: OutfitStyle[] = ["blazer", "smartShirt", "cardigan", "suit"];
+const FALLBACK_OUTFIT_A = ["#2b3a55", "#4a6fa5", "#a37fa3", "#232b3d"];
+const FALLBACK_OUTFIT_B = ["#d98a9e", "#2d3a55", "#f5ead9", "#1f3a5f"];
 const FALLBACK_ACCESSORY: AccessoryKind[] = ["none", "none", "starPin", "ribbon"];
 
 /**

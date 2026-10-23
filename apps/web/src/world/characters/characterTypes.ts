@@ -58,7 +58,8 @@ export type HairStyle =
   | "twintails" // twin tails with ties (Design)
   | "spiky" // sharp upward spikes (Data)
   | "ponytail" // high side/back ponytail (Automation)
-  | "short"; // tidy short crop (Monitoring)
+  | "short" // tidy short crop (Monitoring)
+  | "wildSpikes"; // voluminous wild spikes (reference character)
 
 export const HAIR_STYLES: HairStyle[] = [
   "hime",
@@ -69,28 +70,29 @@ export const HAIR_STYLES: HairStyle[] = [
   "spiky",
   "ponytail",
   "short",
+  "wildSpikes",
 ];
 
-/** Simplified modern outfits, built from boxes/cones/capsules. */
+/** Tailored professional office attire. */
 export type OutfitStyle =
-  | "sweater" // knit sweater + skirt
-  | "vest" // shirt + vest + tie
-  | "hoodie" // hoodie + pocket
-  | "cozy" // oversized sweater
-  | "jacket" // open jacket + skirt
-  | "shirtTie" // dress shirt + tie
-  | "workJacket" // work jacket + belt
-  | "uniform"; // dark uniform + epaulets
+  | "blazer" // tailored blazer + blouse
+  | "vest" // dress shirt + vest + tie
+  | "smartShirt" // button-up shirt, sleeves rolled
+  | "cardigan" // blouse + open cardigan
+  | "suit" // full suit + tie
+  | "polo" // polo shirt
+  | "uniform" // professional uniform
+  | "streetTee"; // white tee + cargo pants + sneakers (reference character)
 
 export const OUTFIT_STYLES: OutfitStyle[] = [
-  "sweater",
+  "blazer",
   "vest",
-  "hoodie",
-  "cozy",
-  "jacket",
-  "shirtTie",
-  "workJacket",
+  "smartShirt",
+  "cardigan",
+  "suit",
+  "polo",
   "uniform",
+  "streetTee",
 ];
 
 /** Head/face accessories. */
@@ -103,6 +105,7 @@ export type AccessoryKind =
   | "rectGlasses"
   | "cap"
   | "headsetMic"
+  | "messengerBag" // black shoulder bag + strap (reference character)
   | "none";
 
 export const ACCESSORY_KINDS: AccessoryKind[] = [
@@ -114,6 +117,7 @@ export const ACCESSORY_KINDS: AccessoryKind[] = [
   "rectGlasses",
   "cap",
   "headsetMic",
+  "messengerBag",
   "none",
 ];
 
@@ -197,6 +201,13 @@ export interface CharacterPreset {
   /** Secondary garment color (skirt, vest, trim...). */
   outfitSecondary: string;
   accessory: AccessoryKind;
+  /**
+   * Facial expression variant. OPTIONAL and additive: presets written
+   * before this field existed stay valid (defaults to "neutral").
+   * "cool" = half-lidded confident eyes, thick angled brows, smirk
+   * (reference character).
+   */
+  expression?: "cool" | "neutral";
   /**
    * Prayer outfit for the musola. OPTIONAL and additive: presets written
    * before this field existed stay valid (the renderer falls back to
@@ -318,6 +329,18 @@ export interface CharacterModelSource {
 export const PROCEDURAL_PIXEL_SOURCE: CharacterModelSource = {
   id: "procedural-pixel",
   label: "Procedural pixel-art sprite (built-in)",
+  supports: {
+    hairColor: true,
+    eyeColor: true,
+    outfit: true,
+    accessories: true,
+  },
+};
+
+/** The default source: smooth 2D vector-style sprite (built-in, zero downloads). */
+export const PROCEDURAL_VECTOR_SOURCE: CharacterModelSource = {
+  id: "procedural-vector",
+  label: "Procedural vector-style sprite (built-in)",
   supports: {
     hairColor: true,
     eyeColor: true,

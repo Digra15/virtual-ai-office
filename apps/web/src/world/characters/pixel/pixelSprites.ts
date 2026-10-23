@@ -21,14 +21,19 @@
  * female-coded characters, sarong + black peci cap for male-coded ones
  * (`prayerWear` on the preset, resolved via `prayerWearFor()`).
  *
+ * PROFESSIONAL REDESIGN (2026-10-23): the original chibi look (huge head,
+ * anime eyes, blush) was replaced with polished corporate pixel-art —
+ * adult ~3.5-heads proportions, tailored office attire (blazer, suit,
+ * vest+tie, cardigan, shirt, polo, uniform), mature refined faces with
+ * smaller well-defined eyes, neat professional hairstyles with shine
+ * bands, and consistent top-left lighting with fabric shading.
+ *
  * Design notes:
  * - Pure pixel buffers (Uint8ClampedArray) — no DOM, no Three.js here, so
  *   this module is fully unit-testable. Canvas/texture conversion lives in
  *   the components that need it (PixelAvatar, 2D previews).
- * - Grid is 48x48 px (upgraded from 28x36 for the reference character
- *   sheet's richness: hair shading bands, outfit details, accessories).
- *   Sprites are rendered with THREE.NearestFilter, so the individual
- *   pixels stay visible ("agak pixel pixel").
+ * - Grid is 48x48 px. Sprites are rendered with THREE.NearestFilter, so
+ *   the individual pixels stay visible ("agak pixel pixel").
  * - Everything is palette-driven from CharacterPreset: hair style/color,
  *   skin tone, eye color, outfit colors and accessory all flow through, so
  *   admin customization keeps working unchanged.
@@ -48,7 +53,7 @@ import type {
 import { statusToAnimation } from "../characterTypes";
 import type { AgentStatus } from "@virtual-ai-office/shared";
 
-/** Sprite grid dimensions (pixels). Upgraded 28x36 → 48x48. */
+/** Sprite grid dimensions (pixels). */
 export const SPRITE_W = 48;
 export const SPRITE_H = 48;
 
@@ -205,7 +210,6 @@ interface Palette {
   eye: RGB;
   white: RGB;
   dark: RGB;
-  blush: RGB;
   mouth: RGB;
   mouthOpen: RGB;
   out1: RGB;
@@ -214,7 +218,10 @@ interface Palette {
   out2: RGB;
   out2Dark: RGB;
   tie: RGB;
+  trouser: RGB;
+  trouserDark: RGB;
   shoe: RGB;
+  shoeLight: RGB;
   outline: RGB;
   veil: RGB;
   veilDark: RGB;
@@ -231,16 +238,20 @@ function makePalette(preset: CharacterPreset): Palette {
     eye: hexToRgb(preset.eyeColor),
     white: [255, 255, 255],
     dark: [42, 42, 58],
-    blush: [255, 158, 176],
-    mouth: [163, 74, 74],
-    mouthOpen: [120, 40, 48],
+    mouth: [150, 76, 76],
+    mouthOpen: [118, 42, 50],
     out1: hexToRgb(preset.outfitPrimary),
     out1Dark: hexToRgb(shade(preset.outfitPrimary, -0.28)),
     out1Light: hexToRgb(shade(preset.outfitPrimary, 0.25)),
     out2: hexToRgb(preset.outfitSecondary),
     out2Dark: hexToRgb(shade(preset.outfitSecondary, -0.3)),
     tie: hexToRgb(preset.outfitSecondary),
+    // Trousers stay dark/neutral (derived from the primary garment) —
+    // professional dress, never bright.
+    trouser: hexToRgb(shade(preset.outfitPrimary, -0.55)),
+    trouserDark: hexToRgb(shade(preset.outfitPrimary, -0.7)),
     shoe: [43, 43, 58],
+    shoeLight: [74, 74, 96],
     outline: [35, 35, 52],
     veil: [248, 248, 252],
     veilDark: [214, 216, 228],
@@ -429,109 +440,143 @@ function frameSpec(anim: ChibiAnimation, frame: number): FrameSpec {
 }
 
 // ---------------------------------------------------------------------------
-// Drawing — FRONT view head
+// Drawing — FRONT view head (professional adult proportions)
 // ---------------------------------------------------------------------------
+// Head: face x18-30, y5-17 (12 wide x 12 tall). Smaller refined eyes,
+// subtle nose, no blush — a mature professional look.
 
 function drawHairBackFront(p: Pix, pal: Palette, style: HairStyle): void {
   const h = pal.hair;
   const hd = pal.hairDark;
   const hl = pal.hairLight;
   switch (style) {
-    case "hime": // long straight + blunt sidelocks
-      p.rect(10, 4, 28, 30, h);
-      p.rect(10, 10, 3, 24, hd);
-      p.rect(35, 10, 3, 24, hd);
-      p.rect(13, 5, 3, 5, hl);
-      p.rect(14, 30, 3, 4, hd); // strand tips
-      p.rect(31, 30, 3, 4, hd);
+    case "hime": // long straight, neat — softened professional hime
+      p.rect(14, 2, 20, 32, h);
+      p.rect(14, 8, 3, 26, hd);
+      p.rect(31, 8, 3, 26, hd);
+      p.rect(17, 3, 3, 8, hl); // shine band
+      p.rect(17, 14, 2, 10, hl);
+      p.rect(15, 30, 3, 4, hd); // tapered tips
+      p.rect(30, 30, 3, 4, hd);
       break;
-    case "bob": // neat chin-length bob
-      p.rect(11, 4, 26, 4, h);
-      p.rect(9, 7, 30, 20, h);
-      p.rect(9, 7, 3, 20, hd);
-      p.rect(36, 7, 3, 20, hd);
-      p.rect(13, 5, 3, 3, hl);
+    case "bob": // neat chin-length bob, tucked
+      p.rect(15, 2, 18, 3, h);
+      p.rect(13, 4, 22, 16, h);
+      p.rect(13, 4, 3, 16, hd);
+      p.rect(32, 4, 3, 16, hd);
+      p.rect(17, 3, 3, 5, hl);
+      p.rect(14, 18, 3, 2, hd);
+      p.rect(31, 18, 3, 2, hd);
       break;
-    case "messy": {
-      p.rect(10, 7, 28, 12, h);
-      const spikes: Array<[number, number]> = [
-        [10, 7],
-        [15, 10],
-        [21, 8],
-        [27, 10],
-        [33, 7],
-      ];
-      for (const [x, hh] of spikes) p.rect(x, 10 - hh, 5, hh, h);
-      p.rect(12, 7, 3, 3, hl);
-      p.rect(10, 12, 2, 7, hd);
+    case "messy": // modern textured crop — neat, not spiky
+      p.rect(15, 3, 18, 4, h);
+      p.rect(14, 6, 20, 6, h);
+      p.rect(16, 3, 2, 3, hl);
+      p.rect(22, 4, 3, 2, hl);
+      p.rect(14, 8, 2, 4, hd);
+      p.rect(31, 6, 2, 5, hd);
+      // subtle texture nicks
+      p.rect(19, 6, 2, 2, hd);
+      p.rect(26, 7, 2, 2, h);
       break;
-    }
-    case "wavy": {
-      p.rect(10, 4, 28, 7, h);
-      for (let y = 11; y <= 32; y++) {
-        const wob = Math.floor(y / 5) % 2;
-        p.rect(7 + wob, y, 6, 1, h);
-        p.rect(35 - wob, y, 6, 1, h);
+    case "wavy": // soft professional waves
+      p.rect(14, 2, 20, 6, h);
+      for (let y = 8; y <= 30; y++) {
+        const wob = Math.floor(y / 4) % 2;
+        p.rect(12 + wob, y, 5, 1, h);
+        p.rect(31 - wob, y, 5, 1, h);
       }
-      p.rect(7, 11, 2, 22, hd);
-      p.rect(39, 11, 2, 22, hd);
-      p.rect(11, 5, 2, 4, hl);
+      p.rect(12, 8, 2, 22, hd);
+      p.rect(34, 8, 2, 22, hd);
+      p.rect(16, 3, 2, 6, hl);
+      p.rect(16, 12, 2, 8, hl);
+      break;
+    case "twintails": // neat low twintails — professional styling
+      p.rect(15, 3, 18, 12, h);
+      p.rect(6, 10, 7, 20, h); // left tail
+      p.rect(35, 10, 7, 20, h); // right tail
+      p.rect(6, 10, 2, 20, hd);
+      p.rect(40, 10, 2, 20, hd);
+      p.rect(8, 12, 2, 14, hl);
+      p.rect(37, 12, 2, 14, hl);
+      p.rect(7, 10, 5, 2, pal.tie); // ties
+      p.rect(36, 10, 5, 2, pal.tie);
+      p.rect(16, 4, 2, 4, hl);
+      break;
+    case "spiky": // swept volume — confident, tidy
+      p.rect(15, 2, 18, 4, h);
+      p.rect(14, 5, 20, 7, h);
+      p.rect(17, 2, 2, 4, hl);
+      p.rect(23, 3, 3, 2, hl);
+      p.rect(14, 7, 2, 5, hd);
+      p.rect(31, 5, 2, 6, hd);
+      // gentle swept tips (not anime spikes)
+      p.rect(18, 1, 3, 2, h);
+      p.rect(25, 1, 3, 2, h);
+      break;
+    case "ponytail": // sleek high ponytail
+      p.rect(15, 3, 18, 11, h);
+      p.rect(30, 1, 7, 10, h); // tail upper
+      p.rect(31, 11, 5, 12, h); // tail falls
+      p.rect(32, 23, 3, 7, h); // taper
+      p.rect(34, 1, 3, 26, hd);
+      p.rect(27, 2, 4, 3, pal.tie); // tie
+      p.rect(17, 4, 2, 4, hl);
+      break;
+    case "short": // tidy crop with fade
+      p.rect(16, 2, 16, 3, h);
+      p.rect(14, 4, 20, 9, h);
+      p.rect(14, 4, 2, 9, hd);
+      p.rect(32, 4, 2, 9, hd);
+      p.rect(18, 2, 3, 2, hl);
+      break;
+    case "wildSpikes": {
+      // Voluminous wild spikes (reference character): big jagged mass
+      // extending past the head, many sharp individual spikes.
+      // Base mass
+      p.rect(13, 4, 22, 9, h);
+      // Top spikes — tall, sharp triangles
+      p.rect(14, 2, 3, 3, h); p.rect(15, 0, 1, 3, h); // spike 1 (left)
+      p.rect(18, 1, 4, 4, h); p.rect(19, 0, 2, 2, h); // spike 2
+      p.rect(19, 0, 2, 1, hl);
+      p.rect(23, 0, 3, 5, h); p.rect(24, 0, 1, 3, h); // spike 3 (tallest)
+      p.rect(24, 0, 1, 1, hl);
+      p.rect(27, 1, 4, 4, h); p.rect(28, 0, 2, 2, h); // spike 4
+      p.rect(28, 0, 2, 1, hl);
+      p.rect(32, 1, 3, 4, h); p.rect(33, 0, 1, 3, h); // spike 5 (right)
+      // Side spikes (sharp, pointing out)
+      p.rect(10, 5, 4, 3, h); p.rect(8, 6, 2, 1, h); // left
+      p.rect(34, 5, 4, 3, h); p.rect(38, 6, 2, 1, h); // right
+      p.rect(11, 9, 3, 4, h); p.rect(9, 10, 2, 2, h); // left low
+      p.rect(34, 9, 3, 4, h); p.rect(37, 10, 2, 2, h); // right low
+      // Shading: dark valleys between spikes
+      p.rect(17, 3, 2, 3, hd);
+      p.rect(22, 4, 1, 4, hd);
+      p.rect(26, 4, 1, 4, hd);
+      p.rect(31, 3, 2, 4, hd);
+      p.rect(31, 4, 4, 9, hd);
+      p.rect(13, 11, 22, 2, hd);
+      // Highlight: shine on upper-left spikes
+      p.rect(19, 1, 2, 2, hl);
+      p.rect(15, 4, 2, 3, hl);
       break;
     }
-    case "twintails":
-      p.rect(11, 5, 26, 15, h);
-      p.rect(2, 10, 9, 26, h); // left tail
-      p.rect(37, 10, 9, 26, h); // right tail
-      p.rect(2, 10, 2, 26, hd);
-      p.rect(44, 10, 2, 26, hd);
-      p.rect(4, 12, 2, 20, hl);
-      p.rect(39, 12, 2, 20, hl);
-      p.rect(3, 10, 7, 3, pal.tie); // ties
-      p.rect(38, 10, 7, 3, pal.tie);
-      break;
-    case "spiky": {
-      p.rect(10, 8, 28, 11, h);
-      const spikes: Array<[number, number]> = [
-        [10, 8],
-        [16, 11],
-        [23, 9],
-        [30, 11],
-        [35, 8],
-      ];
-      for (const [x, hh] of spikes) p.rect(x, 11 - hh, 5, hh, h);
-      p.rect(12, 8, 3, 3, hl);
-      break;
-    }
-    case "ponytail":
-      p.rect(10, 5, 28, 15, h);
-      p.rect(32, 3, 8, 12, h); // tail upper
-      p.rect(34, 15, 6, 12, h); // tail mid
-      p.rect(35, 27, 4, 8, h); // tail taper
-      p.rect(37, 3, 3, 30, hd); // shade
-      p.rect(28, 3, 5, 4, pal.tie); // tie
-      p.rect(12, 6, 2, 3, hl);
-      break;
-    case "short": // tidy crop
-      p.rect(13, 4, 22, 3, h);
-      p.rect(10, 6, 28, 14, h);
-      p.rect(10, 6, 3, 14, hd);
-      p.rect(14, 4, 3, 2, hl);
-      break;
   }
 }
 
 function drawFaceFront(p: Pix, pal: Palette): void {
   const s = pal.skin;
-  p.rect(14, 10, 20, 14, s);
-  p.clear(14, 10, 2, 2);
-  p.clear(32, 10, 2, 2);
-  p.clear(14, 22, 2, 2);
-  p.clear(32, 22, 2, 2);
+  // Mature face: 12 wide (x18-30), 12 tall (y5-17), tapered jaw.
+  p.rect(18, 6, 12, 10, s);
+  p.rect(19, 5, 10, 1, s);
+  p.rect(20, 16, 8, 1, s);
   // ears
-  p.rect(12, 15, 2, 3, s);
-  p.rect(34, 15, 2, 3, s);
-  // soft cheek shading
-  p.rect(14, 21, 20, 1, pal.skinDark);
+  p.rect(17, 10, 1, 3, s);
+  p.rect(30, 10, 1, 3, s);
+  // top-left light: right edge + jaw shading
+  p.rect(29, 6, 1, 9, pal.skinDark);
+  p.rect(20, 16, 8, 1, pal.skinDark);
+  p.rect(18, 6, 1, 2, pal.skinDark); // temple shade under hairline
 }
 
 function drawFringeFront(p: Pix, pal: Palette, style: HairStyle): void {
@@ -542,71 +587,120 @@ function drawFringeFront(p: Pix, pal: Palette, style: HairStyle): void {
     case "hime":
     case "bob":
     case "twintails":
-      p.rect(11, 7, 26, 4, h);
-      p.rect(11, 10, 4, 2, hd);
-      p.rect(33, 10, 4, 2, hd);
-      p.rect(13, 7, 4, 1, hl);
+      // neat straight fringe
+      p.rect(17, 4, 14, 3, h);
+      p.rect(17, 6, 3, 2, hd);
+      p.rect(28, 6, 3, 2, hd);
+      p.rect(19, 4, 4, 1, hl);
       break;
     case "messy":
-      p.rect(10, 8, 28, 3, h);
-      p.rect(13, 11, 3, 2, h);
-      p.rect(21, 11, 4, 2, h);
-      p.rect(30, 11, 3, 2, h);
+      // textured fringe, side-swept
+      p.rect(15, 5, 18, 2, h);
+      p.rect(17, 7, 3, 2, h);
+      p.rect(24, 7, 4, 2, h);
+      p.rect(17, 5, 4, 1, hl);
       break;
     case "wavy":
-      p.rect(10, 7, 28, 4, h);
-      p.rect(10, 10, 5, 2, hd);
-      p.rect(12, 7, 4, 1, hl);
+      p.rect(15, 4, 18, 3, h);
+      p.rect(15, 6, 4, 2, hd);
+      p.rect(17, 4, 4, 1, hl);
       break;
     case "spiky":
-      p.rect(10, 9, 28, 3, h);
-      p.rect(15, 12, 3, 2, h);
-      p.rect(25, 12, 3, 2, h);
+      // swept up, forehead mostly clear
+      p.rect(15, 4, 18, 2, h);
+      p.rect(20, 6, 3, 1, h);
+      p.rect(17, 4, 4, 1, hl);
       break;
     case "ponytail":
-      p.rect(10, 7, 28, 3, h);
-      p.rect(10, 10, 16, 2, h); // swept
-      p.rect(12, 7, 5, 1, hl);
+      // sleek, side-parted
+      p.rect(15, 4, 18, 2, h);
+      p.rect(15, 6, 12, 1, h);
+      p.rect(17, 4, 5, 1, hl);
       break;
     case "short":
-      p.rect(10, 8, 28, 3, h);
-      p.rect(13, 7, 4, 1, hl);
+      p.rect(15, 4, 18, 2, h);
+      p.rect(18, 4, 4, 1, hl);
       break;
+    case "wildSpikes": {
+      // Jagged bangs: prominent spikes falling over the forehead,
+      // stopping above the brows.
+      p.rect(15, 4, 18, 2, h);
+      p.rect(16, 6, 2, 1, h); // spike tips
+      p.rect(20, 6, 2, 2, h);
+      p.rect(20, 6, 1, 1, hl);
+      p.rect(24, 6, 3, 1, h);
+      p.rect(28, 6, 2, 2, h);
+      p.rect(31, 6, 2, 1, h);
+      p.rect(14, 5, 2, 3, h); // side lock left
+      p.rect(32, 5, 2, 3, h); // side lock right
+      break;
+    }
   }
 }
 
-function drawEyesFront(p: Pix, pal: Palette, blink: boolean): void {
+function drawEyesFront(p: Pix, pal: Palette, blink: boolean, cool = false): void {
   const d = pal.dark;
   const w = pal.white;
   const e = pal.eye;
-  // Big chibi eyes: 6x5 at x16..21 and x26..31, y15..19.
-  if (blink) {
-    p.rect(15, 17, 7, 1, d);
-    p.rect(26, 17, 7, 1, d);
+  if (cool) {
+    // Confident half-lidded eyes (reference): heavy upper lid, calm gaze.
+    for (const x0 of [19, 25]) {
+      p.rect(x0, 10, 5, 2, d); // thick upper lash/lid
+      p.rect(x0, 12, 5, 1, w); // white sliver
+      p.rect(x0 + 1, 12, 3, 1, e); // iris
+      p.rect(x0 + 2, 12, 1, 1, d); // pupil
+      p.rect(x0 + 1, 12, 1, 1, w); // catchlight
+    }
+    if (blink) {
+      p.rect(19, 11, 5, 1, d);
+      p.rect(25, 11, 5, 1, d);
+    }
     return;
   }
-  for (const x0 of [16, 26]) {
-    p.rect(x0 - 1, 15, 8, 1, d); // upper lash
-    p.rect(x0, 16, 6, 4, w); // white
-    p.rect(x0 + 1, 16, 4, 3, e); // iris
-    p.rect(x0 + 1, 16, 2, 1, w); // highlight
-    p.rect(x0 + 2, 17, 2, 2, d); // pupil
-    p.rect(x0, 19, 6, 1, d); // lower lash
+  // Refined professional eyes: 5x3 at x19-23 and x25-29, y10-12.
+  // Much smaller and calmer than the old 6x5 chibi eyes.
+  if (blink) {
+    p.rect(19, 11, 5, 1, d);
+    p.rect(25, 11, 5, 1, d);
+    return;
+  }
+  for (const x0 of [19, 25]) {
+    p.rect(x0, 10, 5, 1, d); // upper lash
+    p.rect(x0, 11, 5, 2, w); // white
+    p.rect(x0 + 1, 11, 3, 2, e); // iris
+    p.rect(x0 + 2, 11, 1, 2, d); // pupil
+    p.rect(x0 + 1, 11, 1, 1, w); // catchlight
   }
 }
 
-function drawFaceDetailsFront(p: Pix, pal: Palette, mouthOpen: boolean): void {
-  p.rect(16, 13, 4, 1, pal.hairDark); // brows
-  p.rect(28, 13, 4, 1, pal.hairDark);
-  p.rect(14, 20, 3, 2, pal.blush); // blush
-  p.rect(31, 20, 3, 2, pal.blush);
-  if (mouthOpen) p.rect(22, 21, 4, 3, pal.mouthOpen);
-  else p.rect(22, 22, 4, 1, pal.mouth);
+function drawFaceDetailsFront(p: Pix, pal: Palette, mouthOpen: boolean, cool = false): void {
+  if (cool) {
+    // Thick angled brows (confident) on the forehead, subtle nose, smirk.
+    p.rect(18, 7, 5, 2, pal.hairDark); // left brow (thick, angled)
+    p.rect(25, 7, 5, 2, pal.hairDark); // right brow (thick, angled)
+    p.rect(24, 12, 1, 2, pal.skinDark); // nose hint
+    if (mouthOpen) p.rect(22, 14, 4, 2, pal.mouthOpen);
+    else {
+      p.rect(22, 15, 3, 1, pal.mouth); // smirk
+      p.rect(25, 14, 2, 1, pal.mouth);
+    }
+    return;
+  }
+  // Defined professional brows (not thick anime).
+  p.rect(19, 8, 4, 1, pal.hairDark);
+  p.rect(25, 8, 4, 1, pal.hairDark);
+  // Subtle nose hint.
+  p.rect(24, 12, 1, 2, pal.skinDark);
+  // Calm professional mouth.
+  if (mouthOpen) p.rect(22, 14, 4, 2, pal.mouthOpen);
+  else p.rect(22, 15, 4, 1, pal.mouth);
 }
 
 // ---------------------------------------------------------------------------
-// Drawing — FRONT view body
+// Drawing — FRONT view body (tailored professional attire)
 // ---------------------------------------------------------------------------
+// Torso: x16-32 (16 wide), y19-32. Structured shoulders, lapels, collars,
+// ties and buttons — a tailored corporate look.
 
 function drawBodyFront(p: Pix, pal: Palette, outfit: OutfitStyle): void {
   const o1 = pal.out1;
@@ -615,67 +709,152 @@ function drawBodyFront(p: Pix, pal: Palette, outfit: OutfitStyle): void {
   const o2 = pal.out2;
   const o2d = pal.out2Dark;
   const s = pal.skin;
+  const w = pal.white;
   // neck
-  p.rect(22, 24, 4, 3, s);
-  p.rect(22, 26, 4, 1, pal.skinDark);
-  // torso base
-  const wide = outfit === "cozy";
-  const tx = wide ? 14 : 16;
-  const tw = wide ? 20 : 16;
-  p.rect(tx, 27, tw, 11, o1);
-  p.rect(tx, 27, 2, 11, o1d); // left shade
-  p.rect(tx + 2, 27, 2, 2, o1l); // collar highlight
+  p.rect(22, 17, 4, 3, s);
+  p.rect(22, 19, 4, 1, pal.skinDark);
+  // torso base with structured shoulders
+  p.rect(16, 20, 16, 12, o1);
+  p.rect(16, 19, 16, 2, o1); // shoulder line
+  p.rect(15, 20, 1, 3, o1); // shoulder caps
+  p.rect(32, 20, 1, 3, o1);
+  // top-left light: right edge shade, left highlight
+  p.rect(31, 20, 1, 12, o1d);
+  p.rect(16, 20, 1, 12, o1d);
+  p.rect(18, 20, 2, 2, o1l);
   switch (outfit) {
-    case "sweater":
-      p.rect(15, 33, 18, 6, o2); // skirt
-      p.rect(15, 33, 2, 6, o2d);
-      p.rect(20, 29, 8, 1, o2); // knit band
+    case "blazer": {
+      // Tailored blazer (o1) over blouse (white): lapels + single button.
+      p.rect(22, 20, 4, 12, w); // blouse panel
+      p.rect(22, 20, 4, 1, pal.skinDark);
+      // lapels
+      p.rect(20, 20, 2, 5, o1d);
+      p.rect(26, 20, 2, 5, o1d);
+      p.rect(21, 20, 1, 4, o1l);
+      p.rect(26, 20, 1, 4, o1l);
+      // blazer front edges
+      p.rect(20, 25, 2, 7, o1d);
+      p.rect(26, 25, 2, 7, o1d);
+      p.rect(23, 27, 2, 2, o2d); // button
+      p.rect(17, 30, 14, 2, o1d); // hem shade
       break;
-    case "vest":
-      p.rect(16, 27, 5, 10, o2); // vest panels
-      p.rect(27, 27, 5, 10, o2);
-      p.rect(23, 28, 2, 9, o2d); // tie
-      p.rect(22, 27, 2, 2, o2d); // collar
-      p.rect(26, 27, 2, 2, o2d);
+    }
+    case "vest": {
+      // Dress shirt (o1 light) + vest (o2) + tie.
+      p.rect(16, 20, 16, 12, o1); // shirt
+      p.rect(16, 20, 1, 12, o1d);
+      p.rect(31, 20, 1, 12, o1d);
+      p.rect(16, 20, 6, 12, o2); // vest left panel
+      p.rect(26, 20, 6, 12, o2); // vest right panel
+      p.rect(16, 20, 1, 12, o2d);
+      p.rect(31, 20, 1, 12, o2d);
+      p.rect(21, 20, 2, 3, o1); // shirt collar V
+      p.rect(25, 20, 2, 3, o1);
+      p.rect(23, 21, 2, 2, o2d); // tie knot
+      p.rect(23, 23, 2, 8, pal.tie); // tie
+      p.rect(23, 23, 1, 8, o2d);
+      p.rect(18, 30, 2, 2, o2d); // vest buttons
+      p.rect(28, 30, 2, 2, o2d);
       break;
-    case "hoodie":
-      p.rect(18, 25, 12, 3, o2); // hood behind neck
-      p.rect(20, 33, 8, 4, o2); // pocket
-      p.rect(20, 33, 8, 1, o2d);
-      p.rect(22, 29, 1, 3, o1d); // drawstrings
-      p.rect(25, 29, 1, 3, o1d);
+    }
+    case "smartShirt": {
+      // Button-up shirt (o1), collar, placket, chest pocket.
+      p.rect(21, 19, 2, 3, o1d); // collar
+      p.rect(25, 19, 2, 3, o1d);
+      p.rect(23, 20, 2, 12, o1d); // placket shade
+      p.rect(24, 22, 1, 1, o2d); // buttons
+      p.rect(24, 25, 1, 1, o2d);
+      p.rect(24, 28, 1, 1, o2d);
+      p.rect(27, 24, 3, 3, o1d); // chest pocket
+      p.rect(27, 24, 3, 1, o2d);
+      p.rect(17, 30, 14, 2, o1d); // hem
       break;
-    case "cozy":
-      p.rect(16, 30, 16, 2, o2); // wide knit band
-      p.rect(18, 34, 12, 2, o2);
+    }
+    case "cardigan": {
+      // Blouse (o1 light) + open cardigan (o2).
+      p.rect(16, 20, 16, 12, o1); // blouse
+      p.rect(22, 20, 4, 12, w); // blouse front panel
+      p.rect(16, 20, 5, 12, o2); // cardigan left
+      p.rect(27, 20, 5, 12, o2); // cardigan right
+      p.rect(16, 20, 1, 12, o2d);
+      p.rect(31, 20, 1, 12, o2d);
+      p.rect(20, 20, 1, 12, o2d); // cardigan edges
+      p.rect(27, 20, 1, 12, o2d);
+      p.rect(21, 20, 2, 2, o1d); // blouse neckline
+      p.rect(25, 20, 2, 2, o1d);
+      p.rect(28, 24, 1, 1, o1d); // cardigan button
+      p.rect(28, 27, 1, 1, o1d);
       break;
-    case "jacket":
-      p.rect(16, 27, 4, 11, o2); // open jacket panels
-      p.rect(28, 27, 4, 11, o2);
-      p.rect(16, 27, 1, 11, o2d);
-      p.rect(31, 27, 1, 11, o2d);
-      p.rect(21, 33, 6, 5, o1d); // inner shirt shade
+    }
+    case "suit": {
+      // Sharp full suit (o1 dark) + white shirt + tie (o2).
+      p.rect(22, 20, 4, 12, w); // shirt
+      // peaked lapels
+      p.rect(19, 20, 3, 6, o1d);
+      p.rect(26, 20, 3, 6, o1d);
+      p.rect(20, 20, 1, 5, o1l);
+      p.rect(27, 20, 1, 5, o1l);
+      p.rect(19, 26, 3, 6, o1); // suit fronts close below
+      p.rect(26, 26, 3, 6, o1);
+      p.rect(23, 21, 2, 2, o2d); // tie knot
+      p.rect(23, 23, 2, 7, pal.tie); // tie
+      p.rect(24, 23, 1, 7, o2d);
+      p.rect(24, 28, 1, 1, w); // shirt button hint
+      p.rect(28, 24, 3, 2, w); // pocket square
+      p.rect(28, 24, 3, 1, o1d);
+      p.rect(17, 30, 14, 2, o1d); // hem
       break;
-    case "shirtTie":
-      p.rect(23, 28, 2, 9, o2); // tie
-      p.rect(23, 28, 2, 2, o2d);
-      p.rect(21, 27, 2, 3, o2d); // collar
-      p.rect(25, 27, 2, 3, o2d);
-      p.rect(18, 36, 12, 1, o1d); // shirt hem
+    }
+    case "polo": {
+      // Polo shirt (o1): collar + 2-button placket.
+      p.rect(21, 19, 2, 3, o1d); // collar
+      p.rect(25, 19, 2, 3, o1d);
+      p.rect(20, 19, 8, 1, o1d); // collar band
+      p.rect(23, 20, 2, 5, o1d); // placket
+      p.rect(24, 21, 1, 1, o2d); // buttons
+      p.rect(24, 23, 1, 1, o2d);
+      p.rect(17, 30, 14, 2, o1d); // hem
+      p.rect(18, 21, 2, 8, o1l); // fabric fold highlight
       break;
-    case "workJacket":
-      p.rect(16, 36, 16, 2, o2); // belt
-      p.rect(20, 27, 3, 3, o2); // collar
-      p.rect(26, 27, 3, 3, o2);
-      p.rect(23, 30, 2, 6, o1d); // placket
+    }
+    case "uniform": {
+      // Professional uniform (o1 dark): collar, buttons, shoulder boards.
+      p.rect(14, 20, 4, 2, o2); // shoulder boards
+      p.rect(30, 20, 4, 2, o2);
+      p.rect(14, 20, 4, 1, o2d);
+      p.rect(30, 20, 4, 1, o2d);
+      p.rect(21, 19, 2, 3, o1d); // collar
+      p.rect(25, 19, 2, 3, o1d);
+      p.rect(23, 20, 2, 12, o1d); // placket
+      p.rect(24, 22, 1, 1, o2); // buttons
+      p.rect(24, 26, 1, 1, o2);
+      p.rect(24, 30, 1, 1, o2);
+      p.rect(27, 24, 4, 3, o1d); // chest pocket
+      p.rect(27, 24, 4, 1, o2d);
+      p.rect(17, 24, 2, 1, o2); // name tag
       break;
-    case "uniform":
-      p.rect(14, 27, 5, 2, o2); // epaulets
-      p.rect(29, 27, 5, 2, o2);
-      p.rect(23, 29, 2, 2, o2); // buttons
-      p.rect(23, 33, 2, 2, o2);
-      p.rect(16, 36, 16, 1, o1d);
+    }
+    case "streetTee": {
+      // Plain white tee (reference): crew collar, fabric fold lines.
+      p.rect(21, 19, 6, 2, o1d); // collar band
+      p.rect(22, 19, 4, 1, o1);
+      // fold lines (subtle)
+      p.rect(19, 23, 3, 1, o1d);
+      p.rect(26, 25, 4, 1, o1d);
+      p.rect(20, 28, 2, 1, o1d);
+      p.rect(28, 28, 2, 1, o1d);
+      p.rect(24, 24, 1, 3, o1d); // center drape
+      // short sleeves
+      p.rect(14, 20, 3, 5, o1);
+      p.rect(31, 20, 3, 5, o1);
+      p.rect(14, 24, 3, 1, o1d);
+      p.rect(31, 24, 3, 1, o1d);
+      // messenger strap: over the right shoulder (viewer's left), vertical
+      p.rect(17, 20, 2, 10, pal.dark);
+      p.rect(17, 20, 1, 10, pal.out1Light);
+      p.rect(17, 30, 14, 2, o1d); // hem
       break;
+    }
   }
 }
 
@@ -683,97 +862,167 @@ function drawLegsFront(
   p: Pix,
   pal: Palette,
   pose: LegPose,
-  legColor: RGB,
   sarong: RGB | null,
+  outfit?: OutfitStyle,
 ): void {
   const sh = pal.shoe;
+  const shl = pal.shoeLight;
+  const t = pal.trouser;
+  const td = pal.trouserDark;
   if (sarong) {
     // Long sarong (prayer): covers to the shoes, with fold stripes.
     const top = 31;
-    p.rect(17, top, 14, 14, sarong);
-    p.rect(17, top, 2, 14, pal.out2Dark);
-    p.rect(24, top, 1, 14, pal.out2Dark);
-    p.rect(17, top + 12, 14, 2, pal.out2Dark);
-    p.rect(19, 44, 4, 2, sh);
-    p.rect(26, 44, 4, 2, sh);
+    p.rect(18, top, 12, 13, sarong);
+    p.rect(18, top, 2, 13, pal.out2Dark);
+    p.rect(23, top, 1, 13, pal.out2Dark);
+    p.rect(18, top + 11, 12, 2, pal.out2Dark);
+    p.rect(20, 44, 4, 2, sh);
+    p.rect(25, 44, 4, 2, sh);
     return;
   }
   let ll = 19;
-  let rl = 26;
+  let rl = 25;
   if (pose === "stepL") {
     ll = 16;
-    rl = 26;
+    rl = 25;
   } else if (pose === "stepR") {
     ll = 19;
     rl = 28;
   } else if (pose === "together") {
     ll = 20;
-    rl = 25;
+    rl = 24;
   }
-  const top = 38;
-  p.rect(ll, top, 4, 6, legColor);
-  p.rect(rl, top, 4, 6, legColor);
-  p.rect(ll, top, 1, 6, pal.skinDark);
-  p.rect(ll - 1, 44, 6, 2, sh);
-  p.rect(rl - 1, 44, 6, 2, sh);
+  if (outfit === "streetTee") {
+    // Blue cargo pants (reference): baggy, flap pockets on thighs,
+    // cuffed hems. Sneakers: black with white soles + toe caps.
+    const c = pal.out2; // cargo blue
+    const cd = pal.out2Dark;
+    const cl: RGB = [
+      Math.min(255, c[0] + 28),
+      Math.min(255, c[1] + 28),
+      Math.min(255, c[2] + 28),
+    ];
+    const top = 32;
+    // baggy legs
+    p.rect(ll - 1, top, 7, 11, c);
+    p.rect(rl - 1, top, 7, 11, c);
+    p.rect(ll - 1, top, 2, 11, cd); // outer shade
+    p.rect(rl + 4, top, 2, 11, cd);
+    p.rect(ll + 2, top, 1, 11, cl); // fold highlight
+    p.rect(rl + 2, top, 1, 11, cl);
+    // flap pockets on thighs (prominent, like the reference)
+    p.rect(ll, top + 3, 6, 5, cd); // left pocket
+    p.rect(ll, top + 3, 6, 2, c); // flap
+    p.rect(ll + 1, top + 5, 1, 2, c); // flap button hint
+    p.rect(rl + 1, top + 3, 6, 5, cd); // right pocket
+    p.rect(rl + 1, top + 3, 6, 2, c); // flap
+    p.rect(rl + 5, top + 5, 1, 2, c);
+    // cuffed hems
+    p.rect(ll - 1, top + 9, 7, 2, cd);
+    p.rect(rl - 1, top + 9, 7, 2, cd);
+    // sneakers: black upper, white sole + toe cap
+    p.rect(ll - 1, 43, 7, 2, sh);
+    p.rect(rl - 1, 43, 7, 2, sh);
+    p.rect(ll - 1, 45, 7, 2, pal.white); // white sole
+    p.rect(rl - 1, 45, 7, 2, pal.white);
+    p.rect(ll + 4, 43, 2, 1, pal.white); // toe cap
+    p.rect(rl + 4, 43, 2, 1, pal.white);
+    return;
+  }
+  // Tailored trousers with crease line.
+  const top = 32;
+  p.rect(ll, top, 5, 11, t);
+  p.rect(rl, top, 5, 11, t);
+  p.rect(ll + 2, top, 1, 11, td); // crease
+  p.rect(rl + 2, top, 1, 11, td);
+  p.rect(ll + 4, top, 1, 11, td); // outer shade
+  p.rect(rl, top, 1, 11, td);
+  // Dress shoes with highlight.
+  p.rect(ll - 1, 43, 7, 3, sh);
+  p.rect(rl - 1, 43, 7, 3, sh);
+  p.rect(ll - 1, 43, 7, 1, shl);
+  p.rect(rl - 1, 43, 7, 1, shl);
 }
 
 function drawArmFront(
   p: Pix,
   pal: Palette,
+  preset: CharacterPreset,
   side: "L" | "R",
   pose: ArmPose,
   handUp: boolean,
 ): void {
-  const x0 = side === "L" ? 12 : 32;
+  const x0 = side === "L" ? 11 : 33;
+  const s = pal.skin;
+  // Sleeve color: vest arms show the shirt (out1); others show out1.
+  // smartShirt has rolled sleeves → forearm skin.
+  const outfit = preset.outfitStyle;
+  const rolled = outfit === "smartShirt";
   const o1 = pal.out1;
   const o1d = pal.out1Dark;
-  const s = pal.skin;
+  // streetTee: hands in pockets (reference) — arms end at the hips.
+  if (outfit === "streetTee" && (pose === "down" || pose === "swing")) {
+    p.rect(x0, 20, 5, 8, o1); // sleeve
+    p.rect(x0, 20, 1, 8, o1d);
+    p.rect(x0 + 4, 20, 1, 8, o1d);
+    p.rect(x0 + 1, 28, 3, 3, o1d); // hand tucked into pocket
+    return;
+  }
   switch (pose) {
     case "down":
-      p.rect(x0, 28, 4, 8, o1);
-      p.rect(x0, 28, 1, 8, o1d);
-      p.rect(x0, 36, 4, 3, s);
+    case "swing": {
+      const drop = pose === "swing" ? 1 : 0;
+      p.rect(x0, 20, 5, 8, o1);
+      p.rect(x0, 20, 1, 8, o1d);
+      p.rect(x0 + 4, 20, 1, 8, o1d);
+      if (rolled) {
+        p.rect(x0, 26, 5, 3, o1d); // rolled cuff
+        p.rect(x0, 29 + drop, 5, 4, s); // forearm
+      } else {
+        p.rect(x0, 28, 5, 3, s); // hand
+        p.rect(x0, 28 + drop, 5, 1, pal.skinDark);
+      }
+      if (rolled) p.rect(x0, 29 + drop, 5, 1, pal.skinDark);
       break;
-    case "swing":
-      p.rect(x0, 28, 4, 8, o1);
-      p.rect(x0, 28, 1, 8, o1d);
-      p.rect(x0, 37, 4, 3, s);
-      break;
+    }
     case "typing": {
-      // forearms angled inward toward the keyboard, hands alternate height
-      const ix = side === "L" ? 14 : 30;
-      p.rect(x0, 28, 4, 4, o1);
-      p.rect(ix, 32, 4, 4, o1);
-      p.rect(ix, handUp ? 34 : 35, 4, 3, s);
+      // forearms angled inward toward the keyboard
+      const ix = side === "L" ? 14 : 29;
+      p.rect(x0, 20, 5, 5, o1);
+      p.rect(ix, 25, 5, 4, rolled ? s : o1);
+      if (!rolled) p.rect(ix, 25, 1, 4, o1d);
+      p.rect(ix, handUp ? 28 : 29, 5, 3, s);
+      p.rect(ix, handUp ? 28 : 29, 5, 1, pal.skinDark);
       break;
     }
     case "chin": {
       // hand raised to chin (thinking)
-      p.rect(x0, 28, 4, 6, o1);
-      p.rect(x0, 24, 4, 5, o1);
-      p.rect(x0 - 1, 21, 5, 4, s);
+      p.rect(x0, 20, 5, 6, o1);
+      p.rect(x0, 20, 1, 6, o1d);
+      p.rect(x0 + (side === "L" ? -1 : 1), 14, 5, 5, o1);
+      p.rect(x0 + (side === "L" ? 0 : 1), 13, 4, 4, s);
       break;
     }
     case "up":
       // arm raised high (celebrate / meeting gesture)
-      p.rect(x0, 20, 4, 9, o1);
-      p.rect(x0, 20, 1, 9, o1d);
-      p.rect(x0, 16, 4, 4, s);
+      p.rect(x0, 12, 5, 9, o1);
+      p.rect(x0, 12, 1, 9, o1d);
+      p.rect(x0, 8, 5, 4, s);
+      p.rect(x0, 8, 5, 1, pal.skinDark);
       break;
     case "folded": {
       // hands folded together at the chest (prayer)
-      const ix = side === "L" ? 18 : 26;
-      p.rect(x0, 28, 4, 4, o1);
-      p.rect(ix, 31, 4, 4, o1);
-      p.rect(ix, 33, 4, 3, s);
+      const ix = side === "L" ? 17 : 26;
+      p.rect(x0, 20, 5, 5, o1);
+      p.rect(ix, 24, 5, 4, o1);
+      p.rect(ix, 26, 5, 3, s);
       break;
     }
     case "dua":
       // hands raised to chest height, palms up (prayer)
-      p.rect(x0, 26, 4, 7, o1);
-      p.rect(x0, 26, 1, 7, o1d);
-      p.rect(x0 - 1, 23, 5, 4, s);
+      p.rect(x0, 20, 5, 7, o1);
+      p.rect(x0, 20, 1, 7, o1d);
+      p.rect(x0 - 1, 16, 6, 4, s);
       break;
   }
 }
@@ -782,74 +1031,83 @@ function drawAccessoryFront(p: Pix, pal: Palette, acc: AccessoryKind): void {
   const d = pal.dark;
   switch (acc) {
     case "ribbon": {
-      // bow on the upper-right of the hair
+      // Small elegant bow on the upper-right of the hair
       const c = pal.out2;
       const cd = pal.out2Dark;
-      p.rect(28, 4, 4, 4, c);
-      p.rect(36, 4, 4, 4, c);
-      p.rect(28, 9, 2, 3, c);
-      p.rect(38, 9, 2, 3, c);
-      p.rect(32, 4, 4, 5, cd); // knot
-      p.rect(33, 5, 2, 2, c);
+      p.rect(30, 2, 3, 3, c);
+      p.rect(35, 2, 3, 3, c);
+      p.rect(33, 2, 2, 4, cd);
+      p.rect(33, 3, 2, 1, c);
       break;
     }
     case "roundGlasses":
-      for (const x0 of [15, 25]) {
-        p.rect(x0, 15, 8, 1, d);
-        p.rect(x0, 20, 8, 1, d);
-        p.rect(x0, 15, 1, 6, d);
-        p.rect(x0 + 7, 15, 1, 6, d);
+      for (const x0 of [18, 25]) {
+        p.rect(x0, 10, 6, 1, d);
+        p.rect(x0, 12, 6, 1, d);
+        p.rect(x0, 10, 1, 3, d);
+        p.rect(x0 + 5, 10, 1, 3, d);
       }
-      p.rect(23, 17, 2, 1, d); // bridge
+      p.rect(24, 11, 1, 1, d); // bridge
       break;
     case "headphones":
-      p.rect(8, 2, 32, 3, d); // band
-      p.rect(8, 5, 3, 3, d);
-      p.rect(37, 5, 3, 3, d);
-      p.rect(7, 13, 5, 10, d); // ear cups
-      p.rect(36, 13, 5, 10, d);
-      p.rect(8, 15, 3, 3, pal.out2);
-      p.rect(37, 15, 3, 3, pal.out2);
+      p.rect(12, 1, 24, 2, d); // band
+      p.rect(12, 3, 2, 3, d);
+      p.rect(34, 3, 2, 3, d);
+      p.rect(11, 9, 4, 8, d); // ear cups
+      p.rect(33, 9, 4, 8, d);
+      p.rect(12, 12, 2, 2, pal.out2);
+      p.rect(34, 12, 2, 2, pal.out2);
       break;
     case "beret": {
       const c = pal.out2;
-      p.rect(14, 2, 20, 6, c); // tilted beret
-      p.rect(26, 1, 8, 3, c);
-      p.rect(30, 0, 2, 1, pal.out2Dark); // stem
-      p.rect(14, 6, 20, 1, pal.out2Dark);
+      p.rect(16, 1, 16, 4, c); // tilted beret
+      p.rect(26, 0, 6, 2, c);
+      p.rect(28, 0, 2, 1, pal.out2Dark); // stem
+      p.rect(16, 4, 16, 1, pal.out2Dark);
       break;
     }
     case "starPin": {
-      // little star on the left of the hair
+      // small star pin on the left of the hair
       const g: RGB = [255, 210, 63];
-      p.rect(9, 11, 5, 1, g);
-      p.rect(11, 9, 1, 5, g);
-      p.rect(10, 10, 3, 3, g);
+      p.rect(13, 8, 4, 1, g);
+      p.rect(14, 7, 2, 3, g);
       break;
     }
     case "rectGlasses":
-      for (const x0 of [15, 25]) {
-        p.rect(x0, 16, 8, 1, d);
-        p.rect(x0, 19, 8, 1, d);
-        p.rect(x0, 16, 1, 4, d);
-        p.rect(x0 + 7, 16, 1, 4, d);
+      for (const x0 of [18, 25]) {
+        p.rect(x0, 10, 6, 1, d);
+        p.rect(x0, 12, 6, 1, d);
+        p.rect(x0, 10, 1, 3, d);
+        p.rect(x0 + 5, 10, 1, 3, d);
       }
-      p.rect(23, 17, 2, 1, d);
+      p.rect(24, 11, 1, 1, d);
       break;
     case "cap": {
       const c = pal.out2;
-      p.rect(14, 1, 20, 4, c); // dome
-      p.rect(11, 5, 26, 4, c);
-      p.rect(10, 9, 30, 2, c); // brim
-      p.rect(22, 0, 4, 2, pal.out2Dark); // button
+      p.rect(16, 0, 16, 3, c); // dome
+      p.rect(14, 3, 20, 3, c);
+      p.rect(13, 6, 24, 2, c); // brim
+      p.rect(23, 0, 2, 1, pal.out2Dark); // button
       break;
     }
     case "headsetMic":
-      p.rect(10, 3, 28, 2, d); // thin band
-      p.rect(35, 16, 2, 6, d); // boom down the right cheek
-      p.rect(30, 21, 5, 2, d);
-      p.rect(27, 20, 3, 3, d); // mic tip
+      p.rect(14, 2, 20, 2, d); // thin band
+      p.rect(31, 11, 2, 5, d); // boom down the right cheek
+      p.rect(27, 14, 4, 2, d);
+      p.rect(25, 13, 2, 2, d); // mic tip
       break;
+    case "messengerBag": {
+      // Black messenger bag on the viewer's-left hip (reference).
+      const b = pal.dark;
+      const bd = pal.outline;
+      p.rect(7, 28, 8, 10, b); // bag body
+      p.rect(7, 28, 8, 2, bd); // top flap shade
+      p.rect(7, 28, 1, 10, bd); // left edge
+      p.rect(9, 30, 4, 5, bd); // front pocket
+      p.rect(9, 30, 4, 1, b);
+      p.rect(10, 36, 2, 1, pal.shoeLight); // buckle hint
+      break;
+    }
     case "none":
       break;
   }
@@ -867,7 +1125,7 @@ function drawThoughtBubble(p: Pix, pal: Palette): void {
 }
 
 // ---------------------------------------------------------------------------
-// Drawing — SIDE view head (facing sprite-local +x)
+// Drawing — SIDE view head (facing sprite-local +x, professional profile)
 // ---------------------------------------------------------------------------
 
 function drawHairBackSide(p: Pix, pal: Palette, style: HairStyle): void {
@@ -876,138 +1134,168 @@ function drawHairBackSide(p: Pix, pal: Palette, style: HairStyle): void {
   const hl = pal.hairLight;
   switch (style) {
     case "hime":
-      p.rect(8, 4, 24, 30, h);
-      p.rect(8, 10, 3, 24, hd);
-      p.rect(11, 5, 2, 5, hl);
-      p.rect(12, 30, 3, 4, hd);
+      p.rect(12, 2, 20, 32, h);
+      p.rect(12, 8, 3, 26, hd);
+      p.rect(15, 3, 2, 8, hl);
+      p.rect(15, 14, 2, 10, hl);
+      p.rect(13, 30, 3, 4, hd);
       break;
     case "bob":
-      p.rect(9, 4, 22, 4, h);
-      p.rect(7, 7, 24, 20, h);
-      p.rect(7, 7, 3, 20, hd);
-      p.rect(10, 5, 2, 3, hl);
+      p.rect(13, 2, 18, 3, h);
+      p.rect(11, 4, 20, 16, h);
+      p.rect(11, 4, 3, 16, hd);
+      p.rect(14, 3, 2, 5, hl);
       break;
-    case "messy": {
-      p.rect(8, 7, 24, 12, h);
-      const spikes: Array<[number, number]> = [
-        [8, 7],
-        [13, 10],
-        [19, 8],
-        [25, 10],
-        [29, 7],
-      ];
-      for (const [x, hh] of spikes) p.rect(x, 10 - hh, 4, hh, h);
-      p.rect(10, 7, 2, 3, hl);
+    case "messy":
+      p.rect(13, 3, 18, 4, h);
+      p.rect(12, 6, 20, 6, h);
+      p.rect(14, 3, 2, 3, hl);
+      p.rect(20, 4, 3, 2, hl);
+      p.rect(12, 8, 2, 4, hd);
       break;
-    }
     case "wavy": {
-      p.rect(8, 4, 24, 7, h);
-      for (let y = 11; y <= 32; y++) {
-        const wob = Math.floor(y / 5) % 2;
-        p.rect(5 + wob, y, 5, 1, h);
+      p.rect(12, 2, 20, 6, h);
+      for (let y = 8; y <= 30; y++) {
+        const wob = Math.floor(y / 4) % 2;
+        p.rect(10 + wob, y, 5, 1, h);
       }
-      p.rect(5, 11, 2, 22, hd);
-      p.rect(9, 5, 2, 4, hl);
+      p.rect(10, 8, 2, 22, hd);
+      p.rect(14, 3, 2, 6, hl);
       break;
     }
     case "twintails":
-      p.rect(9, 5, 23, 15, h);
-      p.rect(1, 10, 8, 26, h); // tail streams behind
-      p.rect(1, 10, 2, 26, hd);
-      p.rect(3, 12, 2, 20, hl);
-      p.rect(2, 10, 6, 3, pal.tie);
+      p.rect(13, 3, 18, 12, h);
+      p.rect(4, 10, 7, 20, h); // tail streams behind
+      p.rect(4, 10, 2, 20, hd);
+      p.rect(6, 12, 2, 14, hl);
+      p.rect(5, 10, 5, 2, pal.tie);
+      p.rect(14, 4, 2, 4, hl);
       break;
-    case "spiky": {
-      p.rect(8, 8, 24, 11, h);
-      const spikes: Array<[number, number]> = [
-        [8, 8],
-        [14, 11],
-        [20, 9],
-        [26, 10],
-      ];
-      for (const [x, hh] of spikes) p.rect(x, 11 - hh, 4, hh, h);
-      p.rect(10, 8, 2, 3, hl);
+    case "spiky":
+      p.rect(13, 2, 18, 4, h);
+      p.rect(12, 5, 20, 7, h);
+      p.rect(15, 2, 2, 4, hl);
+      p.rect(21, 3, 3, 2, hl);
+      p.rect(12, 7, 2, 5, hd);
+      p.rect(16, 1, 3, 2, h);
       break;
-    }
     case "ponytail":
-      p.rect(8, 5, 24, 15, h);
-      p.rect(4, 3, 7, 12, h); // tail sweeps back
-      p.rect(3, 15, 5, 12, h);
-      p.rect(3, 3, 2, 24, hd);
-      p.rect(8, 3, 4, 4, pal.tie);
-      p.rect(10, 6, 2, 3, hl);
+      p.rect(13, 3, 18, 11, h);
+      p.rect(6, 1, 7, 10, h); // tail sweeps back
+      p.rect(5, 11, 5, 12, h);
+      p.rect(5, 1, 2, 22, hd);
+      p.rect(10, 2, 4, 3, pal.tie);
+      p.rect(15, 4, 2, 4, hl);
       break;
     case "short":
-      p.rect(11, 4, 19, 3, h);
-      p.rect(8, 6, 24, 14, h);
-      p.rect(8, 6, 3, 14, hd);
-      p.rect(12, 4, 2, 2, hl);
+      p.rect(14, 2, 16, 3, h);
+      p.rect(12, 4, 20, 9, h);
+      p.rect(12, 4, 2, 9, hd);
+      p.rect(16, 2, 3, 2, hl);
       break;
+    case "wildSpikes": {
+      // Wild spikes in profile: big jagged silhouette.
+      p.rect(11, 3, 22, 10, h);
+      p.rect(13, 0, 4, 4, h); p.rect(14, 0, 2, 1, hl); // top spike
+      p.rect(19, 0, 4, 4, h); // top spike 2
+      p.rect(25, 1, 4, 3, h); p.rect(26, 0, 2, 1, h); // top spike 3
+      p.rect(8, 5, 4, 3, h); p.rect(7, 6, 2, 1, h); // back spike
+      p.rect(31, 5, 4, 3, h); // front spike
+      p.rect(9, 9, 3, 4, h); // back low
+      p.rect(11, 3, 3, 10, hd); // back shade
+      p.rect(28, 3, 5, 10, hd); // front shade
+      p.rect(14, 2, 3, 2, hl); // shine
+      break;
+    }
   }
 }
 
 function drawFaceSide(p: Pix, pal: Palette): void {
   const s = pal.skin;
-  // Profile: forehead → nose bump → chin.
-  p.rect(16, 10, 18, 14, s);
-  p.rect(34, 16, 3, 3, s); // nose
-  p.rect(34, 21, 2, 2, s); // chin hint
-  p.clear(16, 10, 2, 2);
-  p.clear(16, 22, 2, 2);
-  p.rect(14, 15, 2, 3, s); // ear (far side of head)
-  p.rect(16, 21, 18, 1, pal.skinDark);
+  // Professional profile: forehead → nose → lips → chin.
+  p.rect(18, 5, 14, 12, s);
+  p.rect(32, 10, 3, 3, s); // nose bridge + tip
+  p.rect(33, 13, 2, 1, s); // nose base
+  p.rect(31, 15, 3, 2, s); // chin/jaw
+  p.rect(18, 5, 2, 2, pal.skinDark); // temple shade
+  p.rect(18, 15, 12, 1, pal.skinDark); // jaw shade
+  p.rect(16, 10, 2, 3, s); // ear (far side)
 }
 
 function drawFringeSide(p: Pix, pal: Palette, style: HairStyle): void {
   const h = pal.hair;
   const hd = pal.hairDark;
+  const hl = pal.hairLight;
   switch (style) {
     case "messy":
-      p.rect(14, 8, 20, 3, h);
-      p.rect(20, 11, 3, 2, h);
-      p.rect(28, 11, 3, 2, h);
+      p.rect(16, 5, 16, 2, h);
+      p.rect(20, 7, 3, 2, h);
+      p.rect(18, 5, 4, 1, hl);
       break;
     case "spiky":
-      p.rect(14, 9, 20, 3, h);
-      p.rect(20, 12, 3, 2, h);
+      p.rect(16, 4, 16, 2, h);
+      p.rect(22, 6, 3, 1, h);
+      p.rect(18, 4, 4, 1, hl);
       break;
     case "ponytail":
-      p.rect(12, 7, 22, 3, h);
-      p.rect(12, 10, 12, 2, h);
+      p.rect(15, 4, 17, 2, h);
+      p.rect(15, 6, 10, 1, h);
+      p.rect(17, 4, 5, 1, hl);
       break;
     case "wavy":
-      p.rect(12, 7, 22, 4, h);
-      p.rect(12, 10, 4, 2, hd);
+      p.rect(15, 4, 17, 3, h);
+      p.rect(15, 6, 3, 2, hd);
+      p.rect(17, 4, 4, 1, hl);
+      break;
+    case "wildSpikes":
+      // Jagged bangs in profile.
+      p.rect(16, 4, 16, 2, h);
+      p.rect(24, 6, 3, 2, h);
+      p.rect(29, 6, 2, 3, h);
+      p.rect(18, 4, 4, 1, hl);
       break;
     default:
-      p.rect(13, 7, 21, 4, h);
-      p.rect(13, 10, 3, 2, hd);
+      p.rect(16, 4, 15, 3, h);
+      p.rect(16, 6, 3, 2, hd);
+      p.rect(18, 4, 4, 1, hl);
       break;
   }
 }
 
-function drawEyeSide(p: Pix, pal: Palette, blink: boolean): void {
+function drawEyeSide(p: Pix, pal: Palette, blink: boolean, cool = false): void {
   const d = pal.dark;
   const w = pal.white;
   const e = pal.eye;
-  // Single profile eye at x26..31, y15..19.
+  // Single refined profile eye at x27-31, y10-12.
   if (blink) {
-    p.rect(25, 17, 7, 1, d);
+    p.rect(27, 11, 5, 1, d);
     return;
   }
-  p.rect(25, 15, 8, 1, d);
-  p.rect(26, 16, 6, 4, w);
-  p.rect(27, 16, 4, 3, e);
-  p.rect(27, 16, 2, 1, w);
-  p.rect(28, 17, 2, 2, d);
-  p.rect(26, 19, 6, 1, d);
+  if (cool) {
+    // Half-lidded cool gaze in profile.
+    p.rect(27, 10, 5, 2, d);
+    p.rect(27, 12, 5, 1, w);
+    p.rect(28, 12, 3, 1, e);
+    p.rect(29, 12, 1, 1, d);
+    return;
+  }
+  p.rect(27, 10, 5, 1, d);
+  p.rect(27, 11, 5, 2, w);
+  p.rect(28, 11, 3, 2, e);
+  p.rect(29, 11, 1, 2, d);
+  p.rect(28, 11, 1, 1, w);
 }
 
-function drawFaceDetailsSide(p: Pix, pal: Palette, mouthOpen: boolean): void {
-  p.rect(26, 13, 4, 1, pal.hairDark); // brow
-  p.rect(24, 20, 3, 2, pal.blush); // blush
-  if (mouthOpen) p.rect(32, 21, 3, 3, pal.mouthOpen);
-  else p.rect(32, 22, 3, 1, pal.mouth);
+function drawFaceDetailsSide(p: Pix, pal: Palette, mouthOpen: boolean, cool = false): void {
+  if (cool) {
+    p.rect(26, 7, 5, 1, pal.hairDark); // thick angled brow
+    p.rect(27, 8, 4, 1, pal.hairDark);
+  } else {
+    p.rect(27, 8, 4, 1, pal.hairDark); // brow
+  }
+  p.rect(32, 13, 2, 1, pal.skinDark); // nostril hint
+  if (mouthOpen) p.rect(30, 15, 3, 2, pal.mouthOpen);
+  else p.rect(30, 15, 3, 1, pal.mouth);
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,44 +1305,62 @@ function drawFaceDetailsSide(p: Pix, pal: Palette, mouthOpen: boolean): void {
 function drawBodySide(p: Pix, pal: Palette, outfit: OutfitStyle): void {
   const o1 = pal.out1;
   const o1d = pal.out1Dark;
+  const o1l = pal.out1Light;
   const o2 = pal.out2;
   const o2d = pal.out2Dark;
   const s = pal.skin;
-  p.rect(22, 24, 5, 3, s); // neck
-  p.rect(18, 27, 15, 11, o1); // torso (narrower in profile)
-  p.rect(18, 27, 2, 11, o1d); // back shade
-  p.rect(20, 27, 2, 2, pal.out1Light);
+  const w = pal.white;
+  p.rect(22, 17, 5, 3, s); // neck
+  p.rect(22, 19, 5, 1, pal.skinDark);
+  p.rect(18, 20, 15, 12, o1); // torso (narrower in profile)
+  p.rect(18, 20, 2, 12, o1d); // back shade
+  p.rect(21, 20, 2, 2, o1l);
   switch (outfit) {
-    case "sweater":
-      p.rect(17, 33, 17, 6, o2);
-      p.rect(17, 33, 2, 6, o2d);
+    case "blazer":
+      p.rect(29, 20, 4, 12, o1); // front panel
+      p.rect(27, 20, 2, 6, o1d); // lapel
+      p.rect(29, 20, 2, 8, w); // blouse hint
+      p.rect(29, 27, 1, 1, o2d); // button
       break;
     case "vest":
-      p.rect(18, 27, 4, 10, o2);
-      p.rect(28, 29, 2, 8, o2d); // tie edge in profile
+      p.rect(18, 20, 5, 12, o2); // vest back panel
+      p.rect(18, 20, 1, 12, o2d);
+      p.rect(29, 22, 2, 7, pal.tie); // tie in profile
       break;
-    case "hoodie":
-      p.rect(17, 25, 10, 3, o2); // hood
-      p.rect(21, 33, 7, 4, o2);
+    case "smartShirt":
+      p.rect(24, 19, 3, 3, o1d); // collar
+      p.rect(25, 22, 1, 1, o2d);
+      p.rect(25, 26, 1, 1, o2d);
       break;
-    case "cozy":
-      p.rect(19, 30, 13, 2, o2);
+    case "cardigan":
+      p.rect(18, 20, 4, 12, o2); // cardigan back
+      p.rect(18, 20, 1, 12, o2d);
+      p.rect(29, 20, 3, 12, o1); // blouse front
       break;
-    case "jacket":
-      p.rect(18, 27, 3, 11, o2);
-      p.rect(18, 27, 1, 11, o2d);
+    case "suit":
+      p.rect(29, 20, 4, 12, o1);
+      p.rect(27, 20, 2, 6, o1d); // lapel
+      p.rect(29, 20, 2, 7, w); // shirt
+      p.rect(30, 21, 1, 6, pal.tie); // tie edge
       break;
-    case "shirtTie":
-      p.rect(29, 28, 2, 8, o2); // tie in profile
-      break;
-    case "workJacket":
-      p.rect(18, 36, 15, 2, o2); // belt
-      p.rect(20, 27, 3, 3, o2);
+    case "polo":
+      p.rect(24, 19, 3, 3, o1d); // collar
+      p.rect(25, 21, 1, 1, o2d);
       break;
     case "uniform":
-      p.rect(17, 27, 4, 2, o2); // epaulet
-      p.rect(24, 30, 2, 2, o2);
+      p.rect(18, 20, 4, 2, o2); // shoulder board
+      p.rect(24, 19, 3, 3, o1d); // collar
+      p.rect(25, 22, 1, 1, o2);
+      p.rect(25, 26, 1, 1, o2);
       break;
+    case "streetTee": {
+      // White tee in profile: collar, folds, strap over shoulder.
+      p.rect(24, 19, 3, 2, o1d); // collar
+      p.rect(20, 23, 3, 1, o1d); // fold
+      p.rect(22, 27, 2, 1, o1d);
+      p.rect(20, 20, 2, 8, pal.dark); // strap (behind, over shoulder)
+      break;
+    }
   }
 }
 
@@ -1062,88 +1368,128 @@ function drawLegsSide(
   p: Pix,
   pal: Palette,
   pose: LegPose,
-  legColor: RGB,
   sarong: RGB | null,
+  outfit?: OutfitStyle,
 ): void {
   const sh = pal.shoe;
-  const top = 38;
+  const shl = pal.shoeLight;
+  const t = pal.trouser;
+  const td = pal.trouserDark;
+  const top = 32;
   if (sarong) {
-    p.rect(19, 31, 13, 14, sarong);
-    p.rect(19, 31, 2, 14, pal.out2Dark);
-    p.rect(25, 31, 1, 14, pal.out2Dark);
-    p.rect(19, 43, 13, 2, pal.out2Dark);
+    p.rect(19, 31, 12, 13, sarong);
+    p.rect(19, 31, 2, 13, pal.out2Dark);
+    p.rect(24, 31, 1, 13, pal.out2Dark);
+    p.rect(19, 42, 12, 2, pal.out2Dark);
     p.rect(21, 44, 5, 2, sh);
     p.rect(27, 44, 5, 2, sh);
     return;
   }
   // In profile the two legs overlap; stride shifts them along x.
-  let back = 21;
-  let front = 25;
+  let back = 20;
+  let front = 24;
   if (pose === "stepL") {
-    back = 19;
-    front = 27;
+    back = 18;
+    front = 26;
   } else if (pose === "stepR") {
-    back = 23;
-    front = 25;
-  } else if (pose === "together") {
     back = 22;
     front = 24;
+  } else if (pose === "together") {
+    back = 21;
+    front = 23;
   }
-  p.rect(back, top, 4, 6, pal.skinDark); // far leg (shaded)
-  p.rect(front, top, 4, 6, legColor); // near leg
-  p.rect(back - 1, 44, 6, 2, sh);
-  p.rect(front - 1, 44, 6, 2, sh);
+  if (outfit === "streetTee") {
+    // Cargo pants in profile: baggy, side pocket, sneakers.
+    const c = pal.out2;
+    const cd = pal.out2Dark;
+    p.rect(back - 1, top, 7, 11, cd); // far leg
+    p.rect(front - 1, top, 7, 11, c); // near leg
+    p.rect(front + 1, top + 3, 4, 4, cd); // side cargo pocket
+    p.rect(front + 1, top + 3, 4, 1, c);
+    p.rect(back - 1, top + 9, 7, 2, cd); // cuffs
+    p.rect(front - 1, top + 9, 7, 2, cd);
+    p.rect(back - 1, 43, 7, 2, sh);
+    p.rect(front - 1, 43, 7, 2, sh);
+    p.rect(back - 1, 45, 7, 2, pal.white); // white soles
+    p.rect(front - 1, 45, 7, 2, pal.white);
+    p.rect(front + 4, 43, 2, 1, pal.white); // toe cap
+    return;
+  }
+  p.rect(back, top, 5, 11, td); // far leg (shaded)
+  p.rect(front, top, 5, 11, t); // near leg
+  p.rect(front + 2, top, 1, 11, td); // crease
+  p.rect(back - 1, 43, 7, 3, sh);
+  p.rect(front - 1, 43, 7, 3, sh);
+  p.rect(back - 1, 43, 7, 1, shl);
+  p.rect(front - 1, 43, 7, 1, shl);
 }
 
 function drawArmSide(
   p: Pix,
   pal: Palette,
+  preset: CharacterPreset,
   pose: ArmPose,
   handUp: boolean,
 ): void {
   const o1 = pal.out1;
   const o1d = pal.out1Dark;
   const s = pal.skin;
+  const rolled = preset.outfitStyle === "smartShirt";
   const x0 = 27; // near arm (front side of the body)
+  // streetTee: hand in pocket in profile.
+  if (preset.outfitStyle === "streetTee" && (pose === "down" || pose === "swing")) {
+    p.rect(x0, 20, 5, 8, o1);
+    p.rect(x0, 20, 1, 8, o1d);
+    p.rect(x0 + 1, 28, 3, 3, o1d);
+    if (pose === "down" || pose === "swing") {
+      p.rect(19, 21, 3, 7, o1d); // far arm hint
+    }
+    return;
+  }
   switch (pose) {
     case "down":
     case "swing": {
       const drop = pose === "swing" ? 1 : 0;
-      p.rect(x0, 28, 4, 8, o1);
-      p.rect(x0, 28, 1, 8, o1d);
-      p.rect(x0, 36 + drop, 4, 3, s);
+      p.rect(x0, 20, 5, 8, o1);
+      p.rect(x0, 20, 1, 8, o1d);
+      if (rolled) {
+        p.rect(x0, 26, 5, 3, o1d);
+        p.rect(x0, 29 + drop, 5, 4, s);
+      } else {
+        p.rect(x0, 28 + drop, 5, 3, s);
+      }
       break;
     }
     case "typing":
       // near forearm reaches forward toward the keyboard
-      p.rect(x0, 28, 4, 4, o1);
-      p.rect(x0 + 2, 32, 5, 4, o1);
-      p.rect(x0 + 3, handUp ? 34 : 35, 4, 3, s);
+      p.rect(x0, 20, 5, 5, o1);
+      p.rect(x0 + 2, 25, 6, 4, rolled ? s : o1);
+      p.rect(x0 + 3, handUp ? 28 : 29, 5, 3, s);
       break;
     case "chin":
-      p.rect(x0, 28, 4, 6, o1);
-      p.rect(x0 + 1, 23, 4, 5, o1);
-      p.rect(x0 + 1, 20, 5, 4, s);
+      p.rect(x0, 20, 5, 6, o1);
+      p.rect(x0 + 1, 14, 5, 5, o1);
+      p.rect(x0 + 1, 13, 5, 4, s);
       break;
     case "up":
-      p.rect(x0, 20, 4, 9, o1);
-      p.rect(x0, 20, 1, 9, o1d);
-      p.rect(x0, 16, 4, 4, s);
+      p.rect(x0, 12, 5, 9, o1);
+      p.rect(x0, 12, 1, 9, o1d);
+      p.rect(x0, 8, 5, 4, s);
       break;
     case "folded":
-      p.rect(x0, 28, 4, 4, o1);
-      p.rect(x0 - 3, 31, 5, 4, o1);
-      p.rect(x0 - 3, 33, 5, 3, s);
+      p.rect(x0, 20, 5, 5, o1);
+      p.rect(x0 - 4, 24, 6, 4, o1);
+      p.rect(x0 - 4, 26, 6, 3, s);
       break;
     case "dua":
-      p.rect(x0, 26, 4, 7, o1);
-      p.rect(x0, 26, 1, 7, o1d);
-      p.rect(x0, 23, 5, 4, s);
+      p.rect(x0, 20, 5, 7, o1);
+      p.rect(x0, 20, 1, 7, o1d);
+      p.rect(x0 - 1, 16, 6, 4, s);
       break;
   }
   // Far arm hint (behind the torso).
   if (pose === "down" || pose === "swing") {
-    p.rect(19, 29, 3, 7, o1d);
+    p.rect(19, 21, 3, 7, o1d);
   }
 }
 
@@ -1153,55 +1499,62 @@ function drawAccessorySide(p: Pix, pal: Palette, acc: AccessoryKind): void {
     case "ribbon": {
       const c = pal.out2;
       const cd = pal.out2Dark;
-      // bow at the back of the hair
-      p.rect(4, 5, 4, 4, c);
-      p.rect(10, 5, 4, 4, c);
-      p.rect(8, 4, 4, 5, cd);
+      // small bow at the back of the hair
+      p.rect(6, 3, 3, 3, c);
+      p.rect(11, 3, 3, 3, c);
+      p.rect(9, 2, 2, 4, cd);
       break;
     }
     case "roundGlasses":
-      p.rect(25, 15, 8, 1, d);
-      p.rect(25, 20, 8, 1, d);
-      p.rect(25, 15, 1, 6, d);
-      p.rect(32, 15, 1, 6, d);
+      p.rect(26, 10, 6, 1, d);
+      p.rect(26, 12, 6, 1, d);
+      p.rect(26, 10, 1, 3, d);
+      p.rect(31, 10, 1, 3, d);
       break;
     case "headphones":
-      p.rect(10, 2, 24, 3, d);
-      p.rect(10, 5, 3, 3, d);
-      p.rect(9, 13, 5, 10, d);
-      p.rect(10, 15, 3, 3, pal.out2);
+      p.rect(12, 1, 22, 2, d);
+      p.rect(12, 3, 2, 3, d);
+      p.rect(11, 9, 4, 8, d);
+      p.rect(12, 12, 2, 2, pal.out2);
       break;
     case "beret": {
       const c = pal.out2;
-      p.rect(12, 2, 20, 6, c);
-      p.rect(12, 6, 20, 1, pal.out2Dark);
+      p.rect(14, 1, 16, 4, c);
+      p.rect(14, 4, 16, 1, pal.out2Dark);
       break;
     }
     case "starPin": {
       const g: RGB = [255, 210, 63];
-      p.rect(9, 11, 5, 1, g);
-      p.rect(11, 9, 1, 5, g);
+      p.rect(13, 8, 4, 1, g);
+      p.rect(14, 7, 2, 3, g);
       break;
     }
     case "rectGlasses":
-      p.rect(25, 16, 8, 1, d);
-      p.rect(25, 19, 8, 1, d);
-      p.rect(25, 16, 1, 4, d);
-      p.rect(32, 16, 1, 4, d);
+      p.rect(26, 10, 6, 1, d);
+      p.rect(26, 12, 6, 1, d);
+      p.rect(26, 10, 1, 3, d);
+      p.rect(31, 10, 1, 3, d);
       break;
     case "cap": {
       const c = pal.out2;
-      p.rect(12, 1, 22, 4, c);
-      p.rect(10, 5, 24, 4, c);
-      p.rect(30, 9, 8, 2, c); // brim points forward (+x)
-      p.rect(20, 0, 4, 2, pal.out2Dark);
+      p.rect(14, 0, 18, 3, c);
+      p.rect(12, 3, 20, 3, c);
+      p.rect(30, 6, 7, 2, c); // brim points forward (+x)
+      p.rect(22, 0, 2, 1, pal.out2Dark);
       break;
     }
     case "headsetMic":
-      p.rect(8, 3, 26, 2, d);
-      p.rect(32, 17, 2, 5, d);
-      p.rect(29, 20, 3, 3, d);
+      p.rect(12, 2, 22, 2, d);
+      p.rect(30, 11, 2, 4, d);
+      p.rect(27, 13, 3, 2, d);
       break;
+    case "messengerBag": {
+      // Bag behind the hip in profile (far side).
+      const b = pal.dark;
+      p.rect(12, 28, 7, 10, b);
+      p.rect(12, 28, 7, 2, pal.outline);
+      break;
+    }
     case "none":
       break;
   }
@@ -1217,132 +1570,141 @@ function drawHairBackView(p: Pix, pal: Palette, style: HairStyle): void {
   const hl = pal.hairLight;
   switch (style) {
     case "hime":
-      p.rect(10, 4, 28, 32, h);
-      p.rect(10, 4, 4, 32, hd);
-      p.rect(34, 4, 4, 32, hd);
-      p.rect(15, 5, 4, 8, hl); // sheen band
-      p.rect(15, 18, 3, 10, hl);
-      p.rect(14, 32, 4, 4, hd);
-      p.rect(30, 32, 4, 4, hd);
+      p.rect(14, 2, 20, 33, h);
+      p.rect(14, 2, 4, 33, hd);
+      p.rect(30, 2, 4, 33, hd);
+      p.rect(19, 3, 4, 10, hl); // sheen band
+      p.rect(19, 16, 3, 12, hl);
+      p.rect(15, 31, 3, 4, hd);
+      p.rect(30, 31, 3, 4, hd);
       break;
     case "bob":
-      p.rect(11, 4, 26, 4, h);
-      p.rect(9, 7, 30, 21, h);
-      p.rect(9, 7, 4, 21, hd);
-      p.rect(35, 7, 4, 21, hd);
-      p.rect(15, 8, 5, 6, hl);
+      p.rect(15, 2, 18, 3, h);
+      p.rect(13, 4, 22, 17, h);
+      p.rect(13, 4, 4, 17, hd);
+      p.rect(31, 4, 4, 17, hd);
+      p.rect(19, 5, 5, 7, hl);
       break;
-    case "messy": {
-      p.rect(10, 6, 28, 14, h);
-      const spikes: Array<[number, number]> = [
-        [10, 8],
-        [16, 11],
-        [23, 9],
-        [30, 10],
-        [35, 8],
-      ];
-      for (const [x, hh] of spikes) p.rect(x, 9 - hh, 5, hh, h);
-      p.rect(13, 6, 4, 4, hl);
-      p.rect(10, 12, 3, 8, hd);
+    case "messy":
+      p.rect(15, 3, 18, 4, h);
+      p.rect(14, 6, 20, 8, h);
+      p.rect(17, 3, 4, 4, hl);
+      p.rect(14, 8, 3, 6, hd);
       break;
-    }
     case "wavy": {
-      p.rect(10, 4, 28, 7, h);
-      for (let y = 11; y <= 34; y++) {
-        const wob = Math.floor(y / 5) % 2;
-        p.rect(8 + wob, y, 32 - wob * 2, 1, h);
+      p.rect(14, 2, 20, 6, h);
+      for (let y = 8; y <= 32; y++) {
+        const wob = Math.floor(y / 4) % 2;
+        p.rect(12 + wob, y, 24 - wob * 2, 1, h);
       }
-      p.rect(8, 11, 3, 24, hd);
-      p.rect(37, 11, 3, 24, hd);
-      p.rect(14, 6, 4, 8, hl);
-      p.rect(16, 18, 3, 10, hl);
+      p.rect(12, 8, 3, 24, hd);
+      p.rect(33, 8, 3, 24, hd);
+      p.rect(18, 4, 4, 8, hl);
+      p.rect(20, 16, 3, 10, hl);
       break;
     }
     case "twintails":
-      p.rect(11, 5, 26, 15, h);
-      p.rect(2, 10, 9, 28, h);
-      p.rect(37, 10, 9, 28, h);
-      p.rect(2, 10, 3, 28, hd);
-      p.rect(43, 10, 3, 28, hd);
-      p.rect(14, 6, 5, 6, hl);
-      p.rect(4, 12, 2, 22, hl);
-      p.rect(39, 12, 2, 22, hl);
-      p.rect(3, 10, 7, 3, pal.tie);
-      p.rect(38, 10, 7, 3, pal.tie);
+      p.rect(15, 3, 18, 12, h);
+      p.rect(6, 10, 7, 22, h);
+      p.rect(35, 10, 7, 22, h);
+      p.rect(6, 10, 2, 22, hd);
+      p.rect(40, 10, 2, 22, hd);
+      p.rect(18, 4, 5, 6, hl);
+      p.rect(8, 12, 2, 16, hl);
+      p.rect(37, 12, 2, 16, hl);
+      p.rect(7, 10, 5, 2, pal.tie);
+      p.rect(36, 10, 5, 2, pal.tie);
       break;
-    case "spiky": {
-      p.rect(10, 7, 28, 13, h);
-      const spikes: Array<[number, number]> = [
-        [10, 9],
-        [16, 12],
-        [23, 10],
-        [30, 11],
-        [35, 9],
-      ];
-      for (const [x, hh] of spikes) p.rect(x, 10 - hh, 5, hh, h);
-      p.rect(13, 7, 4, 4, hl);
+    case "spiky":
+      p.rect(15, 2, 18, 4, h);
+      p.rect(14, 5, 20, 9, h);
+      p.rect(17, 2, 4, 4, hl);
+      p.rect(14, 7, 3, 7, hd);
       break;
-    }
     case "ponytail":
-      p.rect(10, 5, 28, 15, h);
-      p.rect(21, 3, 8, 14, h); // tail falls down the back
-      p.rect(22, 17, 6, 14, h);
-      p.rect(26, 3, 3, 28, hd);
-      p.rect(21, 3, 6, 4, pal.tie);
-      p.rect(13, 6, 4, 6, hl);
+      p.rect(15, 3, 18, 11, h);
+      p.rect(21, 1, 7, 12, h); // tail falls down the back
+      p.rect(22, 13, 5, 14, h);
+      p.rect(25, 1, 3, 26, hd);
+      p.rect(21, 1, 6, 3, pal.tie);
+      p.rect(17, 4, 4, 6, hl);
       break;
     case "short":
-      p.rect(13, 4, 22, 3, h);
-      p.rect(10, 6, 28, 14, h);
-      p.rect(10, 6, 4, 14, hd);
-      p.rect(15, 6, 5, 4, hl);
+      p.rect(16, 2, 16, 3, h);
+      p.rect(14, 4, 20, 10, h);
+      p.rect(14, 4, 3, 10, hd);
+      p.rect(19, 4, 5, 4, hl);
       break;
+    case "wildSpikes": {
+      // Wild spikes from behind: full jagged crown.
+      p.rect(12, 2, 24, 12, h);
+      p.rect(14, 0, 4, 3, h); p.rect(15, 0, 2, 1, hl);
+      p.rect(20, 0, 4, 3, h);
+      p.rect(26, 0, 4, 3, h); p.rect(27, 0, 2, 1, hl);
+      p.rect(32, 1, 4, 3, h);
+      p.rect(8, 5, 5, 4, h); p.rect(7, 6, 2, 2, h);
+      p.rect(35, 5, 5, 4, h); p.rect(38, 6, 2, 2, h);
+      p.rect(10, 10, 4, 4, h);
+      p.rect(34, 10, 4, 4, h);
+      p.rect(12, 2, 4, 12, hd);
+      p.rect(32, 2, 4, 12, hd);
+      p.rect(17, 2, 3, 3, hl);
+      p.rect(24, 3, 2, 4, hl);
+      break;
+    }
   }
 }
 
 function drawBodyBack(p: Pix, pal: Palette, outfit: OutfitStyle): void {
   const o1 = pal.out1;
   const o1d = pal.out1Dark;
+  const o1l = pal.out1Light;
   const o2 = pal.out2;
   const o2d = pal.out2Dark;
-  p.rect(16, 28, 16, 10, o1); // torso back
-  p.rect(16, 28, 3, 10, o1d);
-  p.rect(29, 28, 3, 10, o1d);
-  p.rect(20, 28, 3, 3, pal.out1Light);
+  p.rect(16, 20, 16, 12, o1); // torso back
+  p.rect(16, 20, 2, 12, o1d);
+  p.rect(30, 20, 2, 12, o1d);
+  p.rect(20, 20, 3, 2, o1l); // shoulder highlight
   switch (outfit) {
-    case "sweater":
-      p.rect(15, 33, 18, 6, o2);
-      p.rect(15, 33, 3, 6, o2d);
-      p.rect(20, 30, 8, 1, o2);
+    case "blazer":
+      p.rect(22, 19, 4, 3, o1d); // collar
+      p.rect(16, 22, 16, 1, o1d); // back seam
+      p.rect(22, 26, 4, 1, o2d); // back vent
       break;
     case "vest":
-      p.rect(16, 28, 16, 10, o2); // vest covers the back
-      p.rect(16, 28, 3, 10, o2d);
-      p.rect(23, 30, 2, 5, o1d); // back strap
+      p.rect(16, 20, 16, 12, o2); // vest covers the back
+      p.rect(16, 20, 2, 12, o2d);
+      p.rect(30, 20, 2, 12, o2d);
+      p.rect(22, 24, 4, 2, o1d); // back strap
       break;
-    case "hoodie":
-      p.rect(19, 27, 10, 5, o2); // hood resting on the back
-      p.rect(19, 27, 10, 1, o2d);
-      p.rect(20, 33, 8, 4, o2);
+    case "smartShirt":
+      p.rect(20, 19, 8, 2, o1d); // yoke
+      p.rect(23, 21, 2, 10, o1d); // back pleat
       break;
-    case "cozy":
-      p.rect(18, 31, 12, 2, o2);
+    case "cardigan":
+      p.rect(16, 20, 16, 12, o2); // cardigan back
+      p.rect(16, 20, 2, 12, o2d);
+      p.rect(30, 20, 2, 12, o2d);
+      p.rect(22, 22, 4, 1, o1d);
       break;
-    case "jacket":
-      p.rect(16, 28, 16, 10, o2);
-      p.rect(16, 28, 2, 10, o2d);
-      p.rect(30, 28, 2, 10, o2d);
+    case "suit":
+      p.rect(22, 19, 4, 3, o1d); // collar
+      p.rect(16, 22, 16, 1, o1d); // back seam
+      p.rect(23, 26, 2, 5, o1d); // center vent
       break;
-    case "shirtTie":
-      p.rect(18, 36, 12, 1, o1d);
-      break;
-    case "workJacket":
-      p.rect(16, 36, 16, 2, o2);
-      p.rect(20, 28, 8, 2, o2); // yoke
+    case "polo":
+      p.rect(21, 19, 6, 2, o1d); // collar band
       break;
     case "uniform":
-      p.rect(14, 27, 5, 2, o2);
-      p.rect(29, 27, 5, 2, o2);
+      p.rect(14, 20, 4, 2, o2); // shoulder boards
+      p.rect(30, 20, 4, 2, o2);
+      p.rect(22, 19, 4, 2, o1d); // collar
+      break;
+    case "streetTee":
+      p.rect(21, 19, 6, 2, o1d); // collar band
+      p.rect(19, 24, 3, 1, o1d); // fold
+      p.rect(26, 27, 3, 1, o1d);
+      p.rect(24, 20, 2, 10, pal.dark); // strap across the back
       break;
   }
 }
@@ -1350,37 +1712,52 @@ function drawBodyBack(p: Pix, pal: Palette, outfit: OutfitStyle): void {
 function drawArmBack(
   p: Pix,
   pal: Palette,
+  preset: CharacterPreset,
   side: "L" | "R",
   pose: ArmPose,
 ): void {
-  const x0 = side === "L" ? 12 : 32;
+  const x0 = side === "L" ? 11 : 32;
   const o1 = pal.out1;
   const o1d = pal.out1Dark;
   const s = pal.skin;
+  const rolled = preset.outfitStyle === "smartShirt";
+  // streetTee: hands in pockets from behind too.
+  if (preset.outfitStyle === "streetTee" && (pose === "down" || pose === "swing")) {
+    p.rect(x0, 20, 5, 8, o1);
+    p.rect(x0, 20, 1, 8, o1d);
+    p.rect(x0 + 1, 28, 3, 3, o1d);
+    return;
+  }
   switch (pose) {
     case "up":
-      p.rect(x0, 20, 4, 9, o1);
-      p.rect(x0, 20, 1, 9, o1d);
-      p.rect(x0, 16, 4, 4, s);
+      p.rect(x0, 12, 5, 9, o1);
+      p.rect(x0, 12, 1, 9, o1d);
+      p.rect(x0, 8, 5, 4, s);
       break;
     case "typing":
       // from behind: upper arms only, forearms hidden by the torso
-      p.rect(x0, 28, 4, 5, o1);
-      p.rect(x0, 28, 1, 5, o1d);
+      p.rect(x0, 20, 5, 6, o1);
+      p.rect(x0, 20, 1, 6, o1d);
       break;
     case "chin":
-      p.rect(x0, 28, 4, 6, o1);
+      p.rect(x0, 20, 5, 6, o1);
       break;
     case "folded":
     case "dua":
       // arms cross in front — barely visible from behind
-      p.rect(x0, 29, 4, 5, o1);
+      p.rect(x0, 21, 5, 5, o1);
       break;
     default: {
       const drop = pose === "swing" ? 1 : 0;
-      p.rect(x0, 28, 4, 8, o1);
-      p.rect(x0, 28, 1, 8, o1d);
-      p.rect(x0, 36 + drop, 4, 3, s);
+      p.rect(x0, 20, 5, 8, o1);
+      p.rect(x0, 20, 1, 8, o1d);
+      p.rect(x0 + 4, 20, 1, 8, o1d);
+      if (rolled) {
+        p.rect(x0, 26, 5, 3, o1d);
+        p.rect(x0, 29 + drop, 5, 4, s);
+      } else {
+        p.rect(x0, 28 + drop, 5, 3, s);
+      }
       break;
     }
   }
@@ -1392,41 +1769,47 @@ function drawAccessoryBack(p: Pix, pal: Palette, acc: AccessoryKind): void {
     case "ribbon": {
       const c = pal.out2;
       const cd = pal.out2Dark;
-      p.rect(18, 5, 5, 5, c);
-      p.rect(25, 5, 5, 5, c);
-      p.rect(22, 4, 4, 6, cd);
-      p.rect(23, 5, 2, 3, c);
+      p.rect(20, 3, 4, 4, c);
+      p.rect(26, 3, 4, 4, c);
+      p.rect(23, 2, 3, 5, cd);
+      p.rect(24, 3, 1, 2, c);
       break;
     }
     case "headphones":
-      p.rect(8, 2, 32, 3, d);
-      p.rect(7, 12, 5, 10, d);
-      p.rect(36, 12, 5, 10, d);
+      p.rect(12, 1, 24, 2, d);
+      p.rect(11, 9, 4, 8, d);
+      p.rect(33, 9, 4, 8, d);
       break;
     case "beret": {
       const c = pal.out2;
-      p.rect(14, 2, 20, 6, c);
-      p.rect(14, 6, 20, 1, pal.out2Dark);
+      p.rect(16, 1, 16, 4, c);
+      p.rect(16, 4, 16, 1, pal.out2Dark);
       break;
     }
     case "starPin": {
       const g: RGB = [255, 210, 63];
-      p.rect(31, 10, 5, 1, g);
-      p.rect(33, 8, 1, 5, g);
+      p.rect(31, 8, 4, 1, g);
+      p.rect(32, 7, 2, 3, g);
       break;
     }
     case "cap": {
       const c = pal.out2;
-      p.rect(14, 1, 20, 4, c);
-      p.rect(11, 5, 26, 4, c);
-      p.rect(22, 0, 4, 2, pal.out2Dark);
+      p.rect(16, 0, 16, 3, c);
+      p.rect(14, 3, 20, 3, c);
+      p.rect(23, 0, 2, 1, pal.out2Dark);
       break;
     }
     case "headsetMic":
-      p.rect(10, 3, 28, 2, d);
+      p.rect(14, 2, 20, 2, d);
       break;
     case "roundGlasses":
     case "rectGlasses":
+    case "messengerBag": {
+      // Bag visible on the left hip from behind.
+      p.rect(7, 28, 8, 10, pal.dark);
+      p.rect(7, 28, 8, 2, pal.outline);
+      break;
+    }
     case "none":
       break;
   }
@@ -1470,8 +1853,6 @@ function drawMukenaFront(
     p.rect(26, 16, 2, 2, pal.eye);
   }
   p.rect(22, 20, 4, 1, pal.mouth);
-  p.rect(18, 18, 2, 1, pal.blush);
-  p.rect(28, 18, 2, 1, pal.blush);
   // Hands per prayer frame.
   if (spec.armL === "folded") {
     p.rect(20, 31, 8, 5, s); // folded at chest
@@ -1542,18 +1923,18 @@ function drawMukenaBack(p: Pix, pal: Palette): void {
 function drawPeci(p: Pix, pal: Palette, dir: SpriteDirection): void {
   const c = pal.peci;
   if (dir === "front") {
-    p.rect(17, 3, 14, 3, c);
-    p.rect(15, 6, 18, 4, c);
-    p.rect(15, 9, 18, 1, pal.dark);
-    p.rect(18, 3, 3, 2, [60, 60, 74]); // sheen
+    p.rect(17, 1, 14, 3, c);
+    p.rect(15, 4, 18, 4, c);
+    p.rect(15, 7, 18, 1, pal.dark);
+    p.rect(18, 1, 3, 2, [60, 60, 74]); // sheen
   } else if (dir === "side") {
-    p.rect(19, 3, 14, 3, c);
-    p.rect(17, 6, 18, 4, c);
-    p.rect(17, 9, 18, 1, pal.dark);
+    p.rect(19, 1, 14, 3, c);
+    p.rect(17, 4, 18, 4, c);
+    p.rect(17, 7, 18, 1, pal.dark);
   } else {
-    p.rect(17, 3, 14, 4, c);
-    p.rect(15, 7, 18, 4, c);
-    p.rect(15, 10, 18, 1, pal.dark);
+    p.rect(17, 1, 14, 4, c);
+    p.rect(15, 5, 18, 4, c);
+    p.rect(15, 8, 18, 1, pal.dark);
   }
 }
 
@@ -1598,11 +1979,6 @@ function applyOutline(p: Pix, color: RGB): void {
 // View assembly
 // ---------------------------------------------------------------------------
 
-function legColorFor(pal: Palette, outfit: OutfitStyle): RGB {
-  // Pants outfits get covered legs; the rest are bare.
-  return outfit === "jacket" || outfit === "workJacket" ? pal.out2 : pal.skin;
-}
-
 function drawFrontView(
   p: Pix,
   pal: Palette,
@@ -1620,19 +1996,14 @@ function drawFrontView(
   drawHairBackFront(p, pal, preset.hairStyle);
   drawFaceFront(p, pal);
   drawFringeFront(p, pal, preset.hairStyle);
-  drawEyesFront(p, pal, blink);
-  drawFaceDetailsFront(p, pal, spec.mouthOpen);
+  const cool = preset.expression === "cool";
+  drawEyesFront(p, pal, blink, cool);
+  drawFaceDetailsFront(p, pal, spec.mouthOpen, cool);
   drawBodyFront(p, pal, preset.outfitStyle);
-  drawLegsFront(
-    p,
-    pal,
-    spec.legPose,
-    legColorFor(pal, preset.outfitStyle),
-    sarung ? pal.out2 : null,
-  );
+  drawLegsFront(p, pal, spec.legPose, sarung ? pal.out2 : null, preset.outfitStyle);
   // In sarong the arms stay normal; folded/dua poses come from the frame.
-  drawArmFront(p, pal, "L", spec.armL, spec.handUp === "L");
-  drawArmFront(p, pal, "R", spec.armR, spec.handUp === "R");
+  drawArmFront(p, pal, preset, "L", spec.armL, spec.handUp === "L");
+  drawArmFront(p, pal, preset, "R", spec.armR, spec.handUp === "R");
   if (!sarung) {
     drawAccessoryFront(p, pal, preset.accessory);
   }
@@ -1657,17 +2028,12 @@ function drawSideView(
   drawHairBackSide(p, pal, preset.hairStyle);
   drawFaceSide(p, pal);
   drawFringeSide(p, pal, preset.hairStyle);
-  drawEyeSide(p, pal, blink);
-  drawFaceDetailsSide(p, pal, spec.mouthOpen);
+  const coolSide = preset.expression === "cool";
+  drawEyeSide(p, pal, blink, coolSide);
+  drawFaceDetailsSide(p, pal, spec.mouthOpen, coolSide);
   drawBodySide(p, pal, preset.outfitStyle);
-  drawLegsSide(
-    p,
-    pal,
-    spec.legPose,
-    legColorFor(pal, preset.outfitStyle),
-    sarung ? pal.out2 : null,
-  );
-  drawArmSide(p, pal, spec.armR, spec.handUp === "R");
+  drawLegsSide(p, pal, spec.legPose, sarung ? pal.out2 : null, preset.outfitStyle);
+  drawArmSide(p, pal, preset, spec.armR, spec.handUp === "R");
   if (!sarung) {
     drawAccessorySide(p, pal, preset.accessory);
   }
@@ -1690,15 +2056,9 @@ function drawBackView(
   drawHairBackView(p, pal, preset.hairStyle);
   drawBodyBack(p, pal, preset.outfitStyle);
   // Back legs: reuse the front leg shapes (symmetric from behind).
-  drawLegsFront(
-    p,
-    pal,
-    spec.legPose,
-    legColorFor(pal, preset.outfitStyle),
-    sarung ? pal.out2 : null,
-  );
-  drawArmBack(p, pal, "L", spec.armL);
-  drawArmBack(p, pal, "R", spec.armR);
+  drawLegsFront(p, pal, spec.legPose, sarung ? pal.out2 : null, preset.outfitStyle);
+  drawArmBack(p, pal, preset, "L", spec.armL);
+  drawArmBack(p, pal, preset, "R", spec.armR);
   if (!sarung) {
     drawAccessoryBack(p, pal, preset.accessory);
   }

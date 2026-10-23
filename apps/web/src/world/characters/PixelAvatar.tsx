@@ -23,12 +23,12 @@ import {
   FRAME_COUNTS,
   FRAME_FPS,
   PIXEL_BLINK_DURATION,
-  SPRITE_H,
-  SPRITE_W,
-  getPixelFrame,
+  VECTOR_H,
+  VECTOR_W,
+  getVectorFrame,
   resolvePixelAnimation,
   type PrayerVariant,
-} from "./pixel/pixelSprites";
+} from "./vector/vectorSprites";
 
 /** Scratch vector for the avatar's world position (no per-frame alloc). */
 const tmpV = new THREE.Vector3();
@@ -43,18 +43,18 @@ function bufferToCanvas(
   mirror: boolean,
 ): HTMLCanvasElement {
   const c = document.createElement("canvas");
-  c.width = SPRITE_W;
-  c.height = SPRITE_H;
+  c.width = VECTOR_W;
+  c.height = VECTOR_H;
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("2d canvas context unavailable");
   const src = document.createElement("canvas");
-  src.width = SPRITE_W;
-  src.height = SPRITE_H;
+  src.width = VECTOR_W;
+  src.height = VECTOR_H;
   const sctx = src.getContext("2d");
   if (!sctx) throw new Error("2d canvas context unavailable");
-  sctx.putImageData(new ImageData(buf, SPRITE_W, SPRITE_H), 0, 0);
+  sctx.putImageData(new ImageData(buf, VECTOR_W, VECTOR_H), 0, 0);
   if (mirror) {
-    ctx.translate(SPRITE_W, 0);
+    ctx.translate(VECTOR_W, 0);
     ctx.scale(-1, 1);
   }
   ctx.drawImage(src, 0, 0);
@@ -66,9 +66,9 @@ function makePixelTexture(
   mirror: boolean,
 ): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(bufferToCanvas(buf, mirror));
-  // NearestFilter keeps the individual pixels visible ("agak pixel pixel").
-  tex.magFilter = THREE.NearestFilter;
-  tex.minFilter = THREE.NearestFilter;
+  // LinearFilter: smooth vector art (no more chunky pixels).
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
   tex.generateMipmaps = false;
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -87,8 +87,8 @@ interface PixelAvatarProps {
 }
 
 /**
- * PixelAvatar — the 2D pixel-art character rendered inside the 3D office
- * (2.5D "Paper Mario" style).
+ * PixelAvatar — the smooth 2D vector-style character rendered inside the
+ * 3D office (2.5D "Paper Mario" style).
  *
  * 2.5D DIRECTIONAL SPRITES: the figure is a plane that yaws around Y to
  * face the camera (never edge-on), but the TEXTURE is picked from
@@ -144,7 +144,7 @@ export const PixelAvatar = memo(function PixelAvatar({
     let tex = texCache.current.get(key);
     if (!tex) {
       tex = makePixelTexture(
-        getPixelFrame(preset, dir, anim, frame, blink, prayer),
+        getVectorFrame(preset, dir, anim, frame, blink, prayer),
         mirror,
       );
       texCache.current.set(key, tex);

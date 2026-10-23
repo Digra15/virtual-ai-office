@@ -17,9 +17,9 @@ const DEFAULT_PRESET: Omit<CharacterPreset, "agentId"> = {
   hairColor: "#4a3728",
   eyeColor: "#38bdf8",
   skinTone: "#ffd9b8",
-  outfitStyle: "sweater",
-  outfitPrimary: "#3a4356",
-  outfitSecondary: "#232a3a",
+  outfitStyle: "blazer",
+  outfitPrimary: "#2b3a55",
+  outfitSecondary: "#d98a9e",
   accessory: "none",
 };
 
