@@ -188,13 +188,10 @@ export const AIAvatar = memo(function AIAvatar({
       if (firstMap) mat.current.needsUpdate = true;
     }
 
-    // Y-billboard
+    // Y-billboard angle (applied in the animation block below; skipped when flat)
     g.getWorldPosition(tmpV);
     const camAz = Math.atan2(state.camera.position.x - tmpV.x, state.camera.position.z - tmpV.z);
     const facing = praying ? QIBLA_FACING : g.rotation.y;
-    if (figure.current) {
-      figure.current.rotation.y = wrapAngle(camAz - facing + Math.PI);
-    }
 
     // procedural animation
     const fig = figure.current;
@@ -202,10 +199,22 @@ export const AIAvatar = memo(function AIAvatar({
       const baseY = 0.95;
       const aspect = wantAspect;
       let y = baseY, sx = 1, sy = 1, rz = 0, rx = 0;
+      let px = 0, pz = 0; // figure local offset
+      let flat = false; // lay the plane horizontal (sleeping)
       if (isSleeping) {
-        // lying in recovery bed: deep stillness, slow breathing
-        y = baseY - 0.25 + Math.sin(t * 0.8) * 0.012;
-        sy = 1 + Math.sin(t * 0.8) * 0.01;
+        // lying flat on the recovery bed: mattress top y≈0.68, head north
+        flat = true;
+        y = 0.78;
+        // scale to fit bed length (2.1): image is wide (lying down)
+        const len = 1.95;
+        sx = len / FIGURE_H;
+        sy = len / FIGURE_H / aspect;
+      } else if (useTyping) {
+        // sitting at the desk typing: seat height, nudged toward the desk
+        // (north, -z), hands near the keyboard; subtle key-bounce
+        y = 0.82 + Math.sin(t * 8) * 0.008;
+        pz = -0.3;
+        rx = 0.04;
       } else if (praying) {
         y = baseY - 0.02 + Math.sin(t * 1.2) * 0.008;
         rx = 0.06;
@@ -230,10 +239,19 @@ export const AIAvatar = memo(function AIAvatar({
         y = baseY + Math.sin(t * 1.6) * 0.025;
         sy = 1 + Math.sin(t * 1.6) * 0.008;
       }
-      fig.position.y = y;
-      fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
-      fig.rotation.z = rz;
-      fig.rotation.x = rx;
+      if (flat) {
+        // sleeping: plane lies flat on the bed, head north, no billboard
+        fig.position.set(px, y, pz);
+        fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
+        fig.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
+      } else {
+        fig.position.set(px, y, pz);
+        fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
+        fig.rotation.z = rz;
+        fig.rotation.x = rx;
+        // Y-billboard (skip when flat)
+        fig.rotation.y = wrapAngle(camAz - facing + Math.PI);
+      }
     }
 
     // status chrome
