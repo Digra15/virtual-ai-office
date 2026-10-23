@@ -59,10 +59,12 @@ const Mihrab = memo(function Mihrab() {
   );
 });
 
-/** "ARAH KIBLAT" plaque on the north wall (z=-12), facing +Z into the room. */
+/** "ARAH KIBLAT" plaque on the north wall (z=-12), facing +Z into the room.
+ *  Placed left of the mihrab (x=-14.2, clear of its pillars at -12.6/-10.4)
+ *  so it sits fully visible on the wall, never hidden behind the arch. */
 const QiblaPlaque = memo(function QiblaPlaque() {
   return (
-    <group position={[-12.5, 1.9, -11.86]}>
+    <group position={[-14.2, 1.9, -11.86]}>
       <mesh geometry={geoBox} material={matPlaqueBg} scale={[2.4, 0.7, 0.08]} castShadow />
       <Text position={[0, 0.1, 0.05]} fontSize={0.28} color="#e8c468" anchorX="center" anchorY="middle">
         ARAH KIBLAT
