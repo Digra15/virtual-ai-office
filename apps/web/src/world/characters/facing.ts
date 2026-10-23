@@ -31,10 +31,10 @@ import { wrapAngle } from "./characterTypes";
 export const MUSOLA_ROOM_ID = "musola";
 
 /**
- * Qibla facing: the mihrab is on the musola's east wall, so a praying
- * agent's nose points +X (east). World-space Y rotation (THREE convention).
+ * Qibla facing: the mihrab is on the musola's north wall, so a praying
+ * agent's nose points -Z (north). World-space Y rotation (THREE convention).
  */
-export const QIBLA_FACING = Math.PI / 2;
+export const QIBLA_FACING = Math.PI;
 
 /**
  * Nose direction (world-space Y rotation, THREE convention) of an agent
