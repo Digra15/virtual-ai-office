@@ -59,12 +59,12 @@ describe("musola room contract", () => {
     expect(ROOM_COMPONENTS["musola"]).toBeDefined();
   });
 
-  it("qibla faces north (-Z): QIBLA_FACING is PI", async () => {
+  it("qibla faces west (-X): QIBLA_FACING is -PI/2", async () => {
     const { QIBLA_FACING } = await import("../characters/facing");
-    // The mihrab is on the musola's north wall (z=-12); praying agents
-    // face -Z. Nose vector for rotationY=PI is (sin, 0, cos) = (0,0,-1).
-    expect(QIBLA_FACING).toBeCloseTo(Math.PI);
-    expect(Math.sin(QIBLA_FACING)).toBeCloseTo(0);
-    expect(Math.cos(QIBLA_FACING)).toBeCloseTo(-1);
+    // The mihrab is on the musola's west wall (x=-16); praying agents
+    // face -X. Nose vector for rotationY=-PI/2 is (sin, 0, cos) = (-1,0,0).
+    expect(QIBLA_FACING).toBeCloseTo(-Math.PI / 2);
+    expect(Math.sin(QIBLA_FACING)).toBeCloseTo(-1);
+    expect(Math.cos(QIBLA_FACING)).toBeCloseTo(0);
   });
 });
