@@ -62,7 +62,7 @@ const Mihrab = memo(function Mihrab() {
 /** "ARAH KIBLAT" plaque on the north wall (z=-12), facing +Z into the room. */
 const QiblaPlaque = memo(function QiblaPlaque() {
   return (
-    <group position={[-8.0, 1.9, -11.86]}>
+    <group position={[-12.5, 1.9, -11.86]}>
       <mesh geometry={geoBox} material={matPlaqueBg} scale={[2.4, 0.7, 0.08]} castShadow />
       <Text position={[0, 0.1, 0.05]} fontSize={0.28} color="#e8c468" anchorX="center" anchorY="middle">
         ARAH KIBLAT
@@ -85,7 +85,7 @@ export const Musola = memo(function Musola() {
           <meshStandardMaterial map={rugTex} roughness={0.95} />
         </mesh>
       ))}
-      <CozyPlant position={[-8.4, 0, -11.0]} />
+      <CozyPlant position={[-15.3, 0, -11.0]} />
     </group>
   );
 });

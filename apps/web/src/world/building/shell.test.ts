@@ -133,12 +133,12 @@ describe("single-floor 10-room plan (user's code, faithful)", () => {
       const r = ROOM_BY_ID[id];
       return [r.minX, r.maxX, r.minZ, r.maxZ];
     };
-    expect(rect("musola")).toEqual([-16, -8, -12, -4.5]);
-    expect(rect("recovery")).toEqual([-8, 0.5, -12, -4.5]);
-    expect(rect("pantry")).toEqual([0.5, 8, -12, -4.5]);
-    expect(rect("toilet_pria")).toEqual([8, 10, -12, -4.5]);
-    expect(rect("toilet_wanita")).toEqual([10, 12, -12, -4.5]);
-    expect(rect("server")).toEqual([12, 16, -12, -4.5]);
+    expect(rect("musola")).toEqual([-16, -9, -12, -4.5]);
+    expect(rect("recovery")).toEqual([-9, 0.5, -12, -4.5]);
+    expect(rect("pantry")).toEqual([0.5, 7.8, -12, -4.5]);
+    expect(rect("toilet_pria")).toEqual([7.8, 9.8, -12, -4.5]);
+    expect(rect("toilet_wanita")).toEqual([9.8, 11.8, -12, -4.5]);
+    expect(rect("server")).toEqual([11.8, 16, -12, -4.5]);
     expect(rect("project")).toEqual([-16, -6.5, 1, 10]);
     expect(rect("workspace")).toEqual([-6.5, 9.5, -4.5, 6]);
     expect(rect("lobby")).toEqual([-6.5, 9.5, 6, 10]);

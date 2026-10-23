@@ -38,10 +38,10 @@ const CounterLogo = memo(function CounterLogo() {
   );
 });
 
-/** Pink two-seat sofa + 2 pillows at (6.5,6.5), facing north (-Z). */
+/** Pink two-seat sofa + 2 pillows at (6.5,6.5), facing south (+Z) toward the coffee table (per the user's builder code). */
 const Sofa = memo(function Sofa() {
   return (
-    <group position={[6.5, 0, 6.5]} rotation={[0, Math.PI, 0]}>
+    <group position={[6.5, 0, 6.5]}>
       <RoundedBox args={[2.0, 0.42, 0.9]} radius={0.1} smoothness={4} position={[0, 0.35, 0]} castShadow>
         <meshStandardMaterial color={matSofaPink.color} roughness={0.9} />
       </RoundedBox>

@@ -18,10 +18,10 @@ const matMirror = new THREE.MeshStandardMaterial({
   metalness: 0.9,
 });
 
-/** The two restroom units, by room id + center x. */
+/** The two restroom units, by room id + center x (true room centers: pria 7.8..9.8, wanita 9.8..11.8). */
 export const RESTROOM_UNITS = [
-  { id: "toilet_pria", cx: 9 },
-  { id: "toilet_wanita", cx: 11 },
+  { id: "toilet_pria", cx: 8.8 },
+  { id: "toilet_wanita", cx: 10.8 },
 ] as const;
 
 /** One compact stall: 1.9 wide × 1.6 deep, door front facing +Z. */

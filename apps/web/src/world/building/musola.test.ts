@@ -2,7 +2,7 @@
  * Musola contract tests (single floor, 2026-10-23).
  *
  * The floorPlan contract below is final: the musola is a ground-floor
- * room (x -16..-8, z -12..-4.5, id "musola"). The barrel assertion
+ * room (x -16..-9, z -12..-4.5, id "musola"). The barrel assertion
  * requires the room-visual track's rewritten rooms/ barrel to include
  * the Musola component.
  */
