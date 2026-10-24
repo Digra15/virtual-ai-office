@@ -318,7 +318,8 @@ export const AIAvatar = memo(function AIAvatar({
 
   return (
     <group ref={groupRef} onClick={interactive ? handleClick : undefined} {...(interactive ? cursorHandlers : {})}>
-      <group position={pose === "desk" ? [0, 0, 0.95] : [0, 0, 0]}>
+      {/* outer at chair already (spawn includes +0.95), no extra offset */}
+      <group position={[0, 0, 0]}>
         <mesh ref={ring} geometry={geoTorus} material={ringMat} scale={1.3} position={[0, 0.06, 0]} rotation={[Math.PI / 2, 0, 0]} />
         <mesh ref={figure} position={[0, 0.95, 0]}>
           <planeGeometry args={[1, 1]} />

@@ -74,7 +74,13 @@ export function AGENT_SPAWN_POSITION(
   workstationId: string,
 ): [number, number, number] {
   const slot = slotFor(workstationId);
-  if (slot) return slot.position;
+  // Spawn at the CHAIR (south of desk, z+0.95), not the desk center.
+  // The visual inner-group also offsets +0.95, so the logical position
+  // must already be at the chair for them to align.
+  if (slot) {
+    const [x, y, z] = deskLocalToWorld(slot.position, slot.rotationY, [0, 0, 0.95]);
+    return [x, y, z];
+  }
   let h = 0;
   for (let i = 0; i < workstationId.length; i++) {
     h = (h * 31 + workstationId.charCodeAt(i)) >>> 0;
