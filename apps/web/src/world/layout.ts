@@ -78,7 +78,7 @@ export function AGENT_SPAWN_POSITION(
   // The visual inner-group also offsets +0.95, so the logical position
   // must already be at the chair for them to align.
   if (slot) {
-    const [x, y, z] = deskLocalToWorld(slot.position, slot.rotationY, [0, 0, 0.95]);
+    const [x, y, z] = deskLocalToWorld(slot.position, slot.rotationY, [0, 0, 0.7]);
     return [x, y, z];
   }
   let h = 0;
