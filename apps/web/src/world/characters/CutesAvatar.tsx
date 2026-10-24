@@ -73,7 +73,9 @@ export function CutesAvatar({
   return (
     <group
       ref={group}
-      rotation={[0, facing, 0]}
+      // CUTES models face -z by default (opposite of the 2D sprites),
+      // so add PI to flip them to the intended facing.
+      rotation={[0, facing + Math.PI, 0]}
       onClick={(e) => {
         e.stopPropagation();
         onClick?.();
