@@ -84,18 +84,18 @@ export function CutesAvatar({
   const { scene, animations } = useGLTF(url);
   const { actions } = useAnimations(animations, group);
 
-  // Play Idle by default, Walk when moving, Grounded when lying flat.
-  // Grounded is near-static with no root rotation track, so it composes
-  // safely with the whole-model lying pitch (see lying.ts); Idle's sway
-  // would read as awake, so it is never used for a sleeping agent.
+  // Play Idle by default, Walk when moving, Idle when lying flat.
+  // Grounded was the first lying clip but looped as walking/flailing:
+  // it is only 0.33s with large foot/hand rotation swings (see
+  // lying.ts), so lying now uses Idle — the calmest clip in the bundle.
   useEffect(() => {
     const idle = actions["Armature|Idle"];
     const walk = actions["Armature|Walk"];
     const grounded = actions["Armature|Grounded"];
     if (lying) {
-      idle?.stop();
       walk?.stop();
-      grounded?.reset().play();
+      grounded?.stop();
+      idle?.reset().play();
     } else if (walking) {
       idle?.stop();
       grounded?.stop();

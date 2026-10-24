@@ -54,12 +54,17 @@
  *   name (2.25) and icon (1.95, bouncing to 2.10) both float above it,
  *   lower than the standing 2.6 / 2.25 but still in name-over-icon order.
  *
- * ANIMATION (see CutesAvatar): lying plays "Armature|Grounded". It was
- * chosen over Idle and Walk deliberately: Idle sways continuously
- * (reads as awake), Walk is locomotion, and Grounded has NO root/
- * armature rotation track (only small bone deltas, floppy feet), so it
- * composes safely with the whole-model pitch and stays near-static —
- * stillness reads as sleep, and the bouncing "zZ" icon carries the rest.
+ * ANIMATION (see CutesAvatar): lying plays "Armature|Idle".
+ * Grounded was tried first and REJECTED after a user report (2026-10-24):
+ * it is only 0.33s long and, looped, its large foot/hand rotation swings
+ * (Foot.L quaternion x 0.496..0.72, Foot.R x 0.719..0.934) read as
+ * walking/flailing in place — "rebahan sambil jalan". Idle, measured
+ * from the same GLB, is a 2.5s cycle whose tracks barely move (Body
+ * translation range ~0.003, Head/Hand rotations small), so it is the
+ * calmest clip available; Walk is locomotion and Jump/Sprint are worse.
+ * No frozen/still clip exists in the CUTES bundle, so Idle's gentle sway
+ * is the floor — if the user still wants zero motion, the next step is
+ * stopping all clips while lying, not another clip.
  */
 
 /** Model scale applied by CutesAvatar (single source of truth). */
@@ -110,7 +115,7 @@ export const LYING = {
   hudNameY: 2.25,
   hudIconY: 1.95,
   /** Clip played while lying (see rationale above). */
-  animation: "Armature|Grounded",
+  animation: "Armature|Idle",
 } as const;
 
 /** Inputs for the lying predicate (derived state, not a new activity). */
