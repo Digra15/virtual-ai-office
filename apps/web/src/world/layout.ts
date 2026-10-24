@@ -107,7 +107,8 @@ export function deskChairSlot(slot: DeskSlot): {
 } {
   return {
     position: deskLocalToWorld(slot.position, slot.rotationY, [0, 0, -0.95]),
-    rotationY: slot.rotationY + Math.PI,
+    // Chair north of desk, faces SOUTH (same as agent). No +PI.
+    rotationY: slot.rotationY,
   };
 }
 
