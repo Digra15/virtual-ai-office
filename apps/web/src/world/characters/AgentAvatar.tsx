@@ -60,6 +60,8 @@ export const AgentAvatar = memo(function AgentAvatar({
     <group ref={outerRef}>
       <CutesAvatar
         agentId={agent.id}
+        name={agent.name}
+        status={agent.status}
         pose={presence.pose}
         facing={facing}
         walking={walking}

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useGLTF, useAnimations } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import { Billboard, Text, useGLTF, useAnimations } from "@react-three/drei";
 import type { Group } from "three";
 
 /**
@@ -19,8 +20,36 @@ export const CUTES_MODEL: Record<string, string> = {
   monitoring: "/models/cutes/Prisoner.glb",
 };
 
+/** Game-style status icon above the head. */
+const STATUS_ICON: Record<string, string> = {
+  thinking: "?",
+  working: "...",
+  waiting: "...",
+  meeting: "!",
+  error: "!",
+  recovering: "zZ",
+  offline: "x",
+  idle: "",
+};
+
+/** Status icon color. */
+const STATUS_COLOR: Record<string, string> = {
+  thinking: "#facc15",
+  working: "#4ade80",
+  waiting: "#facc15",
+  meeting: "#38bdf8",
+  error: "#f87171",
+  recovering: "#c084fc",
+  offline: "#9ca3af",
+  idle: "#ffffff",
+};
+
 interface CutesAvatarProps {
   agentId: string;
+  /** Display name shown above the head. */
+  name: string;
+  /** Agent status driving the overhead icon. */
+  status: string;
   /** "desk" = seated at workstation, "free" = standing/walking */
   pose: "desk" | "free";
   /** group facing in radians (PI = north toward monitors) */
@@ -33,6 +62,8 @@ interface CutesAvatarProps {
 
 export function CutesAvatar({
   agentId,
+  name,
+  status,
   pose,
   facing,
   walking,
@@ -40,6 +71,7 @@ export function CutesAvatar({
   onClick,
 }: CutesAvatarProps) {
   const group = useRef<Group>(null);
+  const iconRef = useRef<Group>(null);
   const url = CUTES_MODEL[agentId] ?? CUTES_MODEL.nika;
   const { scene, animations } = useGLTF(url);
   const { actions } = useAnimations(animations, group);
@@ -64,11 +96,22 @@ export function CutesAvatar({
     };
   }, [actions, walking]);
 
+  // Bob the status icon (game-style thinking "?" bounce).
+  useFrame(({ clock }) => {
+    if (!iconRef.current) return;
+    const t = clock.getElapsedTime();
+    iconRef.current.position.y = 2.35 + Math.sin(t * 3) * 0.08;
+    const s = 1 + Math.sin(t * 3) * 0.1;
+    iconRef.current.scale.setScalar(s);
+  });
+
   // Seated: sink the model so the chair seat is at hip level and the
   // desk occludes the short chibi legs. Standing: full height on floor.
   const isSeated = pose === "desk";
   const scale = 0.95;
   const y = isSeated ? 0.18 : 0;
+  const icon = STATUS_ICON[status] ?? "";
+  const iconColor = STATUS_COLOR[status] ?? "#ffffff";
 
   return (
     <group
@@ -89,6 +132,35 @@ export function CutesAvatar({
       <group position={[0, y, 0]} scale={scale}>
         <primitive object={scene} />
       </group>
+      {/* Game-style overhead HUD: name + status icon, always faces camera. */}
+      <Billboard position={[0, 2.0, 0]}>
+        <Text
+          fontSize={0.22}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.04}
+          outlineColor="#000000"
+        >
+          {name}
+        </Text>
+      </Billboard>
+      {icon !== "" && (
+        <Billboard position={[0, 2.35, 0]}>
+          <group ref={iconRef}>
+            <Text
+              fontSize={0.3}
+              color={iconColor}
+              anchorX="center"
+              anchorY="middle"
+              outlineWidth={0.05}
+              outlineColor="#000000"
+            >
+              {icon}
+            </Text>
+          </group>
+        </Billboard>
+      )}
     </group>
   );
 }
