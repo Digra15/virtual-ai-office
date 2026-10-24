@@ -173,6 +173,12 @@ export const AIAvatar = memo(function AIAvatar({
     const useSitting = !isSleeping && !useTyping && pose === "free" && !walking && !praying && nearSofa && status === "idle";
 
     // for typing: show back-view when camera is behind the agent
+    // Force group facing for typing BEFORE computing camBehind: agent sits south
+    // of desk, must face north (PI) toward monitors. Movement stores facing but
+    // never applies rotation.y.
+    if (useTyping) {
+      g.rotation.y = Math.PI;
+    }
     g.getWorldPosition(tmpV);
     const camAz = Math.atan2(state.camera.position.x - tmpV.x, state.camera.position.z - tmpV.z);
     const facing = praying ? QIBLA_FACING : g.rotation.y;
@@ -261,9 +267,10 @@ export const AIAvatar = memo(function AIAvatar({
       }
       if (flat) {
         // sleeping: plane lies flat on the bed, head north (pillow), no billboard
+        // Rz(-PI/2) maps image -X (head, left) to world -Z (north)
         fig.position.set(px, y, pz);
         fig.scale.set(FIGURE_H * aspect * sx, FIGURE_H * sy, 1);
-        fig.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+        fig.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
       } else if (useTyping) {
         // typing: face the desk (group facing), front/back texture chosen above
         fig.position.set(px, y, pz);
