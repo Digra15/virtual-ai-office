@@ -60,20 +60,28 @@ export interface WallSeg {
   glassAbove?: boolean;
 }
 
-/** center-x/center-z, width — corridor-wall shorthand from the spec. */
+/**
+ * center-x/center-z, width — corridor-wall shorthand from the spec.
+ * Wall-fit pass (2026-10-24): the gaps between these runs are EXACTLY
+ * the door frames on this wall (1.15 wide, centered on each DOOR_SPECS
+ * x). Spans are in the comments; the old layout had 1.05 gaps offset
+ * from the doors, a 1.8-wide recovery gap, a 1.1 pantry gap offset by
+ * 0.15, 0.1 sliver gaps, and a stray 1.05 hole at x≈-9 with no door
+ * (no waypoint uses it — the corridor waypoints sit at the door
+ * centers on z=-3.7 — so it is closed here, not preserved).
+ */
 const CORRIDOR: Array<[number, number, number?, boolean?]> = [
   // [centerX, width, height?, glassAbove?]
-  [-14.5, 3.0],
-  [-10.75, 2.4],
-  [-5.0, 7.0, 1.1, true],
-  [0.4, 0.2],
-  [1.0, 0.8],
-  [5.1, 5.2],
-  [8.05, 0.5],
-  [9.8, 0.9],
-  [11.55, 0.5],
-  [12.35, 1.1],
-  [15.0, 1.8, 1.1, true],
+  [-14.5375, 2.925], // -16.0..-13.075
+  [-10.2125, 3.425], // -11.925..-8.5 (gap -13.075..-11.925 = MUSOLA 1.15)
+  [-5.0, 7.0, 1.1, true], // -8.5..-1.5, UNCHANGED low+glass
+  [-1.1875, 0.625], // -1.5..-0.875
+  [0.75, 0.95], // 0.275..1.225 (gap -0.875..0.275 = RECOVERY 1.15)
+  [5.3, 5.85], // 2.375..8.225 (gap 1.225..2.375 = PANTRY 1.15)
+  [9.8, 0.85], // 9.375..10.225 (gap 8.225..9.375 = TOILET PRIA 1.15)
+  [12.0, 1.25], // 11.375..12.625 (gap 10.225..11.375 = TOILET WANITA 1.15)
+  [13.9375, 0.325], // 13.775..14.1 (gap 12.625..13.775 = SERVER 1.15)
+  [15.0, 1.8, 1.1, true], // 14.1..15.9, UNCHANGED low+glass (east outer wall covers 15.875..)
 ];
 
 export const WALL_SEGMENTS: WallSeg[] = [
@@ -81,8 +89,8 @@ export const WALL_SEGMENTS: WallSeg[] = [
   { x: 0, z: -12, length: 32, axis: "x" }, // north
   { x: -16, z: -1, length: 22, axis: "z" }, // west
   { x: 16, z: -1, length: 22, axis: "z" }, // east
-  { x: -8.6, z: 10, length: 14.8, axis: "x", height: 1.1 }, // front low (west of entrance)
-  { x: 8.6, z: 10, length: 14.8, axis: "x", height: 1.1 }, // front low (east of entrance)
+  { x: -8.55, z: 10, length: 14.9, axis: "x", height: 1.1 }, // front low -16..-1.1 (entrance gap -1.1..1.1 = 2.2)
+  { x: 8.55, z: 10, length: 14.9, axis: "x", height: 1.1 }, // front low 1.1..16, height stays 1.1 for camera visibility
   // north-band dividers (z -12..-4.5)
   ...[-9.0, 0.5, 7.8, 9.8, 11.8].map(
     (x): WallSeg => ({ x, z: -8.25, length: 7.5, axis: "z" }),
@@ -98,14 +106,14 @@ export const WALL_SEGMENTS: WallSeg[] = [
       glassAbove: glass,
     }),
   ),
-  // project room: north wall + east wall (door gap z 2.3..3.7)
+  // project room: north wall + east wall (door gap z 2.425..3.575 = 1.15, centered 3.0)
   { x: -11.25, z: 1.0, length: 9.5, axis: "x" },
-  { x: -6.5, z: 1.65, length: 1.3, axis: "z" },
-  { x: -6.5, z: 6.85, length: 6.3, axis: "z" },
-  // meeting room: north wall + west wall (h1.2 + glass, door gap z 1.3..2.7)
+  { x: -6.5, z: 1.7125, length: 1.425, axis: "z" }, // 1.0..2.425
+  { x: -6.5, z: 6.7875, length: 6.425, axis: "z" }, // 3.575..10.0
+  // meeting room: north wall + west wall (h1.2 + glass, door gap z 1.425..2.575 = 1.15, centered 2.0)
   { x: 12.75, z: -1.8, length: 6.5, axis: "x" },
-  { x: 9.5, z: -0.25, length: 3.1, axis: "z", height: 1.2, glassAbove: true },
-  { x: 9.5, z: 6.35, length: 7.3, axis: "z", height: 1.2, glassAbove: true },
+  { x: 9.5, z: -0.1875, length: 3.225, axis: "z", height: 1.2, glassAbove: true }, // -1.8..1.425
+  { x: 9.5, z: 6.2875, length: 7.425, axis: "z", height: 1.2, glassAbove: true }, // 2.575..10.0
 ];
 
 /** One solid wall run: box [length|0.25, height, 0.25|length], plus

@@ -8,10 +8,14 @@ export type { CozyChairProps } from "./CozyChair";
 export {
   Doorway,
   doorwayVariantStyle,
+  doorwayLintel,
+  doorwayLabelY,
   DOORWAY_POST,
   DOORWAY_OPEN_ANGLE_DEFAULT,
   DOORWAY_WIDTH_DEFAULT,
   DOORWAY_HEIGHT_DEFAULT,
+  DOORWAY_LINTEL_DEPTH,
+  DOORWAY_LABEL_Z,
 } from "./Doorway";
 export type { DoorwayProps, DoorwayVariant, DoorwayStyle } from "./Doorway";
 export { Plaque, PLAQUE_WIDTH_DEFAULT } from "./Plaque";

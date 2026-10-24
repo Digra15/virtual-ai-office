@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo } from "react";
+import { WALL_H } from "../building/floorPlan";
 import { drawDoorLabel, makeTexture } from "./textures";
 
 export type DoorwayVariant =
@@ -40,6 +41,35 @@ export const DOORWAY_POST = 0.08;
 export const DOORWAY_OPEN_ANGLE_DEFAULT = 0.95;
 export const DOORWAY_WIDTH_DEFAULT = 1.15;
 export const DOORWAY_HEIGHT_DEFAULT = 2.15;
+
+/**
+ * Wall lintel above the door (2026-10-24 wall/door fit pass): the wall
+ * runs in Building.tsx are split at exactly the door-frame width, so
+ * without a lintel there was an open slot from the header up to WALL_H.
+ * The lintel is wall material, 0.25 deep like the wall runs, so its
+ * faces sit flush with the neighbouring wall faces.
+ */
+export const DOORWAY_LINTEL_DEPTH = 0.25;
+/** Lintel bottom: just above the header lintel plate (height + 0.19). */
+export function doorwayLintel(height: number): { bottom: number; top: number } {
+  return { bottom: height + 0.19, top: WALL_H };
+}
+/**
+ * Label center: the old height + 0.42, clamped so the 0.24-tall plate
+ * never pokes above WALL_H (matters for the 2.7 entrance: 3.12 -> 3.07).
+ */
+export function doorwayLabelY(height: number): number {
+  return Math.min(height + 0.42, WALL_H - 0.13);
+}
+/**
+ * Label face offset: the lintel's room-side face is at local +0.125, so
+ * the label sits 0.015 proud of it (local +Z faces into the room). The
+ * label is mounted ON the lintel, not floating in an open slot — the
+ * old floating position only worked because the slot above the door
+ * was open, and a split lintel would still leave open slivers beside
+ * the 0.95-wide plate (worst at the 2.2-wide entrance: 0.625 a side).
+ */
+export const DOORWAY_LABEL_Z = 0.14;
 
 export interface DoorwayStyle {
   frame: string;
@@ -201,9 +231,10 @@ function Leaf({
 }
 
 /**
- * Doorway: frame posts + header + lintel + threshold plate, with a
- * leaf hinged on the left post swung open `openAngle` into the room.
- * rotationY=0 → the doorway spans local X.
+ * Doorway: frame posts + header + lintel + threshold plate + wall
+ * lintel up to WALL_H, with a leaf hinged on the left post swung open
+ * `openAngle` into the room. rotationY=0 → the doorway spans local X.
+ * The label mounts on the wall lintel's room-side face.
  */
 export const Doorway = memo(function Doorway({
   position,
@@ -217,6 +248,8 @@ export const Doorway = memo(function Doorway({
 }: DoorwayProps) {
   const style = doorwayVariantStyle(variant);
   const postX = width / 2 - DOORWAY_POST / 2;
+  const lintel = doorwayLintel(height);
+  const labelY = doorwayLabelY(height);
 
   const labelTex = useMemo(() => {
     if (!label) return null;
@@ -241,6 +274,15 @@ export const Doorway = memo(function Doorway({
       <mesh position={[0, height + 0.165, 0]} castShadow>
         <boxGeometry args={[width + 0.2, 0.05, 0.18]} />
         <meshStandardMaterial color={style.frame} roughness={0.6} />
+      </mesh>
+      {/* wall lintel: closes the slot above the header up to WALL_H.
+          Same width as the frame (= the wall gap) and same 0.25 depth
+          as the wall runs, so it reads as a continuation of the wall.
+          For the entrance this is a standalone portal header block —
+          the low front walls beside it stay at 1.1. */}
+      <mesh position={[0, (lintel.bottom + lintel.top) / 2, 0]} castShadow>
+        <boxGeometry args={[width, lintel.top - lintel.bottom, DOORWAY_LINTEL_DEPTH]} />
+        <meshStandardMaterial color="#f5f1eb" roughness={0.92} />
       </mesh>
       {/* threshold plate */}
       <mesh position={[0, 0.015, 0]}>
@@ -302,9 +344,9 @@ export const Doorway = memo(function Doorway({
         </group>
       )}
 
-      {/* optional label plate above the header */}
+      {/* label plate mounted on the wall lintel's room-side face */}
       {label && labelTex && (
-        <mesh position={[0, height + 0.42, 0.02]}>
+        <mesh position={[0, labelY, DOORWAY_LABEL_Z]}>
           <planeGeometry args={[0.95, 0.24]} />
           <meshStandardMaterial map={labelTex} roughness={0.6} />
         </mesh>

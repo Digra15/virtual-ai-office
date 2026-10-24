@@ -22,6 +22,13 @@ import {
   type PlaqueSpec,
 } from "./Building";
 import { MEETING_CHAIR_SLOTS, MEETING_TABLE_CENTER } from "../rooms/MeetingRoom";
+import {
+  doorwayLabelY,
+  doorwayLintel,
+  DOORWAY_LABEL_Z,
+  DOORWAY_LINTEL_DEPTH,
+  DOORWAY_HEIGHT_DEFAULT,
+} from "../cozy";
 import { planWorkstation } from "./rooms/Workspace";
 import { PRAYER_RUG_POSITIONS } from "./rooms/Musola";
 import { buildRecoveryBedPlans } from "./rooms/RecoveryRoom";
@@ -217,6 +224,150 @@ describe("plaques", () => {
     }
     for (const p of PLAQUE_SPECS) {
       expect(onWallFace(p), `plaque "${p.title}" is floating, not on a wall`).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5b. Wall gaps fit the door frames (wall/door fit pass, 2026-10-24)
+// ---------------------------------------------------------------------------
+
+/** Wall spans on one run: [start, end] along the run axis. */
+function runSpans(axis: "x" | "z", fixed: number): Array<[number, number]> {
+  return WALL_SEGMENTS.filter((w) => w.axis === axis && w[axis === "x" ? "z" : "x"] === fixed)
+    .map((w) => {
+      const c = axis === "x" ? w.x : w.z;
+      return [c - w.length / 2, c + w.length / 2] as [number, number];
+    })
+    .sort((a, b) => a[0] - b[0]);
+}
+
+/** Gaps between the spans inside [extentMin, extentMax], plus tail gaps. */
+function runGaps(
+  spans: Array<[number, number]>,
+  extentMin: number,
+  extentMax: number,
+): Array<{ start: number; end: number; width: number; center: number }> {
+  const gaps: Array<{ start: number; end: number; width: number; center: number }> = [];
+  let prev = extentMin;
+  for (const [a, b] of spans) {
+    if (a > prev + 1e-9) {
+      gaps.push({ start: prev, end: a, width: a - prev, center: (prev + a) / 2 });
+    }
+    prev = Math.max(prev, b);
+  }
+  if (extentMax > prev + 1e-9) {
+    gaps.push({ start: prev, end: extentMax, width: extentMax - prev, center: (prev + extentMax) / 2 });
+  }
+  return gaps;
+}
+
+const WALL_RUNS: Array<{
+  name: string;
+  axis: "x" | "z";
+  fixed: number;
+  extent: [number, number];
+  doors: Array<{ center: number; width: number }>;
+  /** Tail gap covered by a perpendicular outer wall, not a real hole. */
+  tailCoveredTo?: number;
+}> = [
+  {
+    name: "corridor (z=-4.5)",
+    axis: "x",
+    fixed: -4.5,
+    extent: [-16, 16],
+    doors: [
+      { center: -12.5, width: 1.15 },
+      { center: -0.3, width: 1.15 },
+      { center: 1.8, width: 1.15 },
+      { center: 8.8, width: 1.15 },
+      { center: 10.8, width: 1.15 },
+      { center: 13.2, width: 1.15 },
+    ],
+    tailCoveredTo: 15.875, // east outer wall (x=16, 0.25 thick) covers the tail
+  },
+  {
+    name: "front (z=10)",
+    axis: "x",
+    fixed: 10,
+    extent: [-16, 16],
+    doors: [{ center: 0, width: 2.2 }],
+  },
+  {
+    name: "project east wall (x=-6.5)",
+    axis: "z",
+    fixed: -6.5,
+    extent: [1, 10],
+    doors: [{ center: 3.0, width: 1.15 }],
+  },
+  {
+    name: "meeting west wall (x=9.5)",
+    axis: "z",
+    fixed: 9.5,
+    extent: [-1.8, 10],
+    doors: [{ center: 2.0, width: 1.15 }],
+  },
+];
+
+describe("wall gaps fit door frames", () => {
+  it("every gap on a door wall is exactly one door frame, centered on its door", () => {
+    for (const run of WALL_RUNS) {
+      const gaps = runGaps(runSpans(run.axis, run.fixed), run.extent[0], run.extent[1])
+        // the corridor tail past the last glass run is inside the east outer wall
+        .filter((g) => !(run.tailCoveredTo !== undefined && g.start >= run.tailCoveredTo));
+      expect(gaps, `${run.name}: gaps ${JSON.stringify(gaps)}`).toHaveLength(run.doors.length);
+      for (const door of run.doors) {
+        const g = gaps.find((x) => Math.abs(x.center - door.center) < 1e-6);
+        expect(g, `${run.name}: no gap centered on door at ${door.center}`).toBeDefined();
+        expect(g!.width).toBeCloseTo(door.width, 5);
+      }
+    }
+  });
+
+  it("no unintended sliver gap (< 0.2) on any door wall", () => {
+    for (const run of WALL_RUNS) {
+      const gaps = runGaps(runSpans(run.axis, run.fixed), run.extent[0], run.extent[1])
+        .filter((g) => !(run.tailCoveredTo !== undefined && g.start >= run.tailCoveredTo));
+      for (const g of gaps) {
+        expect(g.width, `${run.name}: sliver gap ${g.start}..${g.end}`).toBeGreaterThanOrEqual(1.15 - 1e-9);
+      }
+    }
+  });
+
+  it("the corridor low+glass runs are untouched at -8.5..-1.5 and 14.1..15.9", () => {
+    const glass = WALL_SEGMENTS.filter(
+      (w) => w.axis === "x" && w.z === -4.5 && w.glassAbove,
+    );
+    expect(glass).toHaveLength(2);
+    expect([glass[0].x, glass[1].x].sort((a, b) => a - b)).toEqual([-5, 15]);
+    expect(glass.every((w) => w.height === 1.1)).toBe(true);
+  });
+});
+
+describe("door lintels", () => {
+  it("the lintel closes the slot above every door up to WALL_H", () => {
+    expect(DOOR_SPECS).toHaveLength(9);
+    for (const d of DOOR_SPECS) {
+      const height = d.height ?? DOORWAY_HEIGHT_DEFAULT;
+      const lintel = doorwayLintel(height);
+      expect(lintel.bottom).toBeCloseTo(height + 0.19, 5);
+      expect(lintel.top).toBe(WALL_H);
+      expect(lintel.top - lintel.bottom).toBeGreaterThan(0);
+    }
+  });
+
+  it("labels mount on the lintel face, fully inside the lintel band", () => {
+    expect(DOORWAY_LINTEL_DEPTH).toBe(0.25);
+    // lintel room-side face is at local +0.125; the label sits just proud of it
+    expect(DOORWAY_LABEL_Z).toBeGreaterThan(0.125);
+    expect(DOORWAY_LABEL_Z).toBeLessThan(0.16);
+    for (const d of DOOR_SPECS) {
+      if (!d.label) continue;
+      const height = d.height ?? DOORWAY_HEIGHT_DEFAULT;
+      const lintel = doorwayLintel(height);
+      const y = doorwayLabelY(height);
+      expect(y - 0.12, `${d.label}: label bottom below lintel`).toBeGreaterThanOrEqual(lintel.bottom - 1e-9);
+      expect(y + 0.12, `${d.label}: label top above WALL_H`).toBeLessThanOrEqual(WALL_H + 1e-9);
     }
   });
 });
