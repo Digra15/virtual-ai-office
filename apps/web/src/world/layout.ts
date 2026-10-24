@@ -91,9 +91,9 @@ export function AGENT_SPAWN_POSITION(
  *  Unknown ids face the room (0). */
 export function AGENT_FACING(workstationId: string): number {
   const slot = slotFor(workstationId);
-  // Agent sits NORTH of the desk, faces SOUTH toward monitors/camera.
-  // This puts the desk+computers between the (southern) camera and the agent.
-  return slot ? 0 : 0;
+  // Agent sits south of the desk (chair side), must face NORTH toward the monitors.
+  // rotation.y = PI faces -z (north); slot.rotationY is the desk's, not the agent's.
+  return slot ? Math.PI : 0;
 }
 
 /**
@@ -106,9 +106,8 @@ export function deskChairSlot(slot: DeskSlot): {
   rotationY: number;
 } {
   return {
-    position: deskLocalToWorld(slot.position, slot.rotationY, [0, 0, -0.95]),
-    // Chair north of desk, faces SOUTH (same as agent). No +PI.
-    rotationY: slot.rotationY,
+    position: deskLocalToWorld(slot.position, slot.rotationY, [0, 0, 0.95]),
+    rotationY: slot.rotationY + Math.PI,
   };
 }
 
