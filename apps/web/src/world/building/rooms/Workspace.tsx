@@ -128,14 +128,14 @@ const WorkstationDressing = memo(function WorkstationDressing({
       ].map(([lx, lz]) => (
         <mesh key={`${lx}:${lz}`} geometry={geoBox} material={matDeskLeg} scale={[0.07, 0.73, 0.07]} position={[lx, 0.365, lz]} />
       ))}
-      {/* deskmat: pink trim under a dark mat */}
-      <mesh geometry={geoBox} material={matMatPink} scale={[1.55, 0.012, 0.65]} position={[0, 0.775, 0.02]} />
-      <mesh geometry={geoBox} material={matMatDark} scale={[1.45, 0.014, 0.57]} position={[0, 0.782, 0.02]} />
-      {/* keyboard + mouse (north side, agent sits north) */}
-      <mesh geometry={geoPlane} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.792, -0.16]} scale={[0.45, 0.16, 1]}>
+      {/* deskmat: pink trim under a dark mat (north side) */}
+      <mesh geometry={geoBox} material={matMatPink} scale={[1.55, 0.012, 0.65]} position={[0, 0.775, -0.35]} />
+      <mesh geometry={geoBox} material={matMatDark} scale={[1.45, 0.014, 0.57]} position={[0, 0.782, -0.35]} />
+      {/* keyboard + mouse (north side, between agent and monitors) */}
+      <mesh geometry={geoPlane} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.792, -0.55]} scale={[0.45, 0.16, 1]}>
         <meshBasicMaterial map={tex.keyboard} toneMapped={false} />
       </mesh>
-      <mesh geometry={geoBox} material={matMouse} scale={[0.07, 0.05, 0.11]} position={[0.33, 0.8, -0.16]} />
+      <mesh geometry={geoBox} material={matMouse} scale={[0.07, 0.05, 0.11]} position={[0.33, 0.8, -0.55]} />
       {/* dual monitors: left = ide, right = telemetry, angled toward the chair (north) */}
       <Monitor x={-0.3} yaw={0.35 + Math.PI} tex={tex.ide} />
       <Monitor x={0.3} yaw={-0.35 + Math.PI} tex={tex.telemetry} />
@@ -150,10 +150,10 @@ const WorkstationDressing = memo(function WorkstationDressing({
           <mesh key={fy} geometry={geoTorus} material={matFanPink} scale={[0.14, 0.14, 0.14]} position={[0, fy, 0.23]} />
         ))}
       </group>
-      {/* mug on a coaster */}
-      <mesh geometry={geoCylinder} material={matCoaster} scale={[0.14, 0.015, 0.14]} position={[-0.62, 0.79, 0.22]} />
-      <Mug position={[-0.62, 0.798, 0.22]} />
-      {/* agent chair south of the desk, facing north at the monitor */}
+      {/* mug on a coaster (north side) */}
+      <mesh geometry={geoCylinder} material={matCoaster} scale={[0.14, 0.015, 0.14]} position={[-0.62, 0.79, -0.5]} />
+      <Mug position={[-0.62, 0.798, -0.5]} />
+      {/* agent chair north of the desk, facing south at the monitor */}
       <CozyChair
         position={[plan.chair.position[0] - x, 0, plan.chair.position[2] - z]}
         rotationY={plan.chair.rotationY}
