@@ -15,7 +15,15 @@ import { useBuildingViewStore } from "../../stores/useBuildingViewStore";
 import { FLOOR_VISIBILITY, WALL_H } from "./floorPlan";
 import { Exterior } from "../exterior/Exterior";
 import { ROOM_COMPONENTS } from "./rooms";
-import { Doorway, Plaque, useCozyTexture, type DoorwayVariant } from "../cozy";
+import {
+  Doorway,
+  Plaque,
+  useCozyTexture,
+  DOORWAY_OPEN_ANGLE_DEFAULT,
+  DOORWAY_POST,
+  type DoorwayVariant,
+} from "../cozy";
+import { PolyModel } from "../PolyModel";
 import { geoBox, geoPlane } from "../geometries";
 import type { ComponentType } from "react";
 
@@ -146,19 +154,72 @@ export interface DoorSpec {
   label?: string;
   width?: number;
   height?: number;
+  /** Hide the procedural leaves: a real GLB leaf is rendered instead. */
+  hideLeaves?: boolean;
 }
 
 export const DOOR_SPECS: DoorSpec[] = [
-  { position: [0, 0, 10], yaw: Math.PI, variant: "double_glass", label: "ENTRANCE", width: 2.2, height: 2.7 },
-  { position: [-12.5, 0, -4.5], yaw: Math.PI, variant: "wood", label: "MUSOLA" },
+  { position: [0, 0, 10], yaw: Math.PI, variant: "double_glass", label: "ENTRANCE", width: 2.2, height: 2.7, hideLeaves: true },
+  { position: [-12.5, 0, -4.5], yaw: Math.PI, variant: "wood", label: "MUSOLA", hideLeaves: true },
   { position: [-0.3, 0, -4.5], yaw: Math.PI, variant: "hospital", label: "RECOVERY" },
   { position: [1.8, 0, -4.5], yaw: Math.PI, variant: "open_arch", label: "PANTRY" },
   { position: [8.8, 0, -4.5], yaw: Math.PI, variant: "restroom_m" },
   { position: [10.8, 0, -4.5], yaw: Math.PI, variant: "restroom_f" },
   { position: [13.2, 0, -4.5], yaw: Math.PI, variant: "security", label: "SERVER" },
-  { position: [-6.5, 0, 3.0], yaw: -Math.PI / 2, variant: "wood", label: "PROJECT" },
+  { position: [-6.5, 0, 3.0], yaw: -Math.PI / 2, variant: "wood", label: "PROJECT", hideLeaves: true },
   { position: [9.5, 0, 2.0], yaw: Math.PI / 2, variant: "glass", label: "MEETING" },
 ];
+
+// ---------------------------------------------------------------------------
+// Real GLB door leaves (user-supplied poly.pizza files). The procedural
+// frame, header, threshold and label stay; only the leaves are replaced,
+// hinged and swung exactly like the procedural Leaf they replace.
+// ---------------------------------------------------------------------------
+
+/** Entrance: two french-door leaves (raw 0.36 wide x 0.86 tall). */
+const FRENCH_LEAF_SCALE = 2.64 / 0.86; // target leaf height / raw height
+const FRENCH_LEAF_WIDTH = 0.36 * FRENCH_LEAF_SCALE; // 1.105
+const ENTRANCE_POST_X = 2.2 / 2 - DOORWAY_POST / 2; // 1.06
+
+const FrenchDoorPair = memo(function FrenchDoorPair() {
+  const open = DOORWAY_OPEN_ANGLE_DEFAULT * 0.7; // same factor as doubleLeaf
+  return (
+    <group position={[0, 0, 10]} rotation={[0, Math.PI, 0]}>
+      <group position={[-ENTRANCE_POST_X, 0, 0]} rotation={[0, -open, 0]}>
+        <group position={[FRENCH_LEAF_WIDTH / 2, 0, 0]}>
+          <PolyModel file="french-door.glb" position={[0, 0, 0]} scale={FRENCH_LEAF_SCALE} />
+        </group>
+      </group>
+      <group position={[ENTRANCE_POST_X, 0, 0]} rotation={[0, open, 0]}>
+        <group position={[-FRENCH_LEAF_WIDTH / 2, 0, 0]}>
+          <PolyModel file="french-door.glb" position={[0, 0, 0]} scale={FRENCH_LEAF_SCALE} />
+        </group>
+      </group>
+    </group>
+  );
+});
+
+/**
+ * Wood doors (MUSOLA, PROJECT): the leaf of the converted Door_and_frame
+ * GLB (nodes Door2 + Glass2 + Glass16, raw 162.5 wide x 325 tall; frame
+ * nodes Door_frame + Glass hidden — the procedural frame stays).
+ */
+const WOOD_LEAF_HIDDEN = ["Door_frame", "Glass"] as const;
+const WOOD_LEAF_SCALE = 2.09 / 325; // default doorway leaf height / raw leaf height
+const WOOD_LEAF_WIDTH = 162.5 * WOOD_LEAF_SCALE; // 1.045
+const WOOD_POST_X = 1.15 / 2 - DOORWAY_POST / 2; // 0.535 (default width)
+
+const WoodDoorLeaf = memo(function WoodDoorLeaf({ spec }: { spec: DoorSpec }) {
+  return (
+    <group position={spec.position} rotation={[0, spec.yaw, 0]}>
+      <group position={[-WOOD_POST_X, 0, 0]} rotation={[0, -DOORWAY_OPEN_ANGLE_DEFAULT, 0]}>
+        <group position={[WOOD_LEAF_WIDTH / 2, 0, 0]}>
+          <PolyModel file="door-and-frame.glb" position={[0, 0, 0]} scale={WOOD_LEAF_SCALE} hideNodes={WOOD_LEAF_HIDDEN} />
+        </group>
+      </group>
+    </group>
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Room plaques — mounted on the nearest wall face, never floating.
@@ -257,7 +318,13 @@ export const Building = memo(function Building() {
             label={d.label}
             width={d.width}
             height={d.height}
+            hideLeaves={d.hideLeaves}
           />
+        ))}
+        {/* real GLB leaves replacing the hidden procedural ones */}
+        <FrenchDoorPair />
+        {DOOR_SPECS.filter((d) => d.variant === "wood").map((d, i) => (
+          <WoodDoorLeaf key={i} spec={d} />
         ))}
         {/* room plaques */}
         {PLAQUE_SPECS.map((p, i) => (

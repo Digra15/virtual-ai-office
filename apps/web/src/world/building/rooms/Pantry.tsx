@@ -1,11 +1,16 @@
 /**
  * Pantry (x 0.5..8, z -12..-4.5): kitchen counter + fridge along the
- * north wall, round dining table with 4 chairs + 2 mugs.
+ * north wall, round dining table with 4 chairs + 4 place settings.
+ * Food/drink props are real user-supplied poly.pizza GLBs (see
+ * ../PolyModel for the original-file mapping and credits); only the
+ * procedural food/drink props were replaced — counter, fridge, table,
+ * chairs, rug, coffee maker and wall shelf are untouched.
  */
 import { memo } from "react";
 import * as THREE from "three";
-import { CozyChair, Mug } from "../../cozy";
-import { geoBox, geoCircle, geoCylinder, geoSphere, geoTorus } from "../../geometries";
+import { CozyChair } from "../../cozy";
+import { geoBox, geoCircle, geoCylinder } from "../../geometries";
+import { PolyModel, type PolyFile } from "../../PolyModel";
 
 const matCounterBase = new THREE.MeshStandardMaterial({ color: "#6b4a2f", roughness: 0.7 });
 const matCounterTop = new THREE.MeshStandardMaterial({ color: "#e8e0d2", roughness: 0.35 });
@@ -15,11 +20,6 @@ const matTableWood = new THREE.MeshStandardMaterial({ color: "#9a6a3b", roughnes
 const matTableDark = new THREE.MeshStandardMaterial({ color: "#5d3d22", roughness: 0.7 });
 const matPlate = new THREE.MeshStandardMaterial({ color: "#f8fafc", roughness: 0.3 });
 const matCoffee = new THREE.MeshStandardMaterial({ color: "#4a2c1a", roughness: 0.5 });
-const matDonut = new THREE.MeshStandardMaterial({ color: "#d99a4e", roughness: 0.6 });
-const matFrosting = new THREE.MeshStandardMaterial({ color: "#f472b6", roughness: 0.5 });
-const matRice = new THREE.MeshStandardMaterial({ color: "#fefce8", roughness: 0.8 });
-const matVeggie = new THREE.MeshStandardMaterial({ color: "#4ade80", roughness: 0.7 });
-const matMeat = new THREE.MeshStandardMaterial({ color: "#b45309", roughness: 0.6 });
 const matRug = new THREE.MeshStandardMaterial({ color: "#e7c9a2", roughness: 0.9 });
 const matShelf = new THREE.MeshStandardMaterial({ color: "#7c5a36", roughness: 0.6 });
 const matJar = new THREE.MeshStandardMaterial({ color: "#d6c9a8", roughness: 0.2, transparent: true, opacity: 0.7 });
@@ -60,15 +60,25 @@ const Fridge = memo(function Fridge() {
   );
 });
 
-/** Round dining table at (4.2,-7.5): 4 place settings (plate + food + mug,
- * one per chair) + a donut plate in the center. */
+/** Round dining table at (4.2,-7.5): 4 place settings (Plate_With_Food
+ * + a cup/mug, one per chair) + 3 donuts on the center plate. Scales
+ * from the raw GLB bboxes (PolyModel normalizes origin first):
+ * plate-with-food 0.493 -> 0.85 gives the old 0.42 plate; donut 0.86 ->
+ * 0.19 gives the old ~0.16 donut; coffee-cup 0.681 -> 0.15, cup 69.6 ->
+ * 0.0015 and mug-office 0.106 -> 0.85 all land near the old 0.10 mug. */
 const DiningTable = memo(function DiningTable() {
   // One setting per chair, at the table edge facing that chair.
-  const settings: Array<{ pos: [number, number, number]; mug: [number, number, number] }> = [
-    { pos: [4.2, 0.765, -8.05], mug: [4.45, 0.765, -8.05] }, // north chair
-    { pos: [4.2, 0.765, -6.95], mug: [3.95, 0.765, -6.95] }, // south chair
-    { pos: [3.65, 0.765, -7.5], mug: [3.65, 0.765, -7.25] }, // west chair
-    { pos: [4.75, 0.765, -7.5], mug: [4.75, 0.765, -7.75] }, // east chair
+  // Table top is y 0.765; PolyModel positions are surface points.
+  const settings: Array<{
+    pos: [number, number, number];
+    mug: [number, number, number];
+    mugFile: PolyFile;
+    mugScale: number;
+  }> = [
+    { pos: [4.2, 0.765, -8.05], mug: [4.45, 0.765, -8.05], mugFile: "coffee-cup.glb", mugScale: 0.15 }, // north chair
+    { pos: [4.2, 0.765, -6.95], mug: [3.95, 0.765, -6.95], mugFile: "cup.glb", mugScale: 0.0015 }, // south chair
+    { pos: [3.65, 0.765, -7.5], mug: [3.65, 0.765, -7.25], mugFile: "mug-office.glb", mugScale: 0.85 }, // west chair
+    { pos: [4.75, 0.765, -7.5], mug: [4.75, 0.765, -7.75], mugFile: "coffee-cup.glb", mugScale: 0.15 }, // east chair
   ];
   return (
     <group position={[4.2, 0, -7.5]}>
@@ -77,49 +87,51 @@ const DiningTable = memo(function DiningTable() {
       <mesh geometry={geoCylinder} material={matTableWood} scale={[1.6, 0.07, 1.6]} position={[0, 0.73, 0]} castShadow />
       <mesh geometry={geoCylinder} material={matTableDark} scale={[0.14, 0.7, 0.14]} position={[0, 0.36, 0]} />
       <mesh geometry={geoCylinder} material={matTableDark} scale={[0.7, 0.06, 0.7]} position={[0, 0.03, 0]} />
-      {/* donut plate in the center */}
+      {/* donut plate in the center (procedural plate kept; donuts are GLB) */}
       <mesh geometry={geoCylinder} material={matPlate} scale={[0.5, 0.03, 0.5]} position={[0, 0.78, 0]} />
       {[0, 1, 2].map((i) => {
         const a = (i / 3) * Math.PI * 2;
         return (
-          <group key={i} position={[Math.cos(a) * 0.13, 0.81, Math.sin(a) * 0.13]}>
-            <mesh geometry={geoTorus} material={matDonut} scale={[0.16, 0.16, 0.16]} rotation={[Math.PI / 2, 0, 0]} />
-            <mesh geometry={geoTorus} material={matFrosting} scale={[0.13, 0.13, 0.13]} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.015, 0]} />
-          </group>
+          <PolyModel
+            key={i}
+            file="donut.glb"
+            position={[Math.cos(a) * 0.13, 0.795, Math.sin(a) * 0.13]}
+            scale={0.19}
+            rotationY={i * 1.1}
+          />
         );
       })}
       {/* place settings (world coords relative to table center) */}
       {settings.map((s, i) => (
         <group key={i}>
-          <mesh geometry={geoCylinder} material={matPlate} scale={[0.42, 0.03, 0.42]} position={[s.pos[0] - 4.2, 0.78, s.pos[2] + 7.5]} />
-          <mesh geometry={geoSphere} material={matRice} scale={[0.2, 0.08, 0.2]} position={[s.pos[0] - 4.2, 0.81, s.pos[2] + 7.5]} />
-          <mesh geometry={geoSphere} material={matVeggie} scale={[0.1, 0.06, 0.1]} position={[s.pos[0] - 4.2 + 0.1, 0.81, s.pos[2] + 7.5]} />
-          <mesh geometry={geoSphere} material={matMeat} scale={[0.09, 0.06, 0.09]} position={[s.pos[0] - 4.2 - 0.1, 0.81, s.pos[2] + 7.5]} />
-          <Mug position={[s.mug[0] - 4.2, 0.765, s.mug[2] + 7.5]} />
+          <PolyModel file="plate-with-food.glb" position={[s.pos[0] - 4.2, 0.765, s.pos[2] + 7.5]} scale={0.85} rotationY={i * 0.7} />
+          <PolyModel file={s.mugFile} position={[s.mug[0] - 4.2, 0.765, s.mug[2] + 7.5]} scale={s.mugScale} />
         </group>
       ))}
     </group>
   );
 });
 
-/** Coffee maker on the counter + fruit bowl. */
+/** Coffee maker on the counter + french-press, cake slice and bread on
+ * the counter top (counter top is y 0.91; local x measured from the
+ * counter center). French-press raw height 512164 -> 6.8e-7 gives a
+ * 0.35 tall press; cake-slice 0.802 -> 0.35 gives 0.28; bread 1.199 long
+ * -> 0.3 gives a 0.36 loaf. The old procedural fruit bowl spot (local
+ * +1.9) now holds the bread. */
 const CounterProps = memo(function CounterProps() {
   return (
     <group position={[4.2, 0, -11.4]}>
-      {/* coffee maker at the west end of the counter */}
+      {/* coffee maker at the west end of the counter (procedural: no
+          poly.pizza coffee-maker model exists, so this one is kept) */}
       <group position={[-1.9, 0.91, 0]}>
         <mesh geometry={geoBox} material={matMachine} scale={[0.45, 0.5, 0.4]} position={[0, 0.25, 0]} castShadow />
         <mesh geometry={geoCylinder} material={matFridge} scale={[0.3, 0.22, 0.3]} position={[0, 0.11, 0.12]} />
         <mesh geometry={geoCylinder} material={matCoffee} scale={[0.26, 0.02, 0.26]} position={[0, 0.2, 0.12]} />
         <mesh geometry={geoBox} material={matCoffee} scale={[0.2, 0.3, 0.02]} position={[0, 0.25, 0.21]} />
       </group>
-      {/* fruit bowl at the east end */}
-      <group position={[1.9, 0.91, 0]}>
-        <mesh geometry={geoSphere} material={matPlate} scale={[0.5, 0.18, 0.5]} position={[0, 0.05, 0]} />
-        <mesh geometry={geoSphere} material={matVeggie} scale={[0.16, 0.16, 0.16]} position={[-0.1, 0.16, 0]} />
-        <mesh geometry={geoSphere} material={matDonut} scale={[0.16, 0.16, 0.16]} position={[0.12, 0.16, 0.05]} />
-        <mesh geometry={geoSphere} material={matFrosting} scale={[0.14, 0.14, 0.14]} position={[0, 0.18, -0.1]} />
-      </group>
+      <PolyModel file="french-press.glb" position={[0.3, 0.91, 0]} scale={0.00000068} />
+      <PolyModel file="cake-slice.glb" position={[1.15, 0.91, 0]} scale={0.35} rotationY={0.5} />
+      <PolyModel file="bread.glb" position={[1.9, 0.91, 0]} scale={0.3} />
     </group>
   );
 });

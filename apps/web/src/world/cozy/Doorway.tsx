@@ -27,6 +27,12 @@ export interface DoorwayProps {
   label?: string;
   /** Leaf swing in radians. Default ~0.95 (swung open into the room). */
   openAngle?: number;
+  /**
+   * Hide the procedural leaves (frame, header, threshold and label stay).
+   * Used where a real GLB leaf replaces the procedural one (entrance
+   * french doors, converted wood door) so the two never double-render.
+   */
+  hideLeaves?: boolean;
 }
 
 /** The user's builder dimensions, kept: posts 0.08 thick, threshold plate. */
@@ -207,6 +213,7 @@ export const Doorway = memo(function Doorway({
   variant = "wood",
   label,
   openAngle = DOORWAY_OPEN_ANGLE_DEFAULT,
+  hideLeaves = false,
 }: DoorwayProps) {
   const style = doorwayVariantStyle(variant);
   const postX = width / 2 - DOORWAY_POST / 2;
@@ -249,11 +256,11 @@ export const Doorway = memo(function Doorway({
         </mesh>
       )}
 
-      {/* leaves */}
-      {style.hasLeaf && !style.doubleLeaf && (
+      {/* leaves (hidden when a GLB leaf replaces them) */}
+      {style.hasLeaf && !hideLeaves && !style.doubleLeaf && (
         <Leaf x={-postX} width={width} height={height} style={style} openAngle={openAngle} />
       )}
-      {style.hasLeaf && style.doubleLeaf && (
+      {style.hasLeaf && !hideLeaves && style.doubleLeaf && (
         <>
           <Leaf
             x={-postX}
