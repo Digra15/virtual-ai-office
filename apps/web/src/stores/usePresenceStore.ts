@@ -39,13 +39,13 @@ export type PrayerPose = "bowing" | "prostrate" | "sitting" | null;
 export interface PresenceInfo {
   activity: AgentActivity;
   pose: AgentPose;
+  /** Faked prayer posture; absent when the agent is not praying. */
   prayerPose?: PrayerPose;
 }
 
 export const DEFAULT_PRESENCE: PresenceInfo = {
   activity: "seated",
   pose: "desk",
-  prayerPose: null,
 };
 
 interface PresenceState {

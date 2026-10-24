@@ -33,6 +33,9 @@ const matGlassWall = new THREE.MeshStandardMaterial({
   opacity: 0.35,
 });
 const matRoof = new THREE.MeshStandardMaterial({ color: "#d9d2c4", roughness: 0.95 });
+const matSkirting = new THREE.MeshStandardMaterial({ color: "#7c5a36", roughness: 0.6 });
+const matRunner = new THREE.MeshStandardMaterial({ color: "#b08968", roughness: 0.9 });
+const matEntranceMat = new THREE.MeshStandardMaterial({ color: "#334155", roughness: 0.95 });
 
 // ---------------------------------------------------------------------------
 // Wall segments — the user's layout, faithful.
@@ -97,9 +100,14 @@ export const WALL_SEGMENTS: WallSeg[] = [
   { x: 9.5, z: 6.35, length: 7.3, axis: "z", height: 1.2, glassAbove: true },
 ];
 
-/** One solid wall run: box [length|0.25, height, 0.25|length]. */
+/** One solid wall run: box [length|0.25, height, 0.25|length], plus
+ * dark-wood skirting boards on both faces (the "proper office" trim). */
 const WallRun = memo(function WallRun({ x, z, length, axis, height = WALL_H, glassAbove }: WallSeg) {
   const h = height;
+  const trimPos = (offset: number): [number, number, number] =>
+    axis === "x" ? [x, 0.06, z + offset] : [x + offset, 0.06, z];
+  const trimScale: [number, number, number] =
+    axis === "x" ? [length, 0.12, 0.03] : [0.03, 0.12, length];
   return (
     <group>
       <mesh
@@ -110,6 +118,9 @@ const WallRun = memo(function WallRun({ x, z, length, axis, height = WALL_H, gla
         castShadow
         receiveShadow
       />
+      {/* skirting on both faces */}
+      <mesh geometry={geoBox} material={matSkirting} scale={trimScale} position={trimPos(0.14)} />
+      <mesh geometry={geoBox} material={matSkirting} scale={trimScale} position={trimPos(-0.14)} />
       {glassAbove && (
         <mesh
           geometry={geoBox}
@@ -215,6 +226,27 @@ export const Building = memo(function Building() {
         {WALL_SEGMENTS.map((s, i) => (
           <WallRun key={i} {...s} />
         ))}
+        {/* corridor runner rug along the north walkway (split around
+            the planter strips at x=±5.8 so it never clips through them) */}
+        {[
+          { x: -10, len: 8 },
+          { x: 0, len: 11 },
+          { x: 10, len: 8 },
+        ].map((s, i) => (
+          <mesh
+            key={i}
+            geometry={geoPlane}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[s.x, 0.012, -3.7]}
+            scale={[s.len, 1.1, 1]}
+          >
+            <meshStandardMaterial color={matRunner.color} roughness={0.9} />
+          </mesh>
+        ))}
+        {/* entrance mat just inside the double-glass doors */}
+        <mesh geometry={geoPlane} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 9.2]} scale={[2.6, 1.2, 1]}>
+          <meshStandardMaterial color={matEntranceMat.color} roughness={0.95} />
+        </mesh>
         {/* doors */}
         {DOOR_SPECS.map((d, i) => (
           <Doorway

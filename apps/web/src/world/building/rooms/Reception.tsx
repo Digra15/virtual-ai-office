@@ -17,10 +17,12 @@ const matPillowB = new THREE.MeshStandardMaterial({ color: "#fbcfe8", roughness:
 const matTableWood = new THREE.MeshStandardMaterial({ color: "#8a5a33", roughness: 0.6 });
 const matTableDark = new THREE.MeshStandardMaterial({ color: "#5d3d22", roughness: 0.7 });
 
-/** Welcome counter at (0,7.4): white 3.8×1.05×1.1 with pink trim. */
+/** Welcome counter at (-4,7.4): white 3.8×1.05×1.1 with pink trim.
+ * Sits on the lobby's west side so the entrance axis (x=0) stays clear
+ * — the old center position blocked the aisle→lobby→entrance path. */
 const Counter = memo(function Counter() {
   return (
-    <group position={[0, 0, 7.4]}>
+    <group position={[-4, 0, 7.4]}>
       <mesh geometry={geoBox} material={matCounterWhite} scale={[3.8, 1.0, 1.1]} position={[0, 0.5, 0]} castShadow receiveShadow />
       <mesh geometry={geoBox} material={matCounterTrim} scale={[3.82, 0.08, 1.12]} position={[0, 0.96, 0]} />
       <mesh geometry={geoBox} material={matTableWood} scale={[4.0, 0.07, 1.3]} position={[0, 1.04, 0]} castShadow />
@@ -32,7 +34,7 @@ const Counter = memo(function Counter() {
 const CounterLogo = memo(function CounterLogo() {
   const logo = useCozyTexture("logo");
   return (
-    <mesh geometry={geoPlane} position={[0, 0.55, 7.96]} scale={[2.2, 0.55, 1]}>
+    <mesh geometry={geoPlane} position={[-4, 0.55, 7.96]} scale={[2.2, 0.55, 1]}>
       <meshBasicMaterial map={logo} transparent toneMapped={false} />
     </mesh>
   );
@@ -82,9 +84,10 @@ export const Reception = memo(function Reception() {
       <Counter />
       <CounterLogo />
       {/* receptionist chair behind the counter, faces the visitors */}
-      <CozyChair position={[0, 0, 6.7]} rotationY={0} pinkStripe />
-      {/* flanking plants */}
-      <CozyPlant position={[-2.4, 0, 7.4]} />
+      <CozyChair position={[-4, 0, 6.7]} rotationY={0} pinkStripe />
+      {/* flanking plants (west plant flanks the counter's east end — the
+          gap between the counter's west edge and the wall fits no pot) */}
+      <CozyPlant position={[-1.6, 0, 7.4]} />
       <CozyPlant position={[2.4, 0, 7.4]} />
       {/* waiting area */}
       <Sofa />

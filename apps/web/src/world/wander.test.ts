@@ -8,11 +8,13 @@ import { WANDER_SPOTS } from "../features/wander/WanderDirector";
 import { BUILDING, roomAt } from "./building/floorPlan";
 
 describe("wander spots", () => {
-  it("has the expected 7 spots", () => {
-    expect(WANDER_SPOTS).toHaveLength(7);
+  it("has the expected 10 spots", () => {
+    expect(WANDER_SPOTS).toHaveLength(10);
     const labels = WANDER_SPOTS.map((s) => s.label);
     expect(labels.filter((l) => l === "musola")).toHaveLength(3);
-    expect(labels).toContain("pantry");
+    // Pantry is 4 dining chairs now (one agent per chair), not the
+    // old single table-center spot agents used to stand inside.
+    expect(labels.filter((l) => l === "pantry")).toHaveLength(4);
     expect(labels).toContain("lobby sofa");
     expect(labels).toContain("corridor");
     expect(labels).toContain("aisle");

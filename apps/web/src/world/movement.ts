@@ -201,6 +201,10 @@ class MovementRegistry {
    * Advance every in-flight motion by `dt` seconds, writing transforms
    * straight to the scene graph. Called once per frame by
    * MovementController — never from React render.
+   *
+   * After moving, walking agents gently separate from each other (min
+   * 0.5 apart, max 0.03/frame each) so two agents crossing paths don't
+   * visibly merge. Seated agents never move — only walkers separate.
    */
   update(dt: number): void {
     if (dt <= 0) return;
@@ -233,6 +237,27 @@ class MovementRegistry {
       if (m.group) {
         m.group.position.set(m.x, m.y, m.z);
         m.group.rotation.set(0, m.facing, 0);
+      }
+    }
+    // Agent-agent separation (walkers only).
+    const walkers = [...this.motions.values()].filter((m) => m.moving);
+    for (let i = 0; i < walkers.length; i++) {
+      for (let j = i + 1; j < walkers.length; j++) {
+        const a = walkers[i];
+        const b = walkers[j];
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist >= 0.5 || dist === 0) continue;
+        const push = Math.min((0.5 - dist) / 2, 0.03);
+        const nx = dx / dist;
+        const nz = dz / dist;
+        a.x -= nx * push;
+        a.z -= nz * push;
+        b.x += nx * push;
+        b.z += nz * push;
+        if (a.group) a.group.position.set(a.x, a.y, a.z);
+        if (b.group) b.group.position.set(b.x, b.y, b.z);
       }
     }
   }

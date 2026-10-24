@@ -81,8 +81,9 @@ export const WANDER_SPOTS: WanderSpot[] = [
     arrivePose: "desk" as const,
   })),
   // Lobby sofa at (6.5,6.5) faces south (+Z) toward the coffee table —
-  // sit facing the table (facing 0), not into the backrest.
-  { x: 6.5, z: 6.5, label: "lobby sofa", facing: 0 },
+  // the agent SITS on it (arrivePose "desk" sinks the model onto the
+  // seat) facing the table (facing 0), not standing inside the sofa.
+  { x: 6.5, z: 6.5, label: "lobby sofa", facing: 0, arrivePose: "desk" },
   { x: 0, z: -3, label: "corridor" },
   { x: 0, z: 4.2, label: "aisle" },
 ];

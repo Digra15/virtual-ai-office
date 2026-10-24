@@ -4,6 +4,7 @@ import {
   findPath,
   nearestWaypoint,
   nearestWaypointInZone,
+  OBSTACLES,
   pathLength,
   segmentBlocked,
   WAYPOINTS,
@@ -152,9 +153,10 @@ describe("collision-aware navigation", () => {
   });
 
   it("segmentBlocked allows starting from / arriving at furniture", () => {
-    // Destination IS the desk, approached from its open (chair) side.
-    expect(segmentBlocked({ x: 4, z: 2.8 }, { x: 4, z: 1.3 })).toBe(false);
-    // Start IS the desk: leaving it south is allowed.
+    // Destination IS the desk chair, approached from its open side
+    // (the chair circle contains the endpoint, so it is ignored).
+    expect(segmentBlocked({ x: 4, z: 2.8 }, { x: 4, z: 2.25 })).toBe(false);
+    // Start IS the desk: leaving it north is allowed.
     expect(segmentBlocked({ x: -4, z: -1.3 }, { x: -4, z: -3 })).toBe(false);
     // But walking to a desk THROUGH another desk is still blocked.
     expect(segmentBlocked({ x: 0, z: 0.5 }, { x: 4, z: 1.3 })).toBe(true);
@@ -163,8 +165,9 @@ describe("collision-aware navigation", () => {
   it("segmentBlocked flags the lobby sofa and coffee table", () => {
     // Straight through the sofa at (6.5,6.5).
     expect(segmentBlocked({ x: 4, z: 6.5 }, { x: 9, z: 6.5 })).toBe(true);
-    // Open lane west of the lobby furniture: clear.
-    expect(segmentBlocked({ x: -6, z: 8 }, { x: -6, z: 4.5 })).toBe(false);
+    // Open lane down the north corridor (clear of the planter strips
+    // by 0.5 > AGENT_RADIUS): clear.
+    expect(segmentBlocked({ x: -14, z: -3.7 }, { x: 14, z: -3.7 })).toBe(false);
   });
 
   it("nearestWaypointInZone picks the door waypoint for room interiors", () => {
@@ -220,6 +223,64 @@ describe("collision-aware navigation", () => {
     expect(ids).toContain("cor-recovery");
     expect(ids).toContain("recovery-in");
     // Ends exactly at the bed.
+    const end = path[path.length - 1];
+    expect(end.x).toBeCloseTo(to.x);
+    expect(end.z).toBeCloseTo(to.z);
+  });
+
+  it("no graph edge is blocked by furniture", () => {
+    for (const w of Object.values(WAYPOINTS)) {
+      for (const nb of w.neighbors) {
+        const n = WAYPOINTS[nb];
+        expect(
+          segmentBlocked(w, n),
+          `edge ${w.id} -> ${nb} crosses furniture`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("no waypoint sits inside a furniture obstacle", () => {
+    // A waypoint inside an obstacle would defeat endpoint-ignore and let
+    // agents route through the furniture (the old lobby-e/coffee-table bug).
+    for (const w of Object.values(WAYPOINTS)) {
+      for (const o of OBSTACLES) {
+        const inside =
+          o.kind === "circle"
+            ? Math.hypot(w.x - o.x, w.z - o.z) < o.r
+            : Math.abs(w.x - o.x) < o.hw && Math.abs(w.z - o.z) < o.hd;
+        expect(inside, `${w.id} inside ${o.id}`).toBe(false);
+      }
+    }
+  });
+
+  it("box obstacles block segments through them, not alongside", () => {
+    // Straight through the meeting table (12.8,4.4), 2.4 × 5.0.
+    expect(segmentBlocked({ x: 10, z: 4.4 }, { x: 15, z: 4.4 })).toBe(true);
+    // Alongside its west edge with clearance: clear.
+    expect(segmentBlocked({ x: 10.2, z: 1 }, { x: 10.2, z: 8 })).toBe(false);
+    // Through the relocated reception counter (-4,7.4).
+    expect(segmentBlocked({ x: -6, z: 7.4 }, { x: -2, z: 7.4 })).toBe(true);
+    // Down the now-clear entrance axis (x=0): clear.
+    expect(segmentBlocked({ x: 0, z: 4.5 }, { x: 0, z: 10 })).toBe(false);
+  });
+
+  it("lobby east leg clears the coffee table", () => {
+    expect(segmentBlocked({ x: 0, z: 8.6 }, { x: 8.8, z: 9.6 })).toBe(false);
+  });
+
+  it("desk -> entrance middle legs never cross furniture", () => {
+    const from = { x: 2, z: -0.35 }; // ws-03 chair
+    const to = { x: 0, z: 10 }; // entrance
+    const path = findPath(from, to);
+    expect(path.length).toBeGreaterThan(0);
+    const full = [from, ...path];
+    for (let i = 1; i < full.length - 1; i++) {
+      expect(
+        segmentBlocked(full[i], full[i + 1]),
+        `middle leg ${i} crosses furniture`,
+      ).toBe(false);
+    }
     const end = path[path.length - 1];
     expect(end.x).toBeCloseTo(to.x);
     expect(end.z).toBeCloseTo(to.z);
