@@ -91,7 +91,9 @@ export function AGENT_SPAWN_POSITION(
  *  Unknown ids face the room (0). */
 export function AGENT_FACING(workstationId: string): number {
   const slot = slotFor(workstationId);
-  return slot ? slot.rotationY : 0;
+  // Agent sits south of the desk (chair side), must face NORTH toward the monitors.
+  // rotation.y = PI faces -z (north); slot.rotationY is the desk's, not the agent's.
+  return slot ? Math.PI : 0;
 }
 
 /**

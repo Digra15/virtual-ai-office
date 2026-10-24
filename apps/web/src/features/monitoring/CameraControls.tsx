@@ -49,6 +49,8 @@ export function CameraControls() {
       style={{
         left: "50%",
         right: "auto",
+        top: "8px",
+        bottom: "auto",
         transform: "translateX(-50%)",
         alignItems: "center",
         flexWrap: "wrap",
