@@ -56,8 +56,6 @@ interface CutesAvatarProps {
   prayerPose?: "bowing" | "prostrate" | "sitting" | null;
   /** "desk" = seated at workstation, "free" = standing/walking */
   pose: "desk" | "free";
-  /** group facing in radians (PI = north toward monitors) */
-  facing: number;
   walking: boolean;
   /** status ring color */
   color: string;
@@ -71,7 +69,6 @@ export function CutesAvatar({
   activity,
   prayerPose,
   pose,
-  facing,
   walking,
   color,
   onClick,
@@ -140,11 +137,12 @@ export function CutesAvatar({
   return (
     <group
       ref={group}
-      // The movement registry already stores the nose direction in the
-      // outer rotation, and CUTES models face +z by default — so the
-      // inner group must NOT re-apply the desk facing prop. Adding PI
-      // cancels it (PI + PI = 2PI = 0) for desk agents.
-      rotation={[0, facing + Math.PI, 0]}
+      // NO inner facing rotation: the movement registry's outer group
+      // already stores the nose direction (travel direction while
+      // walking, desk/qibla/table facing on arrival), and CUTES models
+      // face +z by default. An inner rotation here double-applies
+      // facing — it made slot-less agents (spawned agents, whose
+      // AGENT_FACING falls back to 0) walk backwards.
       onClick={(e) => {
         e.stopPropagation();
         onClick?.();

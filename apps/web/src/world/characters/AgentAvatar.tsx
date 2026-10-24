@@ -53,7 +53,6 @@ export const AgentAvatar = memo(function AgentAvatar({
     };
   }, [agent.id, agent.workstationId]);
 
-  const facing = AGENT_FACING(agent.workstationId);
   const walking = presence.activity === "walking";
 
   return (
@@ -65,7 +64,6 @@ export const AgentAvatar = memo(function AgentAvatar({
         activity={presence.activity}
         prayerPose={presence.prayerPose ?? null}
         pose={presence.pose}
-        facing={facing}
         walking={walking}
         color={color}
       />
