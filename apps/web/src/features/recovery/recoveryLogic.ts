@@ -27,6 +27,7 @@ import { movement } from "../../world/movement";
 import { useAgentStore } from "../../stores/useAgentStore";
 import { useOccupancyStore, workstationLocation } from "../../stores/useOccupancyStore";
 import { usePresenceStore } from "../../stores/usePresenceStore";
+import { LYING } from "../../world/characters/lying";
 
 /** Statuses the recovery workflow treats as healthy (error cleared). */
 export const HEALTHY_STATUSES: AgentStatus[] = [
@@ -183,6 +184,10 @@ export function sendToRecovery(agentId: string): RecoveryActionResult {
   const started = movement.navigateToFloor(agentId, recoveryTarget(bed), {
     arriveActivity: "seated",
     arrivePose: "free",
+    // Outer yaw on arrival: with the lying pitch (rotation.x = -PI/2,
+    // see lying.ts) the head points along local -z, so yaw 0 puts the
+    // head north, toward the pillow, and the face up.
+    arriveFacing: LYING.facing,
     onArrive: () => {
       usePresenceStore
         .getState()

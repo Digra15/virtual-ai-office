@@ -1,11 +1,13 @@
 import { memo, useEffect, useRef } from "react";
 import type { AgentInfo } from "@virtual-ai-office/shared";
 import { CutesAvatar } from "./CutesAvatar";
+import { isLying } from "./lying";
 import { movement } from "../movement";
 import {
   DEFAULT_PRESENCE,
   usePresenceStore,
 } from "../../stores/usePresenceStore";
+import { useOccupancyStore } from "../../stores/useOccupancyStore";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../layout";
 
 interface AgentAvatarProps {
@@ -54,6 +56,23 @@ export const AgentAvatar = memo(function AgentAvatar({
   }, [agent.id, agent.workstationId]);
 
   const walking = presence.activity === "walking";
+  // Recovery bed held by this agent (null when none). Subscribed so the
+  // lying pose appears the moment the bed is assigned / disappears the
+  // moment it is released, without touching the presence store.
+  const bedId = useOccupancyStore((s) => {
+    for (const [id, occupant] of Object.entries(s.bedAssignment)) {
+      if (occupant === agent.id) return id;
+    }
+    return null;
+  });
+  // Lying is derived, never stored: recovering + bed + not walking.
+  // It switches off automatically when the agent walks back (healthy)
+  // or the bed is released — desk, prayer and break poses are untouched.
+  const lying = isLying({
+    status: agent.status,
+    hasBed: bedId !== null,
+    walking,
+  });
 
   return (
     <group ref={outerRef}>
@@ -65,6 +84,7 @@ export const AgentAvatar = memo(function AgentAvatar({
         prayerPose={presence.prayerPose ?? null}
         pose={presence.pose}
         walking={walking}
+        lying={lying}
         color={color}
       />
     </group>

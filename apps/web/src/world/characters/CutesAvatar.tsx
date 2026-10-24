@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Text, useGLTF, useAnimations } from "@react-three/drei";
 import type { Group } from "three";
+import { CUTES_MODEL_SCALE, LYING } from "./lying";
 
 /**
  * CUTES 3D character (poly.pizza bundle by J-Toastie, CC-BY).
@@ -57,6 +58,9 @@ interface CutesAvatarProps {
   /** "desk" = seated at workstation, "free" = standing/walking */
   pose: "desk" | "free";
   walking: boolean;
+  /** Lying flat on a recovery bed (derived in AgentAvatar: recovering +
+   * holding a bed + not walking). Takes precedence over prayer poses. */
+  lying?: boolean;
   /** status ring color */
   color: string;
   onClick?: () => void;
@@ -70,6 +74,7 @@ export function CutesAvatar({
   prayerPose,
   pose,
   walking,
+  lying = false,
   color,
   onClick,
 }: CutesAvatarProps) {
@@ -79,17 +84,25 @@ export function CutesAvatar({
   const { scene, animations } = useGLTF(url);
   const { actions } = useAnimations(animations, group);
 
-  // Play Idle by default, Walk when moving.
+  // Play Idle by default, Walk when moving, Grounded when lying flat.
+  // Grounded is near-static with no root rotation track, so it composes
+  // safely with the whole-model lying pitch (see lying.ts); Idle's sway
+  // would read as awake, so it is never used for a sleeping agent.
   useEffect(() => {
     const idle = actions["Armature|Idle"];
     const walk = actions["Armature|Walk"];
     const grounded = actions["Armature|Grounded"];
-    if (walking) {
+    if (lying) {
+      idle?.stop();
+      walk?.stop();
+      grounded?.reset().play();
+    } else if (walking) {
       idle?.stop();
       grounded?.stop();
       walk?.reset().play();
     } else {
       walk?.stop();
+      grounded?.stop();
       (idle ?? grounded)?.reset().play();
     }
     return () => {
@@ -97,7 +110,7 @@ export function CutesAvatar({
       walk?.stop();
       grounded?.stop();
     };
-  }, [actions, walking]);
+  }, [actions, walking, lying]);
 
   // Lively status animation: big bounce + wiggle + pulse.
   // (iconRef is a child of the Billboard at y=2.25, so animate around 0.)
@@ -113,7 +126,7 @@ export function CutesAvatar({
   // Seated: sink the model so the chair seat is at hip level and the
   // desk occludes the short chibi legs. Standing: full height on floor.
   const isSeated = pose === "desk";
-  const scale = 0.95;
+  const scale = CUTES_MODEL_SCALE;
   const y = isSeated ? 0.18 : 0;
   const icon = STATUS_ICON[status] ?? "";
   const iconColor = STATUS_COLOR[status] ?? "#ffffff";
@@ -133,6 +146,26 @@ export function CutesAvatar({
   const prayerY = prayerPose === "prostrate" ? 0.18 : y;
   const prayerScale: [number, number, number] =
     prayerPose === "sitting" ? [0.95, 0.62, 0.95] : [scale, scale, scale];
+
+  // Lying flat on a recovery bed (whole-model fake, like prayer).
+  // Takes precedence over prayer (the two never coincide in practice:
+  // prayer only triggers in the musola, lying only on a recovery bed).
+  // rotation.x = -PI/2 pitches the body axis to local -z (north, with
+  // the outer yaw set to LYING.facing = 0) and the face to straight up;
+  // groupY/groupZ centre the pitched body on the bed (see lying.ts).
+  // The HUD Billboards below are NOT in this group, so they stay
+  // upright — only their heights drop to hover over the flat body.
+  const modelPosition: [number, number, number] = lying
+    ? [0, LYING.groupY, LYING.groupZ]
+    : [0, prayerY, 0];
+  const modelScale: [number, number, number] = lying
+    ? [scale, scale, scale]
+    : prayerScale;
+  const modelRotation: [number, number, number] = lying
+    ? [LYING.rotationX, 0, 0]
+    : prayerRotation;
+  const hudNameY = lying ? LYING.hudNameY : 2.6;
+  const hudIconY = lying ? LYING.hudIconY : 2.25;
 
   return (
     <group
@@ -154,14 +187,14 @@ export function CutesAvatar({
         <meshBasicMaterial color={color} transparent opacity={0.9} />
       </mesh>
       <group
-        position={[0, prayerY, 0]}
-        scale={prayerScale}
-        rotation={prayerRotation}
+        position={modelPosition}
+        scale={modelScale}
+        rotation={modelRotation}
       >
         <primitive object={scene} />
       </group>
       {/* Game-style overhead HUD: NAME on top, status icon below it. */}
-      <Billboard position={[0, 2.6, 0]}>
+      <Billboard position={[0, hudNameY, 0]}>
         <Text
           fontSize={0.22}
           color="#ffffff"
@@ -174,7 +207,7 @@ export function CutesAvatar({
         </Text>
       </Billboard>
       {icon !== "" && !onBreak && (
-        <Billboard position={[0, 2.25, 0]}>
+        <Billboard position={[0, hudIconY, 0]}>
           <group ref={iconRef}>
             <Text
               fontSize={0.3}
@@ -191,7 +224,7 @@ export function CutesAvatar({
       )}
       {/* Pantry break: bobbing 3D coffee cup above the head. */}
       {onBreak && (
-        <Billboard position={[0, 2.25, 0]}>
+        <Billboard position={[0, hudIconY, 0]}>
           <group ref={iconRef}>
             <mesh position={[0, 0, 0]}>
               <cylinderGeometry args={[0.11, 0.09, 0.16, 16]} />

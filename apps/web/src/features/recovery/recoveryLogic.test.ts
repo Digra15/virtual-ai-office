@@ -176,6 +176,23 @@ describe("sendToRecovery", () => {
     expect(movement.isMoving("r1")).toBe(true);
   });
 
+  it("arrives facing north (yaw 0) so the lying head points at the pillow", () => {
+    const spy = vi
+      .spyOn(movement, "navigateToFloor")
+      .mockReturnValue(true);
+    try {
+      const res = sendToRecovery("r1");
+      expect(res.ok).toBe(true);
+      expect(spy).toHaveBeenCalledWith(
+        "r1",
+        expect.anything(),
+        expect.objectContaining({ arriveFacing: 0 }),
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("refuses a second dispatch while the agent holds a bed", () => {
     sendToRecovery("r1");
     const res = sendToRecovery("r1");
