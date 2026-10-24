@@ -1,13 +1,12 @@
 import { memo, useEffect, useRef } from "react";
 import type { AgentInfo } from "@virtual-ai-office/shared";
-import { AIAvatar } from "./AIAvatar";
+import { CutesAvatar } from "./CutesAvatar";
 import { movement } from "../movement";
 import {
   DEFAULT_PRESENCE,
   usePresenceStore,
 } from "../../stores/usePresenceStore";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../layout";
-import type { ChibiAnimation } from "./characterTypes";
 
 interface AgentAvatarProps {
   agent: AgentInfo;
@@ -54,21 +53,18 @@ export const AgentAvatar = memo(function AgentAvatar({
     };
   }, [agent.id, agent.workstationId]);
 
-  // Drive the sprite animation from live locomotion presence.
-  const animationOverride: ChibiAnimation | null =
-    presence.activity === "walking"
-      ? "walking"
-      : presence.activity === "meeting"
-        ? "meeting"
-        : null;
+  const facing = AGENT_FACING(agent.workstationId);
+  const walking = presence.activity === "walking";
 
   return (
-    <AIAvatar
-      agent={agent}
-      color={color}
-      groupRef={outerRef}
-      pose={presence.pose}
-      animationOverride={animationOverride}
-    />
+    <group ref={outerRef}>
+      <CutesAvatar
+        agentId={agent.id}
+        pose={presence.pose}
+        facing={facing}
+        walking={walking}
+        color={color}
+      />
+    </group>
   );
 });
