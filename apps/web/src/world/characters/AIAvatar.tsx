@@ -230,7 +230,7 @@ export const AIAvatar = memo(function AIAvatar({
         const H = 1.1;
         sy = H / FIGURE_H;
         sx = sy; // uniform scale
-        y = 0.5 + Math.sin(t * 8) * 0.008;
+        y = 1.0 + Math.sin(t * 8) * 0.008;
         pz = 0; // stay on chair (z=0.95), don't float toward desk
         rx = 0.04;
       } else if (useSitting) {
