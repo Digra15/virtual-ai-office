@@ -173,11 +173,9 @@ export const AIAvatar = memo(function AIAvatar({
     const useSitting = !isSleeping && !useTyping && pose === "free" && !walking && !praying && nearSofa && status === "idle";
 
     // for typing: show back-view when camera is behind the agent
-    // Force group facing for typing BEFORE computing camBehind: agent sits south
-    // of desk, must face north (PI) toward monitors. Movement stores facing but
-    // never applies rotation.y.
+    // Agent sits NORTH of desk, faces SOUTH (0) toward monitors.
     if (useTyping) {
-      g.rotation.y = Math.PI;
+      g.rotation.y = 0;
     }
     g.getWorldPosition(tmpV);
     const camAz = Math.atan2(state.camera.position.x - tmpV.x, state.camera.position.z - tmpV.z);
@@ -320,7 +318,7 @@ export const AIAvatar = memo(function AIAvatar({
 
   return (
     <group ref={groupRef} onClick={interactive ? handleClick : undefined} {...(interactive ? cursorHandlers : {})}>
-      <group position={pose === "desk" ? [0, 0, 0.95] : [0, 0, 0]}>
+      <group position={pose === "desk" ? [0, 0, -0.95] : [0, 0, 0]}>
         <mesh ref={ring} geometry={geoTorus} material={ringMat} scale={1.3} position={[0, 0.06, 0]} rotation={[Math.PI / 2, 0, 0]} />
         <mesh ref={figure} position={[0, 0.95, 0]}>
           <planeGeometry args={[1, 1]} />

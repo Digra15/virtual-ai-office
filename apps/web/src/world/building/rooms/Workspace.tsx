@@ -131,14 +131,14 @@ const WorkstationDressing = memo(function WorkstationDressing({
       {/* deskmat: pink trim under a dark mat */}
       <mesh geometry={geoBox} material={matMatPink} scale={[1.55, 0.012, 0.65]} position={[0, 0.775, 0.02]} />
       <mesh geometry={geoBox} material={matMatDark} scale={[1.45, 0.014, 0.57]} position={[0, 0.782, 0.02]} />
-      {/* keyboard + mouse */}
-      <mesh geometry={geoPlane} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.792, 0.16]} scale={[0.45, 0.16, 1]}>
+      {/* keyboard + mouse (north side, agent sits north) */}
+      <mesh geometry={geoPlane} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.792, -0.16]} scale={[0.45, 0.16, 1]}>
         <meshBasicMaterial map={tex.keyboard} toneMapped={false} />
       </mesh>
-      <mesh geometry={geoBox} material={matMouse} scale={[0.07, 0.05, 0.11]} position={[0.33, 0.8, 0.16]} />
-      {/* dual monitors: left = ide, right = telemetry, angled toward the chair */}
-      <Monitor x={-0.3} yaw={0.35} tex={tex.ide} />
-      <Monitor x={0.3} yaw={-0.35} tex={tex.telemetry} />
+      <mesh geometry={geoBox} material={matMouse} scale={[0.07, 0.05, 0.11]} position={[0.33, 0.8, -0.16]} />
+      {/* dual monitors: left = ide, right = telemetry, angled toward the chair (north) */}
+      <Monitor x={-0.3} yaw={0.35 + Math.PI} tex={tex.ide} />
+      <Monitor x={0.3} yaw={-0.35 + Math.PI} tex={tex.telemetry} />
       {/* speakers flanking the monitors */}
       {[-0.72, 0.72].map((sx) => (
         <mesh key={sx} geometry={geoBox} material={matScreenBack} scale={[0.1, 0.18, 0.1]} position={[sx, 0.88, -0.28]} castShadow />
