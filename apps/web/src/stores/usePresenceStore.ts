@@ -12,7 +12,12 @@ import { create } from "zustand";
  */
 
 /** What the agent is doing with its body right now. */
-export type AgentActivity = "seated" | "walking" | "meeting" | "standing";
+export type AgentActivity =
+  | "seated"
+  | "walking"
+  | "meeting"
+  | "standing"
+  | "break"; // sitting at a pantry chair, coffee + snack break
 
 /**
  * How the figure is mounted on its scene-graph root:

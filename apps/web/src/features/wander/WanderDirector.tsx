@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { useAgentStore } from "../../stores/useAgentStore";
 import { useMeetingStore } from "../../stores/useMeetingStore";
+import { usePresenceStore } from "../../stores/usePresenceStore";
 import { movement } from "../../world/movement";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
+import { PANTRY_CHAIR_SLOTS } from "../../world/building/rooms/Pantry";
 
 /**
  * Idle wandering director (simulated behavior).
@@ -36,6 +38,8 @@ interface WanderState {
   /** When set, the agent should head home on the next tick. */
   returnAt: number | null;
   wandering: boolean;
+  /** Pantry chair index this agent is heading to / sitting on, if any. */
+  pantryChair: number | null;
 }
 
 const states = new Map<string, WanderState>();
@@ -46,18 +50,33 @@ export interface WanderSpot {
   label: string;
   /** Y rotation (radians) the agent should face when arriving; null = keep travel direction. */
   facing?: number | null;
+  /** Pantry chair index (from PANTRY_CHAIR_SLOTS) — only one agent per chair. */
+  pantryChair?: number;
+  /** Activity on arrival (default "standing"). */
+  arriveActivity?: "standing" | "break";
+  /** Pose on arrival (default "free"). */
+  arrivePose?: "desk" | "free";
 }
 
 /**
  * Idle wander destinations (single floor, y = 0). Musola spots sit on the
  * prayer rows (x -13.2..-10, z -9.5) so a stroll there becomes a prayer
- * visit via the position-based trigger.
+ * visit via the position-based trigger. Pantry spots are the 4 dining
+ * chairs — agents sit and take a coffee + snack break there.
  */
 export const WANDER_SPOTS: WanderSpot[] = [
   { x: -13.2, z: -9.5, label: "musola" },
   { x: -11.6, z: -9.5, label: "musola" },
   { x: -10.0, z: -9.5, label: "musola" },
-  { x: 4.2, z: -7.5, label: "pantry" },
+  ...PANTRY_CHAIR_SLOTS.map((s, i) => ({
+    x: s.position[0],
+    z: s.position[2],
+    label: "pantry",
+    facing: s.rotationY,
+    pantryChair: i,
+    arriveActivity: "break" as const,
+    arrivePose: "desk" as const,
+  })),
   // Lobby sofa at (6.5,6.5) faces south (+Z) toward the coffee table —
   // sit facing the table (facing 0), not into the backrest.
   { x: 6.5, z: 6.5, label: "lobby sofa", facing: 0 },
@@ -68,7 +87,7 @@ export const WANDER_SPOTS: WanderSpot[] = [
 function getState(id: string): WanderState {
   let s = states.get(id);
   if (!s) {
-    s = { cooldownUntil: 0, returnAt: null, wandering: false };
+    s = { cooldownUntil: 0, returnAt: null, wandering: false, pantryChair: null };
     states.set(id, s);
   }
   return s;
@@ -93,6 +112,7 @@ function tick(): void {
       const agent = agents[id];
       s.returnAt = null;
       s.wandering = false;
+      s.pantryChair = null;
       if (agent && !inMeeting.has(id)) {
         const [dx, , dz] = AGENT_SPAWN_POSITION(agent.workstationId);
         movement.navigateTo(id, dx, dz, {
@@ -126,11 +146,30 @@ function tick(): void {
   if (candidates.length === 0) return;
 
   const agent = candidates[Math.floor(Math.random() * candidates.length)];
-  const spot = WANDER_SPOTS[Math.floor(Math.random() * WANDER_SPOTS.length)];
+  // Pantry chairs are single-occupancy: exclude chairs another wanderer
+  // is heading to, sitting on, or still marked as on break.
+  const takenChairs = new Set<number>();
+  for (const [otherId, s] of states) {
+    if (otherId === agent.id) continue;
+    if (s.pantryChair !== null) takenChairs.add(s.pantryChair);
+  }
+  for (const [otherId, p] of Object.entries(
+    usePresenceStore.getState().presences,
+  )) {
+    if (otherId === agent.id || p.activity !== "break") continue;
+    const s = states.get(otherId);
+    if (s?.pantryChair !== null && s?.pantryChair !== undefined)
+      takenChairs.add(s.pantryChair);
+  }
+  const freeSpots = WANDER_SPOTS.filter(
+    (sp) => sp.pantryChair === undefined || !takenChairs.has(sp.pantryChair),
+  );
+  if (freeSpots.length === 0) return;
+  const spot = freeSpots[Math.floor(Math.random() * freeSpots.length)];
   const ok = movement.navigateTo(agent.id, spot.x, spot.z, {
     speed: WANDER_SPEED,
-    arriveActivity: "standing",
-    arrivePose: "free",
+    arriveActivity: spot.arriveActivity ?? "standing",
+    arrivePose: spot.arrivePose ?? "free",
     arriveFacing: spot.facing ?? null,
     onArrive: () => {
       const st = getState(agent.id);
@@ -140,6 +179,7 @@ function tick(): void {
   if (ok) {
     const s = getState(agent.id);
     s.wandering = true;
+    s.pantryChair = spot.pantryChair ?? null;
     s.cooldownUntil = now + rand(COOLDOWN_MIN_MS, COOLDOWN_MAX_MS);
   }
 }

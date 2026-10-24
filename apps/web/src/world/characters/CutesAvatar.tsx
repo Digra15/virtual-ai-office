@@ -50,6 +50,8 @@ interface CutesAvatarProps {
   name: string;
   /** Agent status driving the overhead icon. */
   status: string;
+  /** Body activity (drives the coffee-cup icon on pantry break). */
+  activity?: string;
   /** "desk" = seated at workstation, "free" = standing/walking */
   pose: "desk" | "free";
   /** group facing in radians (PI = north toward monitors) */
@@ -64,6 +66,7 @@ export function CutesAvatar({
   agentId,
   name,
   status,
+  activity,
   pose,
   facing,
   walking,
@@ -114,6 +117,8 @@ export function CutesAvatar({
   const y = isSeated ? 0.18 : 0;
   const icon = STATUS_ICON[status] ?? "";
   const iconColor = STATUS_COLOR[status] ?? "#ffffff";
+  // Pantry break: a bobbing 3D coffee cup instead of a text icon.
+  const onBreak = activity === "break";
 
   return (
     <group
@@ -147,7 +152,7 @@ export function CutesAvatar({
           {name}
         </Text>
       </Billboard>
-      {icon !== "" && (
+      {icon !== "" && !onBreak && (
         <Billboard position={[0, 2.25, 0]}>
           <group ref={iconRef}>
             <Text
@@ -160,6 +165,25 @@ export function CutesAvatar({
             >
               {icon}
             </Text>
+          </group>
+        </Billboard>
+      )}
+      {/* Pantry break: bobbing 3D coffee cup above the head. */}
+      {onBreak && (
+        <Billboard position={[0, 2.25, 0]}>
+          <group ref={iconRef}>
+            <mesh position={[0, 0, 0]}>
+              <cylinderGeometry args={[0.11, 0.09, 0.16, 16]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.4} />
+            </mesh>
+            <mesh position={[0, 0.08, 0]}>
+              <cylinderGeometry args={[0.095, 0.095, 0.02, 16]} />
+              <meshStandardMaterial color="#6b4a2f" roughness={0.6} />
+            </mesh>
+            <mesh position={[0.13, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <torusGeometry args={[0.06, 0.018, 8, 16]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.4} />
+            </mesh>
           </group>
         </Billboard>
       )}

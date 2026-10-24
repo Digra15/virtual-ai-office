@@ -62,6 +62,7 @@ export const AgentAvatar = memo(function AgentAvatar({
         agentId={agent.id}
         name={agent.name}
         status={agent.status}
+        activity={presence.activity}
         pose={presence.pose}
         facing={facing}
         walking={walking}
