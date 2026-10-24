@@ -52,6 +52,8 @@ interface CutesAvatarProps {
   status: string;
   /** Body activity (drives the coffee-cup icon on pantry break). */
   activity?: string;
+  /** Faked prayer posture (null = none). See usePresenceStore. */
+  prayerPose?: "bowing" | "prostrate" | "sitting" | null;
   /** "desk" = seated at workstation, "free" = standing/walking */
   pose: "desk" | "free";
   /** group facing in radians (PI = north toward monitors) */
@@ -67,6 +69,7 @@ export function CutesAvatar({
   name,
   status,
   activity,
+  prayerPose,
   pose,
   facing,
   walking,
@@ -120,11 +123,27 @@ export function CutesAvatar({
   // Pantry break: a bobbing 3D coffee cup instead of a text icon.
   const onBreak = activity === "break";
 
+  // Faked prayer transforms (whole-model, since the rig has no
+  // knee/waist joints). Positive X rotation pitches the head toward
+  // the nose (local +z). Applied to the model group only, so the HUD
+  // above the head stays upright.
+  const prayerRotation: [number, number, number] =
+    prayerPose === "bowing"
+      ? [1.05, 0, 0]
+      : prayerPose === "prostrate"
+        ? [1.45, 0, 0]
+        : [0, 0, 0];
+  const prayerY = prayerPose === "prostrate" ? 0.18 : y;
+  const prayerScale: [number, number, number] =
+    prayerPose === "sitting" ? [0.95, 0.62, 0.95] : [scale, scale, scale];
+
   return (
     <group
       ref={group}
-      // CUTES models face -z by default (opposite of the 2D sprites),
-      // so add PI to flip them to the intended facing.
+      // The movement registry already stores the nose direction in the
+      // outer rotation, and CUTES models face +z by default — so the
+      // inner group must NOT re-apply the desk facing prop. Adding PI
+      // cancels it (PI + PI = 2PI = 0) for desk agents.
       rotation={[0, facing + Math.PI, 0]}
       onClick={(e) => {
         e.stopPropagation();
@@ -136,7 +155,11 @@ export function CutesAvatar({
         <ringGeometry args={[0.55, 0.65, 32]} />
         <meshBasicMaterial color={color} transparent opacity={0.9} />
       </mesh>
-      <group position={[0, y, 0]} scale={scale}>
+      <group
+        position={[0, prayerY, 0]}
+        scale={prayerScale}
+        rotation={prayerRotation}
+      >
         <primitive object={scene} />
       </group>
       {/* Game-style overhead HUD: NAME on top, status icon below it. */}

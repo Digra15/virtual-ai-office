@@ -22,6 +22,7 @@ import { KanbanBoard } from "./features/kanban/KanbanBoard";
 import { MeetingPanel } from "./features/meetings/MeetingPanel";
 import { SpawnPanel } from "./features/agents/SpawnPanel";
 import { WanderDirector } from "./features/wander/WanderDirector";
+import { PrayerDirector } from "./features/prayer/PrayerDirector";
 import { RecoveryDirector } from "./features/recovery/RecoveryDirector";
 import { useTaskStore } from "./stores/useTaskStore";
 
@@ -206,6 +207,7 @@ function Dashboard() {
       <PublicOfficeSync />
       <DayNightSync />
       <WanderDirector />
+      <PrayerDirector />
       <RecoveryDirector />
       <Header
         onOpenSettings={() => setSettingsOpen(true)}

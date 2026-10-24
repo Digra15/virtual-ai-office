@@ -5,6 +5,7 @@ import { usePresenceStore } from "../../stores/usePresenceStore";
 import { movement } from "../../world/movement";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
 import { PANTRY_CHAIR_SLOTS } from "../../world/building/rooms/Pantry";
+import { QIBLA_FACING } from "../../world/characters/facing";
 
 /**
  * Idle wandering director (simulated behavior).
@@ -65,9 +66,11 @@ export interface WanderSpot {
  * chairs — agents sit and take a coffee + snack break there.
  */
 export const WANDER_SPOTS: WanderSpot[] = [
-  { x: -13.2, z: -9.5, label: "musola" },
-  { x: -11.6, z: -9.5, label: "musola" },
-  { x: -10.0, z: -9.5, label: "musola" },
+  // Musola prayer rows face the qibla (west) on arrival so the
+  // PrayerDirector's cycle starts from the right direction.
+  { x: -13.2, z: -9.5, label: "musola", facing: QIBLA_FACING },
+  { x: -11.6, z: -9.5, label: "musola", facing: QIBLA_FACING },
+  { x: -10.0, z: -9.5, label: "musola", facing: QIBLA_FACING },
   ...PANTRY_CHAIR_SLOTS.map((s, i) => ({
     x: s.position[0],
     z: s.position[2],

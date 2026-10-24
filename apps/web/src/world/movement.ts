@@ -174,8 +174,15 @@ class MovementRegistry {
     return this.moveTo(agentId, path, opts);
   }
 
-  /** Current 3D position of an agent (null when unknown). */
-  getPosition3D(agentId: string): { x: number; y: number; z: number } | null {
+  /** Set an agent's facing without moving it (e.g. qibla on prayer start). */
+  setFacing(agentId: string, facing: number): void {
+    const m = this.motions.get(agentId);
+    if (!m) return;
+    m.facing = facing;
+    if (m.group) m.group.rotation.set(0, facing, 0);
+  }
+
+  /** Current 3D position of an agent (null when unknown). */  getPosition3D(agentId: string): { x: number; y: number; z: number } | null {
     const m = this.motions.get(agentId);
     return m ? { x: m.x, y: m.y, z: m.z } : null;
   }

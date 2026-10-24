@@ -26,14 +26,26 @@ export type AgentActivity =
  */
 export type AgentPose = "desk" | "free";
 
+/**
+ * Faked prayer posture (CUTES rig has no knee/waist joints, so prayer
+ * motion is whole-model transforms, not skeletal animation):
+ * - "bowing": ruku — model pitched forward
+ * - "prostrate": sujud — model pitched nearly flat, lifted off the floor
+ * - "sitting": duduk antara dua sujud — model squashed vertically
+ * - null: no prayer transform (standing/qiyam)
+ */
+export type PrayerPose = "bowing" | "prostrate" | "sitting" | null;
+
 export interface PresenceInfo {
   activity: AgentActivity;
   pose: AgentPose;
+  prayerPose?: PrayerPose;
 }
 
 export const DEFAULT_PRESENCE: PresenceInfo = {
   activity: "seated",
   pose: "desk",
+  prayerPose: null,
 };
 
 interface PresenceState {
