@@ -220,7 +220,7 @@ export const AIAvatar = memo(function AIAvatar({
       if (isSleeping) {
         // lying flat on the recovery bed: mattress top y≈0.68, head NORTH (pillow)
         flat = true;
-        y = 0.7;
+        y = 1;
         // scale to fit bed length (2.1): image is wide (lying down)
         const len = 1.9;
         sx = len / FIGURE_H;
