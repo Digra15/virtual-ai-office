@@ -96,13 +96,15 @@ export function CutesAvatar({
     };
   }, [actions, walking]);
 
-  // Bob the status icon (game-style thinking "?" bounce).
+  // Lively status animation: big bounce + wiggle + pulse.
+  // (iconRef is a child of the Billboard at y=2.25, so animate around 0.)
   useFrame(({ clock }) => {
     if (!iconRef.current) return;
     const t = clock.getElapsedTime();
-    iconRef.current.position.y = 2.35 + Math.sin(t * 3) * 0.08;
-    const s = 1 + Math.sin(t * 3) * 0.1;
+    iconRef.current.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
+    const s = 1 + Math.sin(t * 6) * 0.15;
     iconRef.current.scale.setScalar(s);
+    iconRef.current.rotation.z = Math.sin(t * 4) * 0.15;
   });
 
   // Seated: sink the model so the chair seat is at hip level and the
@@ -132,8 +134,8 @@ export function CutesAvatar({
       <group position={[0, y, 0]} scale={scale}>
         <primitive object={scene} />
       </group>
-      {/* Game-style overhead HUD: name + status icon, always faces camera. */}
-      <Billboard position={[0, 2.0, 0]}>
+      {/* Game-style overhead HUD: NAME on top, status icon below it. */}
+      <Billboard position={[0, 2.6, 0]}>
         <Text
           fontSize={0.22}
           color="#ffffff"
@@ -146,7 +148,7 @@ export function CutesAvatar({
         </Text>
       </Billboard>
       {icon !== "" && (
-        <Billboard position={[0, 2.35, 0]}>
+        <Billboard position={[0, 2.25, 0]}>
           <group ref={iconRef}>
             <Text
               fontSize={0.3}
