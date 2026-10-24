@@ -228,12 +228,12 @@ export const AIAvatar = memo(function AIAvatar({
         sx = len / FIGURE_H;
         sy = len / FIGURE_H / aspect;
       } else if (useTyping) {
-        // sitting at the desk typing: upper-body at sitting height
+        // sitting at the desk typing: upper-body at sitting height, tucked into desk
         const H = 1.1;
         sy = H / FIGURE_H;
         sx = sy; // uniform scale
         y = 1.0 + Math.sin(t * 8) * 0.008;
-        pz = -0.15; // nudge toward desk
+        pz = -0.35; // close to desk (chair at 0.95 -> figure at 0.6)
         rx = 0.04;
       } else if (useSitting) {
         // sitting on sofa: seat ~0.45, scale to sitting height ~1.15
