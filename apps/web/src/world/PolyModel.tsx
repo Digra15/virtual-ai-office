@@ -36,6 +36,19 @@ import * as THREE from "three";
  * - tableCoffee.glb -> table-coffee.glb (0.66 x 0.23 x 0.40 raw)
  * Both are Kenney's small-scale furniture, so callers scale them up
  * (sofa x2.0 -> 1.96 wide, table x1.7 -> 1.12 long).
+ *
+ * Vehicle files (folder "vehicles", CC0, from 3dassets.dev — all in
+ * real meters, so callers use scale 1; total ~420 KB):
+ * - 35645 Family car, blue -> car-blue.glb (1.90 x 1.57 x 4.42)
+ * - 15105 City car -> sedan-grey.glb (1.90 x 1.53 x 3.50)
+ * - 29116 Farm Pickup Truck -> pickup.glb (2.23 x 2.14 x 5.63)
+ * - 25158 Motorcycle -> motorbike.glb (0.70 x 0.97 x 1.96)
+ * - 29029 City Bus -> bus.glb (2.67 x 3.02 x 10.79)
+ * - 35646 Panel van -> van-white.glb (2.30 x 2.50 x 5.53)
+ * Each model's front direction is recorded in traffic.ts (VEHICLE_FRONT):
+ * measured where possible (motorbike headlight mesh at +z, pickup cab
+ * at -z), assumed +z elsewhere — verify from a screenshot that no
+ * vehicle drives backwards.
 
  *
  * Why this component normalizes: these files have wildly different
@@ -62,7 +75,13 @@ export type PolyFile =
   | "french-door.glb"
   | "door-and-frame.glb"
   | "lounge-sofa.glb"
-  | "table-coffee.glb";
+  | "table-coffee.glb"
+  | "car-blue.glb"
+  | "sedan-grey.glb"
+  | "pickup.glb"
+  | "motorbike.glb"
+  | "bus.glb"
+  | "van-white.glb";
 
 const POLY_FILES: PolyFile[] = [
   "coffee-cup.glb",
@@ -78,6 +97,15 @@ const POLY_FILES: PolyFile[] = [
 ];
 
 const KENNEY_FILES: PolyFile[] = ["lounge-sofa.glb", "table-coffee.glb"];
+
+const VEHICLE_FILES: PolyFile[] = [
+  "car-blue.glb",
+  "sedan-grey.glb",
+  "pickup.glb",
+  "motorbike.glb",
+  "bus.glb",
+  "van-white.glb",
+];
 
 function isEffectivelyVisible(o: THREE.Object3D): boolean {
   let cur: THREE.Object3D | null = o;
@@ -104,7 +132,7 @@ export const PolyModel = memo(function PolyModel({
   /** Node names to hide (e.g. the frame nodes of door-and-frame.glb). */
   hideNodes?: readonly string[];
   /** Model folder under public/models (default poly-pizza). */
-  folder?: "poly-pizza" | "kenney";
+  folder?: "poly-pizza" | "kenney" | "vehicles";
 }) {
   const { scene } = useGLTF(`/models/${folder}/${file}`);
   const cloned = useMemo(() => {
@@ -141,3 +169,4 @@ export const PolyModel = memo(function PolyModel({
 
 POLY_FILES.forEach((file) => useGLTF.preload(`/models/poly-pizza/${file}`));
 KENNEY_FILES.forEach((file) => useGLTF.preload(`/models/kenney/${file}`));
+VEHICLE_FILES.forEach((file) => useGLTF.preload(`/models/vehicles/${file}`));

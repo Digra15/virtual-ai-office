@@ -10,6 +10,8 @@ import * as THREE from "three";
 import { Text } from "@react-three/drei";
 import { CozyPlant } from "../cozy";
 import { geoBox, geoCylinder, geoPlane } from "../geometries";
+import { Road } from "./Road";
+import { Traffic } from "./Traffic";
 
 const matGround = new THREE.MeshStandardMaterial({ color: "#4a5548", roughness: 1 });
 const matAsphalt = new THREE.MeshStandardMaterial({ color: "#3a3f45", roughness: 0.95 });
@@ -80,6 +82,9 @@ export const Exterior = memo(function Exterior() {
       </Text>
       <Car />
       <BikeRack />
+      {/* ring road + live traffic around the building */}
+      <Road />
+      <Traffic />
       {/* 4 potted plants along the facade */}
       {PLANT_XS.map((x) => (
         <CozyPlant key={x} position={[x, 0, 10.3]} />
