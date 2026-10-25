@@ -14,6 +14,7 @@ import type {
   ActivityKind,
   AgentInfo,
   AgentStatus,
+  AgentTask,
   EventPost,
 } from '@virtual-ai-office/shared';
 
@@ -48,15 +49,38 @@ export interface UpsertResult {
   entry: ActivityEntry | null;
 }
 
+/**
+ * The 3 live agents — the only agents the office shows once demo mode is
+ * off (user decision 2026-10-25: other seats stay EMPTY, no demo agents).
+ * Difia is the receptionist; Kirana writes; Reno codes. All three are
+ * played by the same assistant (coordinator + one subagent per seat).
+ */
+export const LIVE_SEEDS: SeedAgent[] = [
+  { id: 'difia', name: 'Difia', role: 'Receptionist', workstationId: 'reception', status: 'idle', currentTask: 'Standing by at the reception desk', progress: null },
+  { id: 'kirana', name: 'Kirana', role: 'Writer', workstationId: 'ws-01', status: 'idle', currentTask: 'Standing by for writing work', progress: null },
+  { id: 'reno', name: 'Reno', role: 'Software Engineering', workstationId: 'ws-02', status: 'idle', currentTask: 'Standing by for coding work', progress: null },
+];
+
+const LIVE_SEED_MAP = new Map(LIVE_SEEDS.map((s) => [s.id, s]));
+
+/** True for the 3 live seats (used to fail closed on unauthenticated reports). */
+export function isLiveSeat(agentId: string): boolean {
+  return LIVE_SEED_MAP.has(agentId);
+}
+
 /** Serializable snapshot of the registry for Durable Object storage. */
 export interface RegistrySnapshot {
   agents: AgentInfo[];
   entryCounter: number;
+  tasks?: AgentTask[];
+  taskCounter?: number;
 }
 
 export class AgentRegistry {
   private readonly agents = new Map<string, AgentInfo>();
   private entryCounter = 0;
+  private readonly tasks = new Map<string, AgentTask>();
+  private taskCounter = 0;
 
   /** Restore from a previously persisted snapshot. */
   restore(snapshot: RegistrySnapshot): void {
@@ -65,13 +89,63 @@ export class AgentRegistry {
       this.agents.set(agent.id, { ...agent, activityHistory: [...agent.activityHistory] });
     }
     this.entryCounter = snapshot.entryCounter;
+    this.tasks.clear();
+    for (const task of snapshot.tasks ?? []) {
+      this.tasks.set(task.id, { ...task });
+    }
+    this.taskCounter = snapshot.taskCounter ?? 0;
   }
 
   snapshot(): RegistrySnapshot {
     return {
       agents: [...this.agents.values()].map((a) => ({ ...a, activityHistory: [...a.activityHistory] })),
       entryCounter: this.entryCounter,
+      tasks: [...this.tasks.values()].map((t) => ({ ...t })),
+      taskCounter: this.taskCounter,
     };
+  }
+
+  /**
+   * Seed the 3 live agents (idempotent — never overwrites existing agents).
+   * Live agents are always labeled `source: 'live'`.
+   */
+  seedLiveAgents(): number {
+    const now = new Date().toISOString();
+    let added = 0;
+    for (const seed of LIVE_SEEDS) {
+      if (this.agents.has(seed.id)) continue;
+      const agent: AgentInfo = {
+        id: seed.id,
+        name: seed.name,
+        role: seed.role,
+        status: seed.status,
+        currentTask: seed.currentTask,
+        progress: seed.progress,
+        lastSeen: now,
+        workstationId: seed.workstationId,
+        activityHistory: [],
+        source: 'live',
+      };
+      agent.activityHistory.push(this.makeEntry(seed.id, 'system', 'Live agent seat created', now));
+      this.agents.set(seed.id, agent);
+      added += 1;
+    }
+    return added;
+  }
+
+  /**
+   * Remove every `source: 'demo'` agent. Enforces "no demo" when demo mode
+   * is off, including state persisted from an earlier demo deployment.
+   */
+  purgeDemoAgents(): number {
+    let removed = 0;
+    for (const [id, agent] of this.agents) {
+      if (agent.source === 'demo') {
+        this.agents.delete(id);
+        removed += 1;
+      }
+    }
+    return removed;
   }
 
   /**
@@ -123,15 +197,18 @@ export class AgentRegistry {
     const now = new Date().toISOString();
     let agent = this.agents.get(agentId);
     if (!agent) {
+      // Known live seats get their proper identity even on first report;
+      // anything else stays a generic external agent.
+      const seed = LIVE_SEED_MAP.get(agentId);
       agent = {
         id: agentId,
-        name: agentId,
-        role: 'External Agent',
-        status: 'idle',
-        currentTask: '',
-        progress: null,
+        name: seed?.name ?? agentId,
+        role: seed?.role ?? 'External Agent',
+        status: seed?.status ?? 'idle',
+        currentTask: seed?.currentTask ?? '',
+        progress: seed?.progress ?? null,
         lastSeen: now,
-        workstationId: 'ws-remote',
+        workstationId: seed?.workstationId ?? 'ws-remote',
         activityHistory: [],
         source: 'live',
       };
@@ -177,6 +254,46 @@ export class AgentRegistry {
     agent.lastSeen = now;
     if (entry) this.appendEntry(agent, entry);
     return { agent, entry };
+  }
+
+  /**
+   * Task queue (office → agent). Tasks are commands, not execution: the
+   * registry only stores them until the agent's poller claims them.
+   */
+  createTask(agentId: string, title: string, detail?: string): AgentTask {
+    const now = new Date().toISOString();
+    this.taskCounter += 1;
+    const task: AgentTask = {
+      id: `${Date.now()}-${this.taskCounter}`,
+      agentId,
+      title,
+      detail,
+      status: 'pending',
+      createdAt: now,
+      completedAt: null,
+    };
+    this.tasks.set(task.id, task);
+    return { ...task };
+  }
+
+  listTasks(agentId: string, status?: 'pending' | 'done'): AgentTask[] {
+    return [...this.tasks.values()]
+      .filter((t) => t.agentId === agentId && (status === undefined || t.status === status))
+      .map((t) => ({ ...t }));
+  }
+
+  /** Mark a task done (idempotent); null when the task is unknown or foreign. */
+  completeTask(agentId: string, taskId: string): AgentTask | null {
+    const task = this.tasks.get(taskId);
+    if (!task || task.agentId !== agentId) return null;
+    if (task.status === 'done') return { ...task };
+    task.status = 'done';
+    task.completedAt = new Date().toISOString();
+    const agent = this.agents.get(agentId);
+    if (agent) {
+      this.appendEntry(agent, this.makeEntry(agentId, 'task', `Task completed: ${task.title}`));
+    }
+    return { ...task };
   }
 
   /**

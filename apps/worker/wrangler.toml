@@ -19,41 +19,33 @@ tag = "v1"
 new_sqlite_classes = ["AgentRoom"]
 
 # ---------------------------------------------------------------------------
-# Admin panel bindings (D1 + R2). Setup steps:
-#   1. Create the database (pick ONE):
-#        CLI:       npx wrangler d1 create vao-admin
-#        Dashboard: Workers & Pages -> D1 -> Create database -> name "vao-admin"
-#      Then paste the real database_id below (replacing REPLACE_ME_...).
-#   2. Create the bucket (pick ONE):
-#        CLI:       npx wrangler r2 bucket create vao-assets
-#        Dashboard: R2 Object Storage -> Create bucket -> name "vao-assets"
-#   3. Public access for character .glb files (pick ONE), then set
-#      R2_PUBLIC_BASE_URL under [vars] below:
-#        a) R2 dashboard -> bucket -> Settings -> Public access -> Allow
-#           (gives you an https://pub-xxxx.r2.dev URL), or
-#        b) Settings -> Custom Domains -> connect e.g. assets.example.com
-#   4. Secrets (NEVER commit real values — set via CLI or dashboard):
-#        npx wrangler secret put SETUP_TOKEN      # e.g. openssl rand -hex 32
-#        npx wrangler secret put INTERNAL_SECRET  # e.g. openssl rand -hex 32
-#        (Dashboard alternative: Worker -> Settings -> Variables -> Secrets.)
-#   5. npx wrangler d1 migrations apply vao-admin   (add --local for wrangler dev)
-#   6. Deploy, then POST /api/admin/auth/setup ONCE to create the first admin.
-#      Full walkthrough: apps/worker/SETUP.md
+# Admin panel bindings (D1 + R2) — DEFERRED. The agent surface (registry +
+# WebSocket + task queue) works WITHOUT them: /api/admin/* answers 503 when
+# unbound. The bindings below are commented out on purpose so a first
+# deploy cannot fail on the placeholder database_id. To set up the admin
+# panel later, uncomment them, create the database + bucket, and follow
+# apps/worker/SETUP.md steps 1-6.
 # ---------------------------------------------------------------------------
-[[d1_databases]]
-binding = "DB"
-database_name = "vao-admin"
-# PASTE the real id from `npx wrangler d1 create vao-admin` here.
-database_id = "REPLACE_ME__run_wrangler_d1_create"
-
-[[r2_buckets]]
-binding = "ASSETS"
-bucket_name = "vao-assets"
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "vao-admin"
+# database_id = "REPLACE_ME__run_wrangler_d1_create"
+#
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "vao-assets"
+#
+# Secrets (NEVER commit real values — set via CLI or dashboard):
+#   npx wrangler secret put AGENT_SECRET     # required: agent event + task auth
+#   npx wrangler secret put SETUP_TOKEN     # admin first-run setup (later)
+#   npx wrangler secret put INTERNAL_SECRET # admin live-update channel (later)
+# ---------------------------------------------------------------------------
 
 [vars]
-# "true" = run the clearly-labeled demo simulator (8 demo agents).
-# Set to "false" once real agents report via POST /api/agents/:id/events.
-DEMO_MODE = "true"
+# "false" = NO demo, ever. Only the 3 live seats (difia, kirana, reno) exist;
+# demo agents persisted from an earlier deployment are purged on boot.
+# "true" restores the old clearly-labeled demo simulator (8 demo agents).
+DEMO_MODE = "false"
 # Live agents silent longer than this (ms) are marked offline.
 OFFLINE_TIMEOUT_MS = "30000"
 # Max POST /api/agents/:id/events requests per IP per minute.

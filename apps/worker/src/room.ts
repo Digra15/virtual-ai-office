@@ -17,13 +17,14 @@ import { DurableObject } from 'cloudflare:workers';
 import {
   ADMIN_BROADCAST_TYPES,
   EventPostSchema,
+  TaskPostSchema,
   type ActivityEntry,
   type AgentInfo,
   type EventPost,
   type HealthResponse,
   type ServerMessage,
 } from '@virtual-ai-office/shared';
-import { AgentRegistry, type RegistrySnapshot } from './registry';
+import { AgentRegistry, isLiveSeat, type RegistrySnapshot } from './registry';
 import { SlidingWindowLimiter } from './ratelimit';
 import { demoTick } from './demo';
 import { loadWorkerConfig, type Env } from './env';
@@ -63,16 +64,24 @@ export class AgentRoom extends DurableObject<Env> {
     super(ctx, env);
     // Load persisted state before serving any request.
     this.ready = ctx.blockConcurrencyWhile(async () => {
+      const cfg = loadWorkerConfig(env);
       const stored = await ctx.storage.get<StoredState>(STATE_KEY);
+      let changed = false;
       if (stored) {
         this.registry.restore(stored);
         this.bootedAt = stored.bootedAt;
       } else {
         this.bootedAt = Date.now();
-        const cfg = loadWorkerConfig(env);
         if (cfg.demoMode) this.registry.seedDemoAgents();
-        await this.persist();
+        changed = true;
       }
+      if (!cfg.demoMode) {
+        // No demo, ever: purge demo agents persisted from an earlier
+        // deployment and seed the 3 live seats (idempotent).
+        changed = this.registry.purgeDemoAgents() > 0 || changed;
+        changed = this.registry.seedLiveAgents() > 0 || changed;
+      }
+      if (changed) await this.persist();
     });
   }
 
@@ -130,7 +139,64 @@ export class AgentRoom extends DurableObject<Env> {
       }
     }
 
+    // Task queue (office → agent). All three endpoints require AGENT_SECRET.
+    const taskMatch = pathname.match(/^\/api\/agents\/([^/]+)\/tasks(?:\/([^/]+)\/complete)?$/);
+    if (taskMatch) {
+      const agentId = decodeURIComponent(taskMatch[1] ?? '');
+      const taskId = taskMatch[2] ? decodeURIComponent(taskMatch[2]) : null;
+      const authError = this.requireAgentAuth(request);
+      if (authError) return authError;
+      if (!this.registry.get(agentId)) return json({ error: `Unknown agent: ${agentId}` }, 404);
+      if (request.method === 'POST' && taskId === null) {
+        return this.handleCreateTask(request, agentId);
+      }
+      if (request.method === 'GET' && taskId === null) {
+        const statusParam = url.searchParams.get('status');
+        const status = statusParam === 'pending' || statusParam === 'done' ? statusParam : undefined;
+        return json({ tasks: this.registry.listTasks(agentId, status) });
+      }
+      if (request.method === 'POST' && taskId !== null) {
+        const task = this.registry.completeTask(agentId, taskId);
+        if (!task) return json({ error: `Unknown task: ${taskId}` }, 404);
+        await this.persist();
+        return json({ task });
+      }
+    }
+
     return json({ error: 'Not found' }, 404);
+  }
+
+  /**
+   * Agent-reporting auth (fail closed). Returns an error Response when the
+   * request is not authorized, or null when it is. The secret lives only
+   * in Worker secrets — the browser never holds it.
+   */
+  private requireAgentAuth(request: Request): Response | null {
+    const secret = this.env.AGENT_SECRET;
+    if (!secret) {
+      return json({ error: 'Agent reporting not configured — set AGENT_SECRET' }, 503);
+    }
+    const provided = request.headers.get('Authorization') ?? '';
+    if (!provided.startsWith('Bearer ') || !timingSafeEqual(provided.slice('Bearer '.length), secret)) {
+      return json({ error: 'Forbidden' }, 403);
+    }
+    return null;
+  }
+
+  private async handleCreateTask(request: Request, agentId: string): Promise<Response> {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const parsed = TaskPostSchema.safeParse(body);
+    if (!parsed.success) {
+      return json({ error: 'Invalid task payload', details: parsed.error.flatten() }, 400);
+    }
+    const task = this.registry.createTask(agentId, parsed.data.title, parsed.data.detail);
+    await this.persist();
+    return json({ task }, 201);
   }
 
   private async handleHealth(): Promise<Response> {
@@ -149,6 +215,11 @@ export class AgentRoom extends DurableObject<Env> {
 
   private async handlePostEvent(request: Request, agentId: string): Promise<Response> {
     const cfg = loadWorkerConfig(this.env);
+
+    // Agent reports are authenticated (previously open — anyone could fake
+    // a live agent's status). Auth runs before rate limiting.
+    const authError = this.requireAgentAuth(request);
+    if (authError) return authError;
 
     // Per-IP sliding-window rate limit (mirrors the Node 60/min limiter).
     const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
@@ -234,7 +305,7 @@ export class AgentRoom extends DurableObject<Env> {
       this.sendTo(ws, { type: 'error', message: 'Message must be a JSON object' });
       return;
     }
-    const msg = parsed as { type?: unknown; agentId?: unknown };
+    const msg = parsed as { type?: unknown; agentId?: unknown; token?: unknown };
     if (msg.type === 'ping') {
       this.sendTo(ws, {
         type: 'heartbeat',
@@ -248,6 +319,18 @@ export class AgentRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'heartbeat' && typeof msg.agentId === 'string' && msg.agentId.length > 0) {
+      // Live seats cannot be revived by an unauthenticated WS heartbeat —
+      // only authenticated REST reports revive them. Otherwise anyone could
+      // fake a live agent's liveness. (No current client sends heartbeats
+      // with an agentId, so nothing legitimate breaks.)
+      if (isLiveSeat(msg.agentId)) {
+        const secret = this.env.AGENT_SECRET;
+        const token = typeof msg.token === 'string' ? msg.token : '';
+        if (!secret || !timingSafeEqual(token, secret)) {
+          this.sendTo(ws, { type: 'error', message: 'Live-seat heartbeat requires a valid token' });
+          return;
+        }
+      }
       // A client heartbeat revives the named agent's lastSeen (and broadcasts
       // the revival when the agent comes back from offline).
       const { agent, entry } = this.registry.upsertFromEvent(msg.agentId, { type: 'heartbeat' });

@@ -29,6 +29,13 @@ export interface Env {
    */
   INTERNAL_SECRET?: string;
   /**
+   * Shared secret agents use to authenticate event + task reports
+   * (`Authorization: Bearer <AGENT_SECRET>`). Set via
+   * `npx wrangler secret put AGENT_SECRET`. NEVER commit a real value.
+   * When unset, agent reporting is refused (fail closed).
+   */
+  AGENT_SECRET?: string;
+  /**
    * Public base URL of the ASSETS R2 bucket (e.g. https://pub-xxxx.r2.dev
    * or a custom domain). Used to build public character-model URLs.
    */

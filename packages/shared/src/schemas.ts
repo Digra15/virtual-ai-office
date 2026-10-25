@@ -51,3 +51,28 @@ export const EventPostSchema = z
   });
 
 export type EventPost = z.infer<typeof EventPostSchema>;
+
+/**
+ * Task queue (office → agent). The office assigns a task to a live agent
+ * via `POST /api/agents/:id/tasks`; the agent's poller lists pending tasks
+ * and marks them done. Tasks are commands, not execution: the registry
+ * never runs them.
+ */
+export const TaskStatusSchema = z.enum(['pending', 'done']);
+
+export const TaskPostSchema = z.object({
+  title: z.string().min(1).max(500),
+  detail: z.string().max(2000).optional(),
+});
+
+export type TaskPost = z.infer<typeof TaskPostSchema>;
+
+export interface AgentTask {
+  id: string;
+  agentId: string;
+  title: string;
+  detail?: string;
+  status: 'pending' | 'done';
+  createdAt: string;
+  completedAt: string | null;
+}

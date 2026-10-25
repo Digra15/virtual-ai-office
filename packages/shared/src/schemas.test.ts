@@ -4,7 +4,7 @@
  * Run with `npm run test --workspace @virtual-ai-office/shared`.
  */
 import { describe, expect, it } from 'vitest';
-import { EventPostSchema } from './schemas';
+import { EventPostSchema, TaskPostSchema } from './schemas';
 
 describe('EventPostSchema', () => {
   it('accepts a status event', () => {
@@ -84,5 +84,20 @@ describe('EventPostSchema', () => {
   it('rejects an unknown event type', () => {
     const result = EventPostSchema.safeParse({ type: 'launch-missiles' });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('TaskPostSchema', () => {
+  it('accepts a title with optional detail', () => {
+    const result = TaskPostSchema.safeParse({ title: 'Write chapter 26', detail: 'Laras confronts Raka' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an empty title', () => {
+    expect(TaskPostSchema.safeParse({ title: '' }).success).toBe(false);
+  });
+
+  it('rejects a missing title', () => {
+    expect(TaskPostSchema.safeParse({ detail: 'no title' }).success).toBe(false);
   });
 });
