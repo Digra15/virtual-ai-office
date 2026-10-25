@@ -4,6 +4,7 @@ import { Billboard, Text, useGLTF, useAnimations } from "@react-three/drei";
 import type { Group } from "three";
 import { CUTES_MODEL_SCALE, LYING } from "./lying";
 import { buildTypingPoseClip, TYPING_LEAN_X } from "./typingPose";
+import { activityLabel } from "./activityLabel";
 
 /**
  * CUTES 3D character (poly.pizza bundle by J-Toastie, CC-BY).
@@ -22,29 +23,7 @@ export const CUTES_MODEL: Record<string, string> = {
   monitoring: "/models/cutes/Prisoner.glb",
 };
 
-/** Game-style status icon above the head. */
-const STATUS_ICON: Record<string, string> = {
-  thinking: "?",
-  working: "...",
-  waiting: "...",
-  meeting: "!",
-  error: "!",
-  recovering: "zZ",
-  offline: "x",
-  idle: "",
-};
-
-/** Status icon color. */
-const STATUS_COLOR: Record<string, string> = {
-  thinking: "#facc15",
-  working: "#4ade80",
-  waiting: "#facc15",
-  meeting: "#38bdf8",
-  error: "#f87171",
-  recovering: "#c084fc",
-  offline: "#9ca3af",
-  idle: "#ffffff",
-};
+/** Activity caption colors live in activityLabel.ts (single source). */
 
 interface CutesAvatarProps {
   agentId: string;
@@ -80,7 +59,7 @@ export function CutesAvatar({
   onClick,
 }: CutesAvatarProps) {
   const group = useRef<Group>(null);
-  const iconRef = useRef<Group>(null);
+  const labelRef = useRef<Group>(null);
   const url = CUTES_MODEL[agentId] ?? CUTES_MODEL.nika;
   const { scene, animations } = useGLTF(url);
   const { actions, mixer } = useAnimations(animations, group);
@@ -135,15 +114,15 @@ export function CutesAvatar({
     };
   }, [actions, mixer, walking, lying, isTyping, typingClip]);
 
-  // Lively status animation: big bounce + wiggle + pulse.
-  // (iconRef is a child of the Billboard at y=2.25, so animate around 0.)
+  // Lively caption animation: big bounce + wiggle + pulse.
+  // (labelRef is a child of the Billboard at y=2.25, so animate around 0.)
   useFrame(({ clock }) => {
-    if (!iconRef.current) return;
+    if (!labelRef.current) return;
     const t = clock.getElapsedTime();
-    iconRef.current.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
+    labelRef.current.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
     const s = 1 + Math.sin(t * 6) * 0.15;
-    iconRef.current.scale.setScalar(s);
-    iconRef.current.rotation.z = Math.sin(t * 4) * 0.15;
+    labelRef.current.scale.setScalar(s);
+    labelRef.current.rotation.z = Math.sin(t * 4) * 0.15;
   });
 
   // Seated: sink the model so the chair seat is at hip level and the
@@ -151,10 +130,9 @@ export function CutesAvatar({
   const isSeated = pose === "desk";
   const scale = CUTES_MODEL_SCALE;
   const y = isSeated ? 0.18 : 0;
-  const icon = STATUS_ICON[status] ?? "";
-  const iconColor = STATUS_COLOR[status] ?? "#ffffff";
-  // Pantry break: a bobbing 3D coffee cup instead of a text icon.
-  const onBreak = activity === "break";
+  // Animated activity caption below the name (replaces the old status
+  // icon and the pantry coffee cup): what the agent is actually doing.
+  const caption = activityLabel({ status, activity, prayerPose, lying });
 
   // Faked prayer transforms (whole-model, since the rig has no
   // knee/waist joints). Positive X rotation pitches the head toward
@@ -236,41 +214,23 @@ export function CutesAvatar({
           {name}
         </Text>
       </Billboard>
-      {icon !== "" && !onBreak && (
-        <Billboard position={[0, hudIconY, 0]}>
-          <group ref={iconRef}>
-            <Text
-              fontSize={0.3}
-              color={iconColor}
-              anchorX="center"
-              anchorY="middle"
-              outlineWidth={0.05}
-              outlineColor="#000000"
-            >
-              {icon}
-            </Text>
-          </group>
-        </Billboard>
-      )}
-      {/* Pantry break: bobbing 3D coffee cup above the head. */}
-      {onBreak && (
-        <Billboard position={[0, hudIconY, 0]}>
-          <group ref={iconRef}>
-            <mesh position={[0, 0, 0]}>
-              <cylinderGeometry args={[0.11, 0.09, 0.16, 16]} />
-              <meshStandardMaterial color="#ffffff" roughness={0.4} />
-            </mesh>
-            <mesh position={[0, 0.08, 0]}>
-              <cylinderGeometry args={[0.095, 0.095, 0.02, 16]} />
-              <meshStandardMaterial color="#6b4a2f" roughness={0.6} />
-            </mesh>
-            <mesh position={[0.13, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <torusGeometry args={[0.06, 0.018, 8, 16]} />
-              <meshStandardMaterial color="#ffffff" roughness={0.4} />
-            </mesh>
-          </group>
-        </Billboard>
-      )}
+      {/* Animated activity caption below the name. Sleeping agents
+          keep "zZ" (see activityLabel); everyone else shows what they
+          are doing: working, thinking, waiting, eating, praying… */}
+      <Billboard position={[0, hudIconY, 0]}>
+        <group ref={labelRef}>
+          <Text
+            fontSize={0.26}
+            color={caption.color}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.05}
+            outlineColor="#000000"
+          >
+            {caption.text}
+          </Text>
+        </group>
+      </Billboard>
     </group>
   );
 }
