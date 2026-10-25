@@ -5,7 +5,8 @@
  * partition boxes (stalls 1.9 wide in a 2m-wide room), so the partitions
  * are gone: a clearly readable toilet duduk at the north end (tank +
  * seat ring + dark opening, facing south) and a sink counter with mirror
- * near the door at the south end, with open floor between them.
+ * mounted on the WEST wall near the door, so the door-to-toilet axis
+ * down the middle of the room stays fully open.
  */
 import { memo } from "react";
 import * as THREE from "three";
@@ -51,28 +52,30 @@ const SittingToilet = memo(function SittingToilet({ cx }: { cx: number }) {
 });
 
 /**
- * One sink near the door (south end): cabinet + countertop, a single
- * basin with faucet, and a mirror on two posts behind it facing south
- * toward the person standing between sink and door.
+ * One sink near the door (south end), mounted flat against the WEST
+ * wall: cabinet + countertop run along the wall, basin + faucet in
+ * front of it, mirror on the wall facing east. Nothing stands in the
+ * middle of the room, so the door-to-toilet path stays clear.
+ * Wall thickness is 0.25 centered on the room boundary, so the west
+ * wall's interior face is at local x -0.875 from the room center.
+ * Everything here sits east of that face: cabinet back at -0.85,
+ * mirror backing at -0.87..-0.82, mirror plane at -0.815.
  */
 const SinkCounter = memo(function SinkCounter({ cx }: { cx: number }) {
   return (
     <group position={[cx, 0, -5.7]}>
-      {/* cabinet + countertop */}
-      <mesh geometry={geoBox} material={matDark} scale={[1.3, 0.8, 0.55]} position={[0, 0.4, 0]} castShadow receiveShadow />
-      <mesh geometry={geoBox} material={matCeramic} scale={[1.4, 0.08, 0.62]} position={[0, 0.84, 0]} castShadow />
+      {/* cabinet + countertop, long side along the west wall */}
+      <mesh geometry={geoBox} material={matDark} scale={[0.55, 0.8, 1.3]} position={[-0.575, 0.4, 0]} castShadow receiveShadow />
+      <mesh geometry={geoBox} material={matCeramic} scale={[0.62, 0.08, 1.4]} position={[-0.575, 0.84, 0]} castShadow />
       {/* single basin + dark drain opening */}
-      <mesh geometry={geoCylinder} material={matCeramic} scale={[0.42, 0.12, 0.42]} position={[0, 0.92, 0]} castShadow />
-      <mesh geometry={geoCylinder} material={matOpening} scale={[0.26, 0.02, 0.26]} position={[0, 0.98, 0]} />
-      {/* faucet: vertical stem + spout toward the basin */}
-      <mesh geometry={geoCylinder} material={matChrome} scale={[0.05, 0.28, 0.05]} position={[0, 1.0, -0.25]} />
-      <mesh geometry={geoCylinder} material={matChrome} scale={[0.04, 0.25, 0.04]} position={[0, 1.12, -0.12]} rotation={[Math.PI / 2, 0, 0]} />
-      {/* mirror posts + backing + mirror, facing +Z (south) */}
-      {[-0.5, 0.5].map((dx) => (
-        <mesh key={dx} geometry={geoBox} material={matDark} scale={[0.04, 0.3, 0.04]} position={[dx, 1.03, -0.35]} />
-      ))}
-      <mesh geometry={geoBox} material={matDark} scale={[1.2, 1.0, 0.05]} position={[0, 1.65, -0.35]} />
-      <mesh geometry={geoPlane} material={matMirror} scale={[1.05, 0.85, 1]} position={[0, 1.65, -0.32]} />
+      <mesh geometry={geoCylinder} material={matCeramic} scale={[0.42, 0.12, 0.42]} position={[-0.575, 0.92, 0]} castShadow />
+      <mesh geometry={geoCylinder} material={matOpening} scale={[0.26, 0.02, 0.26]} position={[-0.575, 0.98, 0]} />
+      {/* faucet: vertical stem at the wall side + spout toward the basin (east) */}
+      <mesh geometry={geoCylinder} material={matChrome} scale={[0.05, 0.28, 0.05]} position={[-0.82, 1.0, 0]} />
+      <mesh geometry={geoCylinder} material={matChrome} scale={[0.25, 0.04, 0.04]} position={[-0.7, 1.12, 0]} rotation={[0, 0, Math.PI / 2]} />
+      {/* mirror backing + mirror on the west wall, facing east (+X) */}
+      <mesh geometry={geoBox} material={matDark} scale={[0.05, 1.0, 1.2]} position={[-0.845, 1.65, 0]} />
+      <mesh geometry={geoPlane} material={matMirror} scale={[1.05, 0.85, 1]} position={[-0.815, 1.65, 0]} rotation={[0, Math.PI / 2, 0]} />
     </group>
   );
 });
