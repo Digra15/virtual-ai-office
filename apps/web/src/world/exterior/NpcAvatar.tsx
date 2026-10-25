@@ -25,8 +25,11 @@ import { PolyModel } from "../PolyModel";
 import {
   ACCESSORIES,
   accessoryPlacement,
+  EYE_Y,
   type AccessoryId,
 } from "./accessories";
+import { Hair } from "./Hair";
+import type { HairKind } from "./hairStyles";
 
 export interface NpcLook {
   /** CUTES model URL (see CUTES_MODEL). */
@@ -35,6 +38,9 @@ export interface NpcLook {
   hat: AccessoryId | null;
   glasses: AccessoryId | null;
   backpack: boolean;
+  /** Procedural hairstyle (mutually exclusive with hats in assignments). */
+  hair: HairKind | null;
+  hairColor: string;
   /** Extra size multiplier on top of CUTES_MODEL_SCALE. */
   scale: number;
 }
@@ -74,6 +80,7 @@ export const NpcAvatar = memo(function NpcAvatar({ look }: { look: NpcLook }) {
     };
   }, [actions]);
   const headTop = (MODEL_HEAD_TOP[look.modelUrl] ?? MAX_HEAD_TOP) / CUTES_MODEL_SCALE;
+  const eyeY = EYE_Y[look.modelUrl] ?? headTop - 0.3;
   const s = CUTES_MODEL_SCALE * look.scale;
   const hat = look.hat ? accessoryPlacement(look.hat, look.modelUrl, headTop) : null;
   const glasses = look.glasses ? accessoryPlacement(look.glasses, look.modelUrl, headTop) : null;
@@ -82,6 +89,7 @@ export const NpcAvatar = memo(function NpcAvatar({ look }: { look: NpcLook }) {
     <group ref={group} scale={[s, s, s]}>
       <primitive object={cloned} />
       <Shirt color={look.shirtColor} />
+      {look.hair && <Hair kind={look.hair} color={look.hairColor} headTop={headTop} eyeY={eyeY} />}
       {look.hat && hat && (
         <PolyModel file={ACCESSORIES[look.hat].file} folder="accessories" position={hat.position} scale={hat.scale} />
       )}
