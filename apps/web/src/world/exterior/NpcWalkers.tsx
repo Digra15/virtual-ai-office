@@ -2,10 +2,12 @@
  * Pedestrians on the far sidewalk: CUTES models with custom shirts,
  * hats and backpacks, strolling back and forth. They turn around
  * smoothly at the ends and are hidden beyond TRAFFIC_CULL_DISTANCE
- * like the road traffic. No-interpenetration rule (see npcWalk.ts):
- * eastbound walkers use the outer lane, westbound the inner lane,
- * and same-direction walkers keep a following gap — so NPCs never
- * walk through each other when passing or catching up.
+ * like the road traffic. No-bunching rule: speeds are EQUAL within
+ * a direction (1.2 eastbound, 1.1 westbound), so the starting
+ * spacing between walkers never changes — nobody catches up and
+ * queues behind a slower walker. The same-direction following gap
+ * in npcWalk.ts stays only as a safety net for the turnaround arcs.
+ * Eastbound walkers use the outer lane, westbound the inner lane.
  */
 import { memo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -29,14 +31,14 @@ interface NpcWalker {
   startDir: 1 | -1;
 }
 
-const NPC_WALKERS: NpcWalker[] = [
+export const NPC_WALKERS: NpcWalker[] = [
   { look: { modelUrl: CUTES_MODEL.nika, shirtColor: "#e11d48", hat: null, glasses: null, backpack: false, hair: "long", hairColor: "#3f2a14", scale: 1 }, speed: 1.2, startX: -40, startDir: 1 },
-  { look: { modelUrl: CUTES_MODEL.research, shirtColor: "#2563eb", hat: "baseball-cap-jarlan", glasses: "glasses-1", backpack: true, hair: null, hairColor: "#111827", scale: 1.05 }, speed: 1.0, startX: 10, startDir: -1 },
-  { look: { modelUrl: CUTES_MODEL.coding, shirtColor: "#16a34a", hat: null, glasses: "glasses-2", backpack: false, hair: "spiky", hairColor: "#111827", scale: 0.95 }, speed: 1.4, startX: 30, startDir: 1 },
+  { look: { modelUrl: CUTES_MODEL.research, shirtColor: "#2563eb", hat: "baseball-cap-jarlan", glasses: "glasses-1", backpack: true, hair: null, hairColor: "#111827", scale: 1.05 }, speed: 1.1, startX: 10, startDir: -1 },
+  { look: { modelUrl: CUTES_MODEL.coding, shirtColor: "#16a34a", hat: null, glasses: "glasses-2", backpack: false, hair: "spiky", hairColor: "#111827", scale: 0.95 }, speed: 1.2, startX: 30, startDir: 1 },
   { look: { modelUrl: CUTES_MODEL.writing, shirtColor: "#f59e0b", hat: null, glasses: "sunglasses", backpack: false, hair: "ponytail", hairColor: "#6b3f12", scale: 1 }, speed: 1.1, startX: -10, startDir: -1 },
-  { look: { modelUrl: CUTES_MODEL.data, shirtColor: "#0891b2", hat: "baseball-cap-poly", glasses: null, backpack: true, hair: null, hairColor: "#111827", scale: 1 }, speed: 1.3, startX: 50, startDir: -1 },
-  { look: { modelUrl: CUTES_MODEL.automation, shirtColor: "#db2777", hat: null, glasses: "pixel-glasses", backpack: false, hair: "afro", hairColor: "#1f2937", scale: 0.98 }, speed: 1.15, startX: -60, startDir: 1 },
-  { look: { modelUrl: CUTES_MODEL.design, shirtColor: "#7c2d12", hat: null, glasses: "glasses-3", backpack: true, hair: "mohawk", hairColor: "#dc2626", scale: 1 }, speed: 1.05, startX: 58, startDir: -1 },
+  { look: { modelUrl: CUTES_MODEL.data, shirtColor: "#0891b2", hat: "baseball-cap-poly", glasses: null, backpack: true, hair: null, hairColor: "#111827", scale: 1 }, speed: 1.1, startX: 50, startDir: -1 },
+  { look: { modelUrl: CUTES_MODEL.automation, shirtColor: "#db2777", hat: null, glasses: "pixel-glasses", backpack: false, hair: "afro", hairColor: "#1f2937", scale: 0.98 }, speed: 1.2, startX: -60, startDir: 1 },
+  { look: { modelUrl: CUTES_MODEL.design, shirtColor: "#7c2d12", hat: null, glasses: "glasses-3", backpack: true, hair: "mohawk", hairColor: "#dc2626", scale: 1 }, speed: 1.1, startX: 58, startDir: -1 },
 ];
 
 export const NpcWalkers = memo(function NpcWalkers() {

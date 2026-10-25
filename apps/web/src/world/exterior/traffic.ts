@@ -83,15 +83,21 @@ export interface TrafficVehicle {
   scale: number;
 }
 
-/** 8 vehicles from the user, 4 per lane, spaced 35 m apart. */
+/**
+ * 8 vehicles from the user, 4 per lane, spaced 35 m apart. Speeds
+ * are EQUAL within a lane on purpose: with different speeds the
+ * faster car catches the slower one ahead and they overlap (there
+ * is no car-following logic — vehicles just wrap). Equal speeds
+ * keep the 35 m gaps constant forever.
+ */
 export const TRAFFIC_VEHICLES: TrafficVehicle[] = [
   { file: "camaro.glb", lane: "north", speed: 6.5, offset: 0, scale: 1 },
-  { file: "police-car.glb", lane: "north", speed: 7, offset: 35, scale: 1 },
-  { file: "taxi-quaternius.glb", lane: "north", speed: 6, offset: 70, scale: 1 },
-  { file: "suv.glb", lane: "north", speed: 5.5, offset: 105, scale: 1 },
-  { file: "sports-car.glb", lane: "south", speed: 7.5, offset: 0, scale: 1 },
+  { file: "police-car.glb", lane: "north", speed: 6.5, offset: 35, scale: 1 },
+  { file: "taxi-quaternius.glb", lane: "north", speed: 6.5, offset: 70, scale: 1 },
+  { file: "suv.glb", lane: "north", speed: 6.5, offset: 105, scale: 1 },
+  { file: "sports-car.glb", lane: "south", speed: 6, offset: 0, scale: 1 },
   { file: "taxi-kay.glb", lane: "south", speed: 6, offset: 35, scale: 4.47 },
-  { file: "car-poly.glb", lane: "south", speed: 5.5, offset: 70, scale: 0.02 },
+  { file: "car-poly.glb", lane: "south", speed: 6, offset: 70, scale: 0.02 },
   { file: "jeep.glb", lane: "south", speed: 6, offset: 105, scale: 0.047 },
 ];
 

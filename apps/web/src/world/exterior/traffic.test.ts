@@ -77,6 +77,15 @@ describe("traffic fleet", () => {
     }
   });
 
+  it("same-lane vehicles share one speed, so gaps never change", () => {
+    for (const lane of ["north", "south"] as const) {
+      const speeds = new Set(
+        TRAFFIC_VEHICLES.filter((v) => v.lane === lane).map((v) => v.speed),
+      );
+      expect(speeds.size).toBe(1);
+    }
+  });
+
   it("same-lane vehicles are spaced at least 25 m apart", () => {
     for (const lane of ["north", "south"] as const) {
       const offsets = TRAFFIC_VEHICLES.filter((v) => v.lane === lane)
