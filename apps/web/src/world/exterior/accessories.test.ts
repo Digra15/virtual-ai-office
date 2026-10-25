@@ -39,8 +39,9 @@ describe("accessory placement (probed)", () => {
       for (const url of urls) {
         const headTop = (MODEL_HEAD_TOP[url] ?? 0) / CUTES_MODEL_SCALE;
         const p = accessoryPlacement(id, url, headTop);
-        expect(p.position[1]).toBeLessThanOrEqual(headTop);
-        expect(p.position[1]).toBeGreaterThan(headTop - 0.35);
+        // Rim perches ON the crown: only 0.05 sunk, never buried in
+        // the hair mass that reaches headTop.
+        expect(p.position[1]).toBeCloseTo(headTop - 0.05, 5);
         // Crown of the hat rises above the head.
         expect(p.position[1] + spec.rawHeight * p.scale).toBeGreaterThan(headTop);
       }
