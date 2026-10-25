@@ -37,6 +37,11 @@ import * as THREE from "three";
  * Both are Kenney's small-scale furniture, so callers scale them up
  * (sofa x2.0 -> 1.96 wide, table x1.7 -> 1.12 long).
  *
+ * Free3D file (folder "free3d", free3d.com/3d-model/gaming-chair-692404.html):
+ * - gaming-chair.glb (316.52 x 575.20 x 309.63 raw, backrest on the -z
+ *   side so it faces +z with rotationY 0; textures resized to 1024 px,
+ *   geometry kept original ~490k tris, shared across instances).
+ *
  * Why this component normalizes: these files have wildly different
  * origins and units (verified from their POSITION accessors) — the cup
  * spans ~70 units, the french-press ~500k units, the coffee-cup's origin
@@ -61,7 +66,8 @@ export type PolyFile =
   | "french-door.glb"
   | "door-and-frame.glb"
   | "lounge-sofa.glb"
-  | "table-coffee.glb";
+  | "table-coffee.glb"
+  | "gaming-chair.glb";
 
 const POLY_FILES: PolyFile[] = [
   "coffee-cup.glb",
@@ -77,6 +83,8 @@ const POLY_FILES: PolyFile[] = [
 ];
 
 const KENNEY_FILES: PolyFile[] = ["lounge-sofa.glb", "table-coffee.glb"];
+
+const FREE3D_FILES: PolyFile[] = ["gaming-chair.glb"];
 
 function isEffectivelyVisible(o: THREE.Object3D): boolean {
   let cur: THREE.Object3D | null = o;
@@ -103,7 +111,7 @@ export const PolyModel = memo(function PolyModel({
   /** Node names to hide (e.g. the frame nodes of door-and-frame.glb). */
   hideNodes?: readonly string[];
   /** Model folder under public/models (default poly-pizza). */
-  folder?: "poly-pizza" | "kenney";
+  folder?: "poly-pizza" | "kenney" | "free3d";
 }) {
   const { scene } = useGLTF(`/models/${folder}/${file}`);
   const cloned = useMemo(() => {
@@ -140,3 +148,4 @@ export const PolyModel = memo(function PolyModel({
 
 POLY_FILES.forEach((file) => useGLTF.preload(`/models/poly-pizza/${file}`));
 KENNEY_FILES.forEach((file) => useGLTF.preload(`/models/kenney/${file}`));
+FREE3D_FILES.forEach((file) => useGLTF.preload(`/models/free3d/${file}`));

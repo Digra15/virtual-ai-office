@@ -6,7 +6,7 @@
 import { memo } from "react";
 import * as THREE from "three";
 import { MEETING_CHAIR_SLOTS } from "../../rooms/MeetingRoom";
-import { CozyChair, Mug, useCozyTexture } from "../../cozy";
+import { Free3DGamingChair, Mug, useCozyTexture } from "../../cozy";
 import { geoBox, geoPlane } from "../../geometries";
 
 const matTableWood = new THREE.MeshStandardMaterial({ color: "#9a6a3b", roughness: 0.6 });
@@ -55,12 +55,10 @@ export const MeetingRoom = memo(function MeetingRoom() {
       <ConferenceTable />
       <PresentationScreen />
       {MEETING_CHAIR_SLOTS.map((s, i) => (
-        <CozyChair
+        <Free3DGamingChair
           key={i}
           position={s.position}
           rotationY={s.rotationY}
-          // head chairs (the two along the table's short axis) get the pink stripe
-          pinkStripe={s.position[0] === 12.8}
         />
       ))}
     </group>
