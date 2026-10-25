@@ -226,6 +226,36 @@ describe("plaques", () => {
       expect(onWallFace(p), `plaque "${p.title}" is floating, not on a wall`).toBe(true);
     }
   });
+
+  it("each plaque's full card stays inside one solid wall segment", () => {
+    // Plaque fit pass (2026-10-25): the old 1.7 m default overflowed the
+    // 0.85 m toilet segment (over both door gaps) and the 1.25 m server
+    // segment (over the server door gap), and Resepsionis poked above
+    // the 1.1 m front wall. The glass above a low wall does not count:
+    // the card must fit the solid height.
+    for (const p of PLAQUE_SPECS) {
+      const h = p.width / 2;
+      const fits = WALL_SEGMENTS.some((w) => {
+        const solidH = w.height ?? WALL_H;
+        if (p.position[1] - h / 2 < 0.1 || p.position[1] + h / 2 > solidH) return false;
+        if (w.axis === "x") {
+          const dz = Math.min(
+            Math.abs(p.position[2] - (w.z + 0.125)),
+            Math.abs(p.position[2] - (w.z - 0.125)),
+          );
+          if (dz >= 0.15) return false;
+          return Math.abs(p.position[0] - w.x) + p.width / 2 <= w.length / 2 + 0.001;
+        }
+        const dx = Math.min(
+          Math.abs(p.position[0] - (w.x + 0.125)),
+          Math.abs(p.position[0] - (w.x - 0.125)),
+        );
+        if (dx >= 0.15) return false;
+        return Math.abs(p.position[2] - w.z) + p.width / 2 <= w.length / 2 + 0.001;
+      });
+      expect(fits, `plaque "${p.title}" overflows its wall segment`).toBe(true);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

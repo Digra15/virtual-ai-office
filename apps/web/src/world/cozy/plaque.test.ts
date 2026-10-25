@@ -29,6 +29,23 @@ describe("drawPlaqueCard (Plaque badge art)", () => {
     expect(m.sets("fillStyle")).toContain("#6b7280");
   });
 
+  it("draws a long title in full instead of truncating it", () => {
+    // Plaque fit pass (2026-10-25): "Ruang Project (DIFIA)" used to be
+    // cut to "Ruang Project (…" by a 16-char cap, and long titles at a
+    // fixed 44px overflowed past the card edge. Titles now auto-fit
+    // (smaller font) and are never truncated.
+    const m = createMockCtx();
+    drawPlaqueCard(m.ctx, 512, 256, {
+      title: "Ruang Project (DIFIA)",
+      subtitle: "Manajemen Tugas",
+      icon: "📁",
+      accent: "#ea580c",
+    });
+    const texts = m.calls("fillText").map((a) => String(a[0]));
+    expect(texts).toContain("Ruang Project (DIFIA)");
+    expect(texts.some((t) => t.includes("…"))).toBe(false);
+  });
+
   it("respects the canvas size it is given", () => {
     const m = createMockCtx();
     drawPlaqueCard(m.ctx, 1024, 512, {

@@ -766,6 +766,34 @@ export interface PlaqueArt {
   accent: string;
 }
 
+/**
+ * Shrink `weight startPx` text until it fits `maxW`, never below `minPx`.
+ * In a real canvas ctx.measureText returns a width; in the recording mock
+ * ctx it returns no numeric width, which is treated as "fits" so tests
+ * keep the default size. Titles are never truncated anymore: a long
+ * title (e.g. "Ruang Project (DIFIA)") just renders smaller instead of
+ * being cut to "Ruang Project (…" or overflowing past the card edge.
+ */
+function fitFont(
+  ctx: Ctx2D,
+  s: string,
+  maxW: number,
+  weight: string,
+  startPx: number,
+  minPx: number,
+): string {
+  let px = startPx;
+  while (px > minPx) {
+    const font = `${weight} ${px}px system-ui, sans-serif`;
+    ctx.font = font;
+    const m = ctx.measureText(s) as unknown as { width?: unknown } | undefined;
+    const w = m && typeof m.width === "number" ? m.width : 0;
+    if (w === 0 || w <= maxW) return font;
+    px -= 2;
+  }
+  return `${weight} ${minPx}px system-ui, sans-serif`;
+}
+
 export function drawPlaqueCard(ctx: Ctx2D, w: number, h: number, art: PlaqueArt): void {
   // white 95% card
   ctx.fillStyle = "rgba(255,255,255,0.95)";
@@ -784,12 +812,12 @@ export function drawPlaqueCard(ctx: Ctx2D, w: number, h: number, art: PlaqueArt)
   ctx.fill();
   text(ctx, art.icon, sx + sq / 2, sy + sq / 2 + 4, `${Math.round(sq * 0.52)}px system-ui, sans-serif`, "#ffffff", "center", "middle");
 
-  // title + subtitle
+  // title + subtitle, auto-fit to the space right of the icon square
+  // (inside the accent border, with a small right padding)
   const tx = sx + sq + 28;
-  const maxTitle = 16;
-  const title = art.title.length > maxTitle ? art.title.slice(0, maxTitle - 1) + "…" : art.title;
-  text(ctx, title, tx, h / 2 - 10, "800 44px system-ui, sans-serif", "#1f2937", "left", "alphabetic");
-  text(ctx, art.subtitle, tx, h / 2 + 36, "400 26px system-ui, sans-serif", "#6b7280", "left", "alphabetic");
+  const maxTextW = w - tx - 28;
+  text(ctx, art.title, tx, h / 2 - 10, fitFont(ctx, art.title, maxTextW, "800", 44, 26), "#1f2937", "left", "alphabetic");
+  text(ctx, art.subtitle, tx, h / 2 + 36, fitFont(ctx, art.subtitle, maxTextW, "400", 26, 16), "#6b7280", "left", "alphabetic");
 }
 
 /* ------------------------------------------------------------------ */

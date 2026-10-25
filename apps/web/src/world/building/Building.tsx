@@ -240,18 +240,40 @@ export interface PlaqueSpec {
   accent: string;
   position: [number, number, number];
   rotationY: number;
+  /** Card width in meters (height is width/2). Sized per wall below. */
+  width: number;
 }
 
+/**
+ * Plaque fit pass (2026-10-25): every plaque's width + center is sized
+ * to the wall segment it hangs on, and its vertical span fits the
+ * SOLID part of that wall (low walls are 1.1/1.2 + glass above, so
+ * plaques there are smaller and lower). The previous 1.7 m default
+ * overflowed two segments badly: Toilet hung over BOTH toilet door
+ * gaps (segment only 0.85 wide) and Server crossed the server door gap
+ * (segment 1.25 wide, plaque centered off-segment); Resepsionis poked
+ * 0.025 above the 1.1 front wall, and Recovery/Meeting nearly touched
+ * the glass above their 1.1/1.2 walls. Text fit is handled in
+ * drawPlaqueCard (auto-fit, no truncation).
+ */
 export const PLAQUE_SPECS: PlaqueSpec[] = [
-  { title: "Resepsionis", subtitle: "Penerima Tamu", icon: "👤", accent: "#ff6b9d", position: [-3.0, 0.7, 9.87], rotationY: Math.PI },
-  { title: "Workspace Agent", subtitle: "Area Kerja Utama", icon: "💻", accent: "#0284c7", position: [-6.37, 1.9, 4.5], rotationY: Math.PI / 2 },
-  { title: "Ruang Project (DIFIA)", subtitle: "Manajemen Tugas", icon: "📁", accent: "#ea580c", position: [-6.63, 1.9, 5.0], rotationY: -Math.PI / 2 },
-  { title: "Musola", subtitle: "Ibadah", icon: "🕌", accent: "#16a34a", position: [-10.5, 1.9, -4.37], rotationY: 0 },
-  { title: "Ruang Recovery", subtitle: "Agent Error / Istirahat", icon: "🛏️", accent: "#ec4899", position: [-2.8, 0.65, -4.37], rotationY: 0 },
-  { title: "Pantry", subtitle: "Makan & Istirahat", icon: "☕", accent: "#ca8a04", position: [4.2, 1.9, -4.37], rotationY: 0 },
-  { title: "Toilet", subtitle: "Pria & Wanita", icon: "🚻", accent: "#7c3aed", position: [9.8, 2.55, -4.37], rotationY: 0 },
-  { title: "Ruang Server", subtitle: "Infrastruktur", icon: "🗄️", accent: "#4338ca", position: [12.35, 2.55, -4.37], rotationY: 0 },
-  { title: "Ruang Meeting", subtitle: "Diskusi & Presentasi", icon: "👥", accent: "#e11d48", position: [9.63, 0.75, 5.0], rotationY: Math.PI / 2 },
+  // front low wall (solid 1.1): 1.5 wide, 0.175..0.925
+  { title: "Resepsionis", subtitle: "Penerima Tamu", icon: "👤", accent: "#ff6b9d", position: [-3.0, 0.55, 9.87], rotationY: Math.PI, width: 1.5 },
+  // project/workspace divider (full height, door gap ends z 3.575): clear of the gap
+  { title: "Workspace Agent", subtitle: "Area Kerja Utama", icon: "💻", accent: "#0284c7", position: [-6.37, 1.9, 5.0], rotationY: Math.PI / 2, width: 1.7 },
+  { title: "Ruang Project (DIFIA)", subtitle: "Manajemen Tugas", icon: "📁", accent: "#ea580c", position: [-6.63, 1.9, 5.0], rotationY: -Math.PI / 2, width: 1.7 },
+  // corridor full-height segment -11.925..-8.5: unchanged, already fit
+  { title: "Musola", subtitle: "Ibadah", icon: "🕌", accent: "#16a34a", position: [-10.5, 1.9, -4.37], rotationY: 0, width: 1.7 },
+  // corridor low+glass segment -8.5..-1.5 (solid 1.1): 1.4 wide, 0.2..0.9
+  { title: "Ruang Recovery", subtitle: "Agent Error / Istirahat", icon: "🛏️", accent: "#ec4899", position: [-2.8, 0.55, -4.37], rotationY: 0, width: 1.4 },
+  // corridor full-height segment 2.375..8.225: unchanged, already fit
+  { title: "Pantry", subtitle: "Makan & Istirahat", icon: "☕", accent: "#ca8a04", position: [4.2, 1.9, -4.37], rotationY: 0, width: 1.7 },
+  // corridor segment between the two toilet doors, 9.375..10.225 (0.85): 0.75 wide, centered
+  { title: "Toilet", subtitle: "Pria & Wanita", icon: "🚻", accent: "#7c3aed", position: [9.8, 1.9, -4.37], rotationY: 0, width: 0.75 },
+  // corridor segment 11.375..12.625 (1.25): 1.15 wide, centered on the segment
+  { title: "Ruang Server", subtitle: "Infrastruktur", icon: "🗄️", accent: "#4338ca", position: [12.0, 1.9, -4.37], rotationY: 0, width: 1.15 },
+  // meeting west wall, low 1.2 + glass (segment 2.575..10.0): 1.4 wide, 0.2..0.9
+  { title: "Ruang Meeting", subtitle: "Diskusi & Presentasi", icon: "👥", accent: "#e11d48", position: [9.63, 0.55, 5.0], rotationY: Math.PI / 2, width: 1.4 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -344,6 +366,7 @@ export const Building = memo(function Building() {
             accent={p.accent}
             position={p.position}
             rotationY={p.rotationY}
+            width={p.width}
           />
         ))}
         {/* room interiors */}
