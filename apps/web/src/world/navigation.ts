@@ -175,9 +175,9 @@ export const OBSTACLES: Obstacle[] = [
     z,
     r: 0.3,
   })),
-  // Lobby: pink sofa (2.0 × 0.9) + round coffee table (r 0.55) — Reception.tsx
-  { id: "lobby-sofa", kind: "box", x: 6.5, z: 6.5, hw: 1.0, hd: 0.45 },
-  { id: "lobby-coffee-table", kind: "circle", x: 6.5, z: 8.2, r: 0.55 },
+  // Lobby: Kenney sofa (1.96 × 0.82) + Kenney coffee table (1.12 × 0.68) — Reception.tsx
+  { id: "lobby-sofa", kind: "box", x: 6.5, z: 6.5, hw: 0.98, hd: 0.41 },
+  { id: "lobby-coffee-table", kind: "box", x: 6.5, z: 8.2, hw: 0.56, hd: 0.34 },
   // Reception counter (3.8 × 1.1), relocated to the lobby's west side so
   // the entrance axis (x=0) stays clear — Reception.tsx
   { id: "reception-counter", kind: "box", x: -4, z: 7.4, hw: 1.9, hd: 0.55 },

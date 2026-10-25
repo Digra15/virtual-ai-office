@@ -173,6 +173,8 @@ describe("collision-aware navigation", () => {
   it("segmentBlocked flags the lobby sofa and coffee table", () => {
     // Straight through the sofa at (6.5,6.5).
     expect(segmentBlocked({ x: 4, z: 6.5 }, { x: 9, z: 6.5 })).toBe(true);
+    // Straight through the coffee table at (6.5,8.2).
+    expect(segmentBlocked({ x: 5, z: 8.2 }, { x: 8, z: 8.2 })).toBe(true);
     // Open lane down the north corridor (clear of the planter strips
     // by 0.5 > AGENT_RADIUS): clear.
     expect(segmentBlocked({ x: -14, z: -3.7 }, { x: 14, z: -3.7 })).toBe(false);
