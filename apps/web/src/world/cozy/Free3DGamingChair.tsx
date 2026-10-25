@@ -22,9 +22,11 @@ export interface Free3DGamingChairProps {
  * seated-agent fake (model sunk 0.18) reads the same.
  *
  * Source: free3d.com/3d-model/gaming-chair-692404.html ($0.00, GLB),
- * downloaded 2026-10-25. The shipped file is the texture-resized
- * (1024 px) edition; geometry is the original ~490k tris, shared
- * across all instances via useGLTF's cache, so it loads once.
+ * downloaded 2026-10-25. The shipped file is quantized with textures
+ * resized to 512 px (24.47 MiB — Cloudflare Pages rejects any single
+ * asset over 25 MiB, which is why the first 38 MB edition never
+ * deployed); geometry is the original ~490k tris, shared across all
+ * instances via useGLTF's cache, so it loads once.
  */
 const RAW_WIDTH = 316.52;
 const TARGET_WIDTH = 0.66;

@@ -39,7 +39,8 @@ import * as THREE from "three";
  *
  * Free3D file (folder "free3d", free3d.com/3d-model/gaming-chair-692404.html):
  * - gaming-chair.glb (316.52 x 575.20 x 309.63 raw, backrest on the -z
- *   side so it faces +z with rotationY 0; textures resized to 1024 px,
+ *   side so it faces +z with rotationY 0; quantized, textures resized
+ *   to 512 px, 24.47 MiB — must stay under Pages' 25 MiB asset limit;
  *   geometry kept original ~490k tris, shared across instances).
  *
  * Why this component normalizes: these files have wildly different
