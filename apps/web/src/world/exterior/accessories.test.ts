@@ -44,6 +44,13 @@ describe("accessory placement (probed)", () => {
         expect(p.position[1]).toBeCloseTo(headTop - 0.05, 5);
         // Crown of the hat rises above the head.
         expect(p.position[1] + spec.rawHeight * p.scale).toBeGreaterThan(headTop);
+        // Crown sits forward of head center: the crown-centering
+        // shift, or at least HAT_FORWARD_MIN forward.
+        expect(p.position[2]).toBeCloseTo(
+          Math.max(-(spec.crownOffset ?? 0) * p.scale, 0.18),
+          5,
+        );
+        expect(p.position[2]).toBeGreaterThan(0);
       }
     }
   });

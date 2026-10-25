@@ -89,7 +89,12 @@ export const NpcAvatar = memo(function NpcAvatar({ look }: { look: NpcLook }) {
         <PolyModel file={ACCESSORIES[look.glasses].file} folder="accessories" position={glasses.position} scale={glasses.scale} />
       )}
       {pack && (
-        <PolyModel file={ACCESSORIES.backpack.file} folder="accessories" position={pack.position} scale={pack.scale} />
+        // rotationY PI: the model's detailed face (pocket) points
+        // +z in raw space, so unrotated it faced the wearer's back
+        // and the straps faced outward ("tas kebalik, tali di
+        // belakang"). Flipped, the pocket faces outward and the
+        // straps sit against the back, as worn.
+        <PolyModel file={ACCESSORIES.backpack.file} folder="accessories" position={pack.position} scale={pack.scale} rotationY={Math.PI} />
       )}
     </group>
   );
