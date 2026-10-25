@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { npcDampYaw, npcStep, npcTargetYaw } from "./npcWalk";
+import {
+  applyNpcSpacing,
+  NPC_LANE_EAST_Z,
+  NPC_LANE_WEST_Z,
+  NPC_MIN_GAP,
+  npcDampYaw,
+  npcLaneZ,
+  npcStep,
+  npcTargetYaw,
+} from "./npcWalk";
 
 describe("npcStep — ping-pong walking", () => {
   it("advances in the current direction", () => {
@@ -37,5 +46,38 @@ describe("npc yaw", () => {
     let yaw = 0;
     for (let i = 0; i < 100; i++) yaw = npcDampYaw(yaw, Math.PI / 2, 0.016);
     expect(yaw).toBeCloseTo(Math.PI / 2, 3);
+  });
+});
+
+describe("no-interpenetration rule", () => {
+  it("eastbound and westbound walkers use different lanes", () => {
+    expect(npcLaneZ(1)).toBe(NPC_LANE_EAST_Z);
+    expect(npcLaneZ(-1)).toBe(NPC_LANE_WEST_Z);
+    // 1.0 m apart beats two body radii (~0.35 each).
+    expect(Math.abs(NPC_LANE_EAST_Z - NPC_LANE_WEST_Z)).toBeGreaterThan(0.7);
+  });
+  it("same-direction walkers keep the following gap, chained", () => {
+    const xs = applyNpcSpacing([
+      { x: 10, dir: 1 },
+      { x: 9.5, dir: 1 },
+      { x: 9.2, dir: 1 },
+    ]);
+    expect(xs[0]).toBe(10);
+    expect(xs[1]).toBeLessThanOrEqual(10 - NPC_MIN_GAP);
+    expect(xs[2]).toBeLessThanOrEqual(xs[1] - NPC_MIN_GAP);
+  });
+  it("westbound followers are pushed the other way, opposite lanes untouched", () => {
+    // Westbound leader is the SMALLEST x (ahead in -x direction).
+    const xs = applyNpcSpacing([
+      { x: -10, dir: -1 },
+      { x: -10.5, dir: -1 },
+      { x: 5, dir: 1 },
+    ]);
+    expect(xs[1]).toBe(-10.5);
+    expect(xs[0]).toBeGreaterThanOrEqual(-10.5 + NPC_MIN_GAP);
+    expect(xs[2]).toBe(5);
+  });
+  it("a lone walker is untouched", () => {
+    expect(applyNpcSpacing([{ x: 3, dir: 1 }])).toEqual([3]);
   });
 });

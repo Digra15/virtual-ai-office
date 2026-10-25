@@ -69,8 +69,8 @@ function Tree({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, -0.26, z]}>
       <mesh geometry={geoCylinder} material={matTrunk} scale={[0.36, 1.4, 0.36]} position={[0, 0.7, 0]} castShadow />
-      <mesh geometry={geoSphere} material={matLeaf} scale={[2.2, 2.2, 2.2]} position={[0, 2.1, 0]} castShadow />
-      <mesh geometry={geoSphere} material={matLeaf} scale={[1.5, 1.5, 1.5]} position={[0, 3.1, 0]} castShadow />
+      <mesh geometry={geoSphere} material={matLeaf} scale={[1.8, 1.8, 1.8]} position={[0, 2.1, 0]} castShadow />
+      <mesh geometry={geoSphere} material={matLeaf} scale={[1.2, 1.2, 1.2]} position={[0, 3.1, 0]} castShadow />
     </group>
   );
 }
@@ -93,12 +93,18 @@ export const Road = memo(function Road() {
       <Dashes />
       {/* sidewalk on the far side: z 31.5..34 */}
       <mesh geometry={geoBox} material={matWalk} scale={[length, WALK_H, 2.5]} position={[(xMin + xMax) / 2, ROAD_TOP_Y + 0.02, centerZ + halfWidth + 1.25]} receiveShadow />
-      {/* lamps + trees along the far sidewalk */}
+      {/*
+        Lamps + trees moved OFF the sidewalk onto the grass strip, so
+        pedestrians on the outer lane (z=33) clear them: lamp poles
+        (r 0.09) at z=34.2, tree trunks (r 0.18) and foliage (r 0.9
+        after the shrink above) at z=34.6. Previously both stood at
+        z=33, inside the walking line, and walkers clipped them.
+      */}
       {lamps.map((l) => (
-        <Lamp key={l.key} x={l.x} z={centerZ + halfWidth + 1.5} />
+        <Lamp key={l.key} x={l.x} z={centerZ + halfWidth + 2.7} />
       ))}
       {trees.map((t) => (
-        <Tree key={t.key} x={t.x} z={centerZ + halfWidth + 1.5} />
+        <Tree key={t.key} x={t.x} z={centerZ + halfWidth + 3.1} />
       ))}
     </group>
   );

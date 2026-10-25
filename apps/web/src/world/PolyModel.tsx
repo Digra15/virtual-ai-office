@@ -50,6 +50,14 @@ import * as THREE from "three";
  * - Police Car by Quaternius -> police-car.glb (1.78 x 1.24 x 3.73 m)
  * - Sports Car by Quaternius -> sports-car.glb (1.87 x 1.20 x 3.93 m)
  * - SUV by Quaternius -> suv.glb (2.11 x 1.53 x 4.21 m)
+ *
+ * Accessory files (folder "accessories", for NPC pedestrians):
+ * user-supplied 2026-10-25 — fedora.glb, cowboy-hat.glb,
+ * baseball-cap-jarlan.glb, catch-em-all-cap.glb,
+ * baseball-cap-poly.glb, glasses-1/2/3.glb, sunglasses.glb,
+ * glasses-jeremy.glb, pixel-glasses.glb (Poly by Google, Jarlan
+ * Perez, Jake Blakeley, iPoly3D, J-Toastie, jeremy); plus
+ * 3dassets.dev CC0 — backpack.glb (id 19537), beanie.glb (id 27164).
  * Each model's front direction is recorded in traffic.ts (VEHICLE_FRONT):
  * all face +z by measurement (named front wheels, Camaro front plate +
  * grille logo, Poly car front wiper blades) except the Jeep, whose
@@ -89,7 +97,20 @@ export type PolyFile =
   | "taxi-kay.glb"
   | "police-car.glb"
   | "sports-car.glb"
-  | "suv.glb";
+  | "suv.glb"
+  | "fedora.glb"
+  | "cowboy-hat.glb"
+  | "baseball-cap-jarlan.glb"
+  | "catch-em-all-cap.glb"
+  | "baseball-cap-poly.glb"
+  | "beanie.glb"
+  | "glasses-1.glb"
+  | "glasses-2.glb"
+  | "glasses-3.glb"
+  | "sunglasses.glb"
+  | "glasses-jeremy.glb"
+  | "pixel-glasses.glb"
+  | "backpack.glb";
 
 const POLY_FILES: PolyFile[] = [
   "coffee-cup.glb",
@@ -117,6 +138,22 @@ const VEHICLE_FILES: PolyFile[] = [
   "suv.glb",
 ];
 
+const ACCESSORY_FILES: PolyFile[] = [
+  "fedora.glb",
+  "cowboy-hat.glb",
+  "baseball-cap-jarlan.glb",
+  "catch-em-all-cap.glb",
+  "baseball-cap-poly.glb",
+  "beanie.glb",
+  "glasses-1.glb",
+  "glasses-2.glb",
+  "glasses-3.glb",
+  "sunglasses.glb",
+  "glasses-jeremy.glb",
+  "pixel-glasses.glb",
+  "backpack.glb",
+];
+
 function isEffectivelyVisible(o: THREE.Object3D): boolean {
   let cur: THREE.Object3D | null = o;
   while (cur) {
@@ -142,7 +179,7 @@ export const PolyModel = memo(function PolyModel({
   /** Node names to hide (e.g. the frame nodes of door-and-frame.glb). */
   hideNodes?: readonly string[];
   /** Model folder under public/models (default poly-pizza). */
-  folder?: "poly-pizza" | "kenney" | "vehicles";
+  folder?: "poly-pizza" | "kenney" | "vehicles" | "accessories";
 }) {
   const { scene } = useGLTF(`/models/${folder}/${file}`);
   const cloned = useMemo(() => {
@@ -180,3 +217,4 @@ export const PolyModel = memo(function PolyModel({
 POLY_FILES.forEach((file) => useGLTF.preload(`/models/poly-pizza/${file}`));
 KENNEY_FILES.forEach((file) => useGLTF.preload(`/models/kenney/${file}`));
 VEHICLE_FILES.forEach((file) => useGLTF.preload(`/models/vehicles/${file}`));
+ACCESSORY_FILES.forEach((file) => useGLTF.preload(`/models/accessories/${file}`));
