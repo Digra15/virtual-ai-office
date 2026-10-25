@@ -15,6 +15,7 @@
 import { memo, useEffect, useMemo, useRef } from "react";
 import { useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { CUTES_MODEL } from "../characters/CutesAvatar";
 import { MAX_HEAD_TOP, MODEL_HEAD_TOP } from "../characters/hud";
 import { CUTES_MODEL_SCALE } from "../characters/lying";
@@ -87,7 +88,12 @@ export const NpcAvatar = memo(function NpcAvatar({ look }: { look: NpcLook }) {
   const { scene, animations } = useGLTF(look.modelUrl);
   const { actions } = useAnimations(animations, group);
   const cloned = useMemo(() => {
-    const c = scene.clone(true);
+    // Plain scene.clone() BREAKS skinned models: the cloned mesh keeps
+    // pointing at the original skeleton's bones (which are never in
+    // the render graph), so the body collapses and only the static
+    // costume pieces remain visible ("floating clothes"). SkeletonUtils'
+    // clone() clones the bones too and rebinds the skeleton to them.
+    const c = cloneSkinned(scene);
     c.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (mesh.isMesh) mesh.castShadow = true;
