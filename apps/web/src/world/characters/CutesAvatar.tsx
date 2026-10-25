@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Text, useGLTF, useAnimations } from "@react-three/drei";
 import type { Group } from "three";
 import { CUTES_MODEL_SCALE, LYING } from "./lying";
+import { buildTypingPoseClip, TYPING_LEAN_X } from "./typingPose";
 
 /**
  * CUTES 3D character (poly.pizza bundle by J-Toastie, CC-BY).
@@ -82,9 +83,21 @@ export function CutesAvatar({
   const iconRef = useRef<Group>(null);
   const url = CUTES_MODEL[agentId] ?? CUTES_MODEL.nika;
   const { scene, animations } = useGLTF(url);
-  const { actions } = useAnimations(animations, group);
+  const { actions, mixer } = useAnimations(animations, group);
 
-  // Play Idle by default, Walk when moving, Idle when lying flat.
+  // Static typing pose: only a working agent seated at its desk, never
+  // while walking, lying, or praying (those take precedence below).
+  const isTyping = pose === "desk" && status === "working" && !lying && !walking;
+  const typingClip = useMemo(
+    () =>
+      buildTypingPoseClip(
+        animations.find((a) => a.name === "Armature|Idle"),
+      ),
+    [animations],
+  );
+
+  // Play Idle by default, Walk when moving, Idle when lying flat, and
+  // the derived typing pose when working at a desk.
   // Grounded was the first lying clip but looped as walking/flailing:
   // it is only 0.33s with large foot/hand rotation swings (see
   // lying.ts), so lying now uses Idle — the calmest clip in the bundle.
@@ -92,7 +105,16 @@ export function CutesAvatar({
     const idle = actions["Armature|Idle"];
     const walk = actions["Armature|Walk"];
     const grounded = actions["Armature|Grounded"];
-    if (lying) {
+    const typing =
+      isTyping && typingClip && group.current
+        ? mixer.clipAction(typingClip, group.current)
+        : null;
+    if (typing) {
+      idle?.stop();
+      walk?.stop();
+      grounded?.stop();
+      typing.reset().play();
+    } else if (lying) {
       walk?.stop();
       grounded?.stop();
       idle?.reset().play();
@@ -109,8 +131,9 @@ export function CutesAvatar({
       idle?.stop();
       walk?.stop();
       grounded?.stop();
+      typing?.stop();
     };
-  }, [actions, walking, lying]);
+  }, [actions, mixer, walking, lying, isTyping, typingClip]);
 
   // Lively status animation: big bounce + wiggle + pulse.
   // (iconRef is a child of the Billboard at y=2.25, so animate around 0.)
@@ -161,9 +184,16 @@ export function CutesAvatar({
   const modelScale: [number, number, number] = lying
     ? [scale, scale, scale]
     : prayerScale;
+  // Typing lean: a slight forward pitch toward the desk, applied to
+  // the model group only (HUD stays upright). Prayer takes precedence
+  // over typing; lying takes precedence over both.
   const modelRotation: [number, number, number] = lying
     ? [LYING.rotationX, 0, 0]
-    : prayerRotation;
+    : prayerPose
+      ? prayerRotation
+      : isTyping
+        ? [TYPING_LEAN_X, 0, 0]
+        : [0, 0, 0];
   const hudNameY = lying ? LYING.hudNameY : 2.6;
   const hudIconY = lying ? LYING.hudIconY : 2.25;
 
