@@ -1,25 +1,27 @@
 /**
- * Live traffic: GLB vehicles circulating the ring road (see Road.tsx
- * for the road itself, traffic.ts for the loop math).
+ * Live traffic: the user's GLB vehicles driving the straight road in
+ * front of the office (see Road.tsx for the road, traffic.ts for the
+ * straight-line math).
  *
- * Each vehicle rides its lane loop at its own speed; the outer lane
- * runs direction +1, the inner lane direction -1 (Indonesian
- * left-hand traffic). Per-camera rendering: three.js frustum culling
- * hides off-screen vehicles automatically, and groups farther than
- * TRAFFIC_CULL_DISTANCE from the camera are hidden outright.
+ * Each vehicle drives its lane at its own speed; the north lane runs
+ * east, the south lane west (Indonesian left-hand traffic). Distance
+ * wraps modulo the road length, so a vehicle leaving one end
+ * re-enters at the other. Per-camera rendering: three.js frustum
+ * culling hides off-screen vehicles automatically, and groups
+ * farther than TRAFFIC_CULL_DISTANCE from the camera are hidden
+ * outright.
  */
 import { memo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { PolyModel } from "../PolyModel";
 import {
+  ROAD_LENGTH,
   ROAD_TOP_Y,
   TRAFFIC_CULL_DISTANCE,
   TRAFFIC_VEHICLES,
   VEHICLE_FRONT,
-  laneLoop,
-  loopLength,
-  loopPoint,
+  straightPoint,
 } from "./traffic";
 
 export const Traffic = memo(function Traffic() {
@@ -30,9 +32,8 @@ export const Traffic = memo(function Traffic() {
     TRAFFIC_VEHICLES.forEach((v, i) => {
       const g = refs.current[i];
       if (!g) return;
-      const loop = laneLoop(v.lane);
-      const s = (v.offset + v.speed * t) % loopLength(loop);
-      const p = loopPoint(loop, s, v.lane === "outer" ? 1 : -1);
+      const s = (v.offset + v.speed * t) % ROAD_LENGTH;
+      const p = straightPoint(v.lane, s);
       g.position.set(p.x, ROAD_TOP_Y, p.z);
       const front = VEHICLE_FRONT[v.file] ?? 1;
       g.rotation.set(0, p.heading + (front === -1 ? Math.PI : 0), 0);
@@ -48,7 +49,7 @@ export const Traffic = memo(function Traffic() {
             refs.current[i] = el;
           }}
         >
-          <PolyModel file={v.file} folder="vehicles" position={[0, 0, 0]} scale={1} />
+          <PolyModel file={v.file} folder="vehicles" position={[0, 0, 0]} scale={v.scale} />
         </group>
       ))}
     </group>

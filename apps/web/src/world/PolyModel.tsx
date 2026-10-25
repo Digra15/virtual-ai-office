@@ -37,18 +37,24 @@ import * as THREE from "three";
  * Both are Kenney's small-scale furniture, so callers scale them up
  * (sofa x2.0 -> 1.96 wide, table x1.7 -> 1.12 long).
  *
- * Vehicle files (folder "vehicles", CC0, from 3dassets.dev — all in
- * real meters, so callers use scale 1; total ~420 KB):
- * - 35645 Family car, blue -> car-blue.glb (1.90 x 1.57 x 4.42)
- * - 15105 City car -> sedan-grey.glb (1.90 x 1.53 x 3.50)
- * - 29116 Farm Pickup Truck -> pickup.glb (2.23 x 2.14 x 5.63)
- * - 25158 Motorcycle -> motorbike.glb (0.70 x 0.97 x 1.96)
- * - 29029 City Bus -> bus.glb (2.67 x 3.02 x 10.79)
- * - 35646 Panel van -> van-white.glb (2.30 x 2.50 x 5.53)
+ * Vehicle files (folder "vehicles", user-supplied 2026-10-25, replacing
+ * the earlier 3dassets.dev fleet):
+ * - Chevrolet Camaro (FBX -> GLB via FBX2glTF; normalmap texture was
+ *   missing from the zip, skipped) -> camaro.glb (1.99 x 1.25 x 4.07 m)
+ * - Car by Poly by Google (OBJ+MTL+PNG -> GLB via obj2gltf) ->
+ *   car-poly.glb (raw 152.56 long; wheel-anchored scale 0.02)
+ * - Jeep by Poly by Google (embedded texture) -> jeep.glb
+ *   (raw 96.46 long; length-anchored scale 0.047)
+ * - Taxi by Quaternius -> taxi-quaternius.glb (1.81 x 1.31 x 4.22 m)
+ * - Taxi by Kay Lousberg -> taxi-kay.glb (raw 0.94 long; scale 4.47)
+ * - Police Car by Quaternius -> police-car.glb (1.78 x 1.24 x 3.73 m)
+ * - Sports Car by Quaternius -> sports-car.glb (1.87 x 1.20 x 3.93 m)
+ * - SUV by Quaternius -> suv.glb (2.11 x 1.53 x 4.21 m)
  * Each model's front direction is recorded in traffic.ts (VEHICLE_FRONT):
- * measured where possible (motorbike headlight mesh at +z, pickup cab
- * at -z), assumed +z elsewhere — verify from a screenshot that no
- * vehicle drives backwards.
+ * all face +z by measurement (named front wheels, Camaro front plate +
+ * grille logo, Poly car front wiper blades) except the Jeep, whose
+ * single merged mesh leaves its front assumed +z — verify from a
+ * screenshot that no vehicle drives backwards.
 
  *
  * Why this component normalizes: these files have wildly different
@@ -76,12 +82,14 @@ export type PolyFile =
   | "door-and-frame.glb"
   | "lounge-sofa.glb"
   | "table-coffee.glb"
-  | "car-blue.glb"
-  | "sedan-grey.glb"
-  | "pickup.glb"
-  | "motorbike.glb"
-  | "bus.glb"
-  | "van-white.glb";
+  | "camaro.glb"
+  | "car-poly.glb"
+  | "jeep.glb"
+  | "taxi-quaternius.glb"
+  | "taxi-kay.glb"
+  | "police-car.glb"
+  | "sports-car.glb"
+  | "suv.glb";
 
 const POLY_FILES: PolyFile[] = [
   "coffee-cup.glb",
@@ -99,12 +107,14 @@ const POLY_FILES: PolyFile[] = [
 const KENNEY_FILES: PolyFile[] = ["lounge-sofa.glb", "table-coffee.glb"];
 
 const VEHICLE_FILES: PolyFile[] = [
-  "car-blue.glb",
-  "sedan-grey.glb",
-  "pickup.glb",
-  "motorbike.glb",
-  "bus.glb",
-  "van-white.glb",
+  "camaro.glb",
+  "car-poly.glb",
+  "jeep.glb",
+  "taxi-quaternius.glb",
+  "taxi-kay.glb",
+  "police-car.glb",
+  "sports-car.glb",
+  "suv.glb",
 ];
 
 function isEffectivelyVisible(o: THREE.Object3D): boolean {
