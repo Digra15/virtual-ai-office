@@ -1,17 +1,20 @@
 /**
- * Toilets: two narrow rooms (pria x 8..10, wanita x 10..12, both
- * z -12..-4.5). The old RestroomSet (3.4 wide) does not fit a 2m-wide
- * room, so each room gets minimal boxes instead: 2 compact stalls along
- * the north end + a sink counter with mirror near the door.
+ * Toilets: two narrow rooms (pria x 7.8..9.8, wanita x 9.8..11.8, both
+ * z -12..-4.5), each with exactly ONE sitting toilet + ONE sink inside
+ * and NO stall partitions. The old 2-stall layout read as a wall of
+ * partition boxes (stalls 1.9 wide in a 2m-wide room), so the partitions
+ * are gone: a clearly readable toilet duduk at the north end (tank +
+ * seat ring + dark opening, facing south) and a sink counter with mirror
+ * near the door at the south end, with open floor between them.
  */
 import { memo } from "react";
 import * as THREE from "three";
 import { geoBox, geoCylinder, geoPlane } from "../../geometries";
 
-const matPartition = new THREE.MeshStandardMaterial({ color: "#3b4a66", roughness: 0.8 });
 const matCeramic = new THREE.MeshStandardMaterial({ color: "#e8eef7", roughness: 0.3 });
 const matChrome = new THREE.MeshStandardMaterial({ color: "#cbd5e1", roughness: 0.25, metalness: 0.85 });
 const matDark = new THREE.MeshStandardMaterial({ color: "#141a24", roughness: 0.6 });
+const matOpening = new THREE.MeshStandardMaterial({ color: "#0f172a", roughness: 0.9 });
 const matMirror = new THREE.MeshStandardMaterial({
   color: "#bae6fd",
   roughness: 0.05,
@@ -24,51 +27,62 @@ export const RESTROOM_UNITS = [
   { id: "toilet_wanita", cx: 10.8 },
 ] as const;
 
-/** One compact stall: 1.9 wide × 1.6 deep, door front facing +Z. */
-const Stall = memo(function Stall({ position }: { position: [number, number, number] }) {
+/**
+ * One sitting toilet, centered on the room, tank against the north wall
+ * and bowl facing south toward the door. Readable from any angle: tall
+ * tank + lid + flush button at the back, pedestal bowl in front, seat
+ * ring with a dark opening on top.
+ */
+const SittingToilet = memo(function SittingToilet({ cx }: { cx: number }) {
   return (
-    <group position={position}>
-      {/* side dividers */}
-      {[-0.92, 0.92].map((dx) => (
-        <mesh key={dx} geometry={geoBox} material={matPartition} scale={[0.06, 2.0, 1.6]} position={[dx, 1.0, 0]} castShadow />
-      ))}
-      {/* back wall */}
-      <mesh geometry={geoBox} material={matPartition} scale={[1.9, 2.0, 0.06]} position={[0, 1.0, -0.77]} />
-      {/* door (ajar) */}
-      <mesh geometry={geoBox} material={matPartition} scale={[1.7, 1.9, 0.05]} position={[0, 0.98, 0.8]} castShadow />
-      {/* toilet: tank + bowl */}
-      <mesh geometry={geoBox} material={matCeramic} scale={[0.5, 0.55, 0.2]} position={[0, 0.65, -0.6]} castShadow />
-      <mesh geometry={geoBox} material={matCeramic} scale={[0.45, 0.4, 0.6]} position={[0, 0.28, -0.25]} castShadow />
+    <group>
+      {/* tank against the north wall (wall face at z=-11.875) */}
+      <mesh geometry={geoBox} material={matCeramic} scale={[0.62, 0.7, 0.22]} position={[cx, 0.55, -11.65]} castShadow />
+      {/* tank lid + flush button */}
+      <mesh geometry={geoBox} material={matCeramic} scale={[0.66, 0.06, 0.26]} position={[cx, 0.93, -11.65]} castShadow />
+      <mesh geometry={geoCylinder} material={matChrome} scale={[0.08, 0.03, 0.08]} position={[cx, 0.975, -11.65]} />
+      {/* bowl pedestal, front touching the tank */}
+      <mesh geometry={geoBox} material={matCeramic} scale={[0.44, 0.38, 0.7]} position={[cx, 0.19, -11.2]} castShadow />
+      {/* seat ring (oval disc) + dark opening */}
+      <mesh geometry={geoCylinder} material={matCeramic} scale={[0.5, 0.07, 0.62]} position={[cx, 0.42, -11.12]} castShadow />
+      <mesh geometry={geoCylinder} material={matOpening} scale={[0.3, 0.02, 0.42]} position={[cx, 0.46, -11.1]} />
     </group>
   );
 });
 
-/** Sink counter + mirror near the south end. */
-const SinkCounter = memo(function SinkCounter({ x }: { x: number }) {
+/**
+ * One sink near the door (south end): cabinet + countertop, a single
+ * basin with faucet, and a mirror on two posts behind it facing south
+ * toward the person standing between sink and door.
+ */
+const SinkCounter = memo(function SinkCounter({ cx }: { cx: number }) {
   return (
-    <group position={[x, 0, -5.6]}>
-      <mesh geometry={geoBox} material={matDark} scale={[1.8, 0.8, 0.55]} position={[0, 0.4, 0]} castShadow receiveShadow />
-      <mesh geometry={geoBox} material={matCeramic} scale={[1.9, 0.08, 0.62]} position={[0, 0.84, 0]} castShadow />
-      {[-0.45, 0.45].map((sx) => (
-        <group key={sx} position={[sx, 0, 0]}>
-          <mesh geometry={geoCylinder} material={matCeramic} scale={[0.5, 0.14, 0.5]} position={[0, 0.93, 0]} />
-          <mesh geometry={geoCylinder} material={matChrome} scale={[0.05, 0.2, 0.05]} position={[0, 1.02, -0.15]} />
-        </group>
+    <group position={[cx, 0, -5.7]}>
+      {/* cabinet + countertop */}
+      <mesh geometry={geoBox} material={matDark} scale={[1.3, 0.8, 0.55]} position={[0, 0.4, 0]} castShadow receiveShadow />
+      <mesh geometry={geoBox} material={matCeramic} scale={[1.4, 0.08, 0.62]} position={[0, 0.84, 0]} castShadow />
+      {/* single basin + dark drain opening */}
+      <mesh geometry={geoCylinder} material={matCeramic} scale={[0.42, 0.12, 0.42]} position={[0, 0.92, 0]} castShadow />
+      <mesh geometry={geoCylinder} material={matOpening} scale={[0.26, 0.02, 0.26]} position={[0, 0.98, 0]} />
+      {/* faucet: vertical stem + spout toward the basin */}
+      <mesh geometry={geoCylinder} material={matChrome} scale={[0.05, 0.28, 0.05]} position={[0, 1.0, -0.25]} />
+      <mesh geometry={geoCylinder} material={matChrome} scale={[0.04, 0.25, 0.04]} position={[0, 1.12, -0.12]} rotation={[Math.PI / 2, 0, 0]} />
+      {/* mirror posts + backing + mirror, facing +Z (south) */}
+      {[-0.5, 0.5].map((dx) => (
+        <mesh key={dx} geometry={geoBox} material={matDark} scale={[0.04, 0.3, 0.04]} position={[dx, 1.03, -0.35]} />
       ))}
-      {/* mirror on a slim backing, faces +Z toward the user */}
-      <mesh geometry={geoBox} material={matDark} scale={[1.9, 1.1, 0.05]} position={[0, 1.65, -0.32]} />
-      <mesh geometry={geoPlane} material={matMirror} scale={[1.7, 0.9, 1]} position={[0, 1.65, -0.29]} />
+      <mesh geometry={geoBox} material={matDark} scale={[1.2, 1.0, 0.05]} position={[0, 1.65, -0.35]} />
+      <mesh geometry={geoPlane} material={matMirror} scale={[1.05, 0.85, 1]} position={[0, 1.65, -0.32]} />
     </group>
   );
 });
 
-/** One restroom unit: 2 stalls + sink counter. */
+/** One restroom unit: 1 sitting toilet (north) + 1 sink (south), no partitions. */
 const RestroomUnit = memo(function RestroomUnit({ cx }: { cx: number }) {
   return (
     <group>
-      <Stall position={[cx, 0, -11.0]} />
-      <Stall position={[cx, 0, -9.2]} />
-      <SinkCounter x={cx} />
+      <SittingToilet cx={cx} />
+      <SinkCounter cx={cx} />
     </group>
   );
 });
