@@ -6,6 +6,7 @@ import { CUTES_MODEL_SCALE, LYING } from "./lying";
 import { buildTypingPoseClip, TYPING_LEAN_X } from "./typingPose";
 import { activityLabel } from "./activityLabel";
 import { hudHeights } from "./hud";
+import { PrayerOutfit, prayerOutfitFor } from "./prayerOutfit";
 
 /**
  * CUTES 3D character (poly.pizza bundle by J-Toastie, CC-BY).
@@ -173,6 +174,10 @@ export function CutesAvatar({
       : isTyping
         ? [TYPING_LEAN_X, 0, 0]
         : [0, 0, 0];
+  // Prayer outfit (mukena / sarung+peci, see prayerOutfit.tsx): only
+  // while praying, never while lying (the two never coincide: prayer
+  // only triggers in the musola, lying only on a recovery bed).
+  const prayerWear = !lying ? prayerOutfitFor(agentId, prayerPose) : null;
   // Per-model HUD heights (see hud.ts): Citizen 2's tall hair reaches
   // 2.41, so a fixed 2.25 caption sat inside it. Lying keeps the flat
   // body's own HUD heights from lying.ts.
@@ -207,6 +212,9 @@ export function CutesAvatar({
         rotation={modelRotation}
       >
         <primitive object={scene} />
+        {/* Prayer outfit rides inside the model group, so bowing,
+            prostrate and sitting transforms carry it along. */}
+        {prayerWear && <PrayerOutfit modelUrl={url} wear={prayerWear} />}
       </group>
       {/* Game-style overhead HUD: NAME on top, status icon below it.
           The name uses a blocky MMORPG-NPC font (Press Start 2P,
