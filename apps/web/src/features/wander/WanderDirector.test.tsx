@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  TOILET_SPOTS,
+  WANDER_SPOTS,
   _resetWanderForTests,
   _wanderTickForTests,
 } from "./WanderDirector";
@@ -62,6 +64,22 @@ describe("wander director", () => {
     for (let i = 0; i < 20; i++) _wanderTickForTests();
     const walking = ["w1", "w2", "w3"].filter((id) => movement.isMoving(id));
     expect(walking.length).toBeLessThanOrEqual(2);
+  });
+
+  it("has one standing toilet spot per toilet room, facing the WC", () => {
+    expect(TOILET_SPOTS).toHaveLength(2);
+    // Toilet rooms: pria x 7.8..9.8, wanita x 9.8..11.8, both z -12..-4.5.
+    // Spots sit midway (z -7.0) between door and WC, facing north (PI)
+    // toward the toilet, with single-occupancy indices.
+    expect(TOILET_SPOTS[0]).toMatchObject({
+      x: 8.8, z: -7.0, label: "toilet", facing: Math.PI,
+      toiletSpot: 0, arriveActivity: "pup", arrivePose: "free",
+    });
+    expect(TOILET_SPOTS[1]).toMatchObject({
+      x: 10.8, z: -7.0, label: "toilet", facing: Math.PI,
+      toiletSpot: 1, arriveActivity: "pup", arrivePose: "free",
+    });
+    expect(WANDER_SPOTS.filter((s) => s.label === "toilet")).toHaveLength(2);
   });
 
   it("does not interrupt meeting participants", () => {

@@ -17,7 +17,8 @@ export type AgentActivity =
   | "walking"
   | "meeting"
   | "standing"
-  | "break"; // sitting at a pantry chair, coffee + snack break
+  | "break" // sitting at a pantry chair, coffee + snack break
+  | "pup"; // standing in a toilet room on a toilet trip (caption "pup")
 
 /**
  * How the figure is mounted on its scene-graph root:

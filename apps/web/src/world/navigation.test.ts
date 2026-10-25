@@ -152,6 +152,14 @@ describe("collision-aware navigation", () => {
     expect(segmentBlocked({ x: 0, z: -1.5 }, { x: 0, z: 0.5 })).toBe(false);
   });
 
+  it("segmentBlocked allows the corridor-to-toilet legs through the door gaps", () => {
+    // Final legs of a toilet trip: corridor waypoint at the door center
+    // straight into the toilet room. Both door gaps are 1.15 wide and
+    // centered on the doors, so these legs cross no wall or fixture.
+    expect(segmentBlocked({ x: 8.8, z: -3.7 }, { x: 8.8, z: -7.0 })).toBe(false);
+    expect(segmentBlocked({ x: 10.8, z: -3.7 }, { x: 10.8, z: -7.0 })).toBe(false);
+  });
+
   it("segmentBlocked allows starting from / arriving at furniture", () => {
     // Destination IS the desk chair, approached from its open side
     // (the chair circle contains the endpoint, so it is ignored).

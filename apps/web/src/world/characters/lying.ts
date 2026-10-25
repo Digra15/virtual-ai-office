@@ -111,7 +111,7 @@ export const LYING = {
   groupZ: 0.97,
   /** Outer-group yaw on arrival: head points north (see proof above). */
   facing: 0,
-  /** HUD heights while lying (standing: 2.6 name / 2.25 icon). */
+  /** HUD heights while lying (standing HUD is per-model, see hud.ts). */
   hudNameY: 2.25,
   hudIconY: 1.95,
   /** Clip played while lying (see rationale above). */

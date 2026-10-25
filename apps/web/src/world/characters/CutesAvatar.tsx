@@ -5,6 +5,7 @@ import type { Group } from "three";
 import { CUTES_MODEL_SCALE, LYING } from "./lying";
 import { buildTypingPoseClip, TYPING_LEAN_X } from "./typingPose";
 import { activityLabel } from "./activityLabel";
+import { hudHeights } from "./hud";
 
 /**
  * CUTES 3D character (poly.pizza bundle by J-Toastie, CC-BY).
@@ -115,7 +116,7 @@ export function CutesAvatar({
   }, [actions, mixer, walking, lying, isTyping, typingClip]);
 
   // Lively caption animation: big bounce + wiggle + pulse.
-  // (labelRef is a child of the Billboard at y=2.25, so animate around 0.)
+  // (labelRef is a child of the caption Billboard, so animate around 0.)
   useFrame(({ clock }) => {
     if (!labelRef.current) return;
     const t = clock.getElapsedTime();
@@ -172,8 +173,14 @@ export function CutesAvatar({
       : isTyping
         ? [TYPING_LEAN_X, 0, 0]
         : [0, 0, 0];
-  const hudNameY = lying ? LYING.hudNameY : 2.6;
-  const hudIconY = lying ? LYING.hudIconY : 2.25;
+  // Per-model HUD heights (see hud.ts): Citizen 2's tall hair reaches
+  // 2.41, so a fixed 2.25 caption sat inside it. Lying keeps the flat
+  // body's own HUD heights from lying.ts.
+  const hud = lying
+    ? { nameY: LYING.hudNameY, captionY: LYING.hudIconY }
+    : hudHeights(url, prayerY);
+  const hudNameY = hud.nameY;
+  const hudIconY = hud.captionY;
 
   return (
     <group
@@ -201,10 +208,14 @@ export function CutesAvatar({
       >
         <primitive object={scene} />
       </group>
-      {/* Game-style overhead HUD: NAME on top, status icon below it. */}
+      {/* Game-style overhead HUD: NAME on top, status icon below it.
+          The name uses a blocky MMORPG-NPC font (Press Start 2P,
+          OFL, vendored in public/fonts) — deliberately different
+          from the caption's default font. */}
       <Billboard position={[0, hudNameY, 0]}>
         <Text
-          fontSize={0.22}
+          font="/fonts/PressStart2P-Regular.ttf"
+          fontSize={0.24}
           color="#ffffff"
           anchorX="center"
           anchorY="middle"

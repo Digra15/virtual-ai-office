@@ -36,6 +36,7 @@ export function activityLabel(input: ActivityLabelInput): ActivityLabel {
   if (input.lying) return { text: "zZ", color: "#c084fc" };
   if (input.prayerPose) return { text: "praying", color: "#16a34a" };
   if (input.activity === "break") return { text: "eating", color: "#f59e0b" };
+  if (input.activity === "pup") return { text: "pup", color: "#2dd4bf" };
   if (input.activity === "walking") return { text: "walking", color: "#38bdf8" };
   if (input.activity === "meeting") return { text: "meeting", color: "#38bdf8" };
   return STATUS_LABELS[input.status] ?? { text: "idle", color: "#e5e7eb" };

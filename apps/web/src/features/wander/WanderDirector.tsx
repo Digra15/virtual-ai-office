@@ -41,6 +41,8 @@ interface WanderState {
   wandering: boolean;
   /** Pantry chair index this agent is heading to / sitting on, if any. */
   pantryChair: number | null;
+  /** Toilet spot index this agent is heading to / standing on, if any. */
+  toiletSpot: number | null;
 }
 
 const states = new Map<string, WanderState>();
@@ -53,17 +55,32 @@ export interface WanderSpot {
   facing?: number | null;
   /** Pantry chair index (from PANTRY_CHAIR_SLOTS) — only one agent per chair. */
   pantryChair?: number;
+  /** Toilet spot index (from TOILET_SPOTS) — only one agent per toilet. */
+  toiletSpot?: number;
   /** Activity on arrival (default "standing"). */
-  arriveActivity?: "standing" | "break";
+  arriveActivity?: "standing" | "break" | "pup";
   /** Pose on arrival (default "free"). */
   arrivePose?: "desk" | "free";
 }
 
 /**
+ * Toilet trip spots: one standing spot per toilet room, midway between
+ * the door and the WC so the agent clears the west-wall sink (x offset
+ * 0.575 from the path) and the north-end toilet itself. Facing PI
+ * (north) so the agent stands facing the WC, caption "pup", then walks
+ * back to its desk like any other stroll.
+ */
+export const TOILET_SPOTS: WanderSpot[] = [
+  { x: 8.8, z: -7.0, label: "toilet", facing: Math.PI, toiletSpot: 0, arriveActivity: "pup", arrivePose: "free" },
+  { x: 10.8, z: -7.0, label: "toilet", facing: Math.PI, toiletSpot: 1, arriveActivity: "pup", arrivePose: "free" },
+];
+
+/**
  * Idle wander destinations (single floor, y = 0). Musola spots sit on the
  * prayer rows (x -13.2..-10, z -9.5) so a stroll there becomes a prayer
  * visit via the position-based trigger. Pantry spots are the 4 dining
- * chairs — agents sit and take a coffee + snack break there.
+ * chairs — agents sit and take a coffee + snack break there. Toilet
+ * spots are the 2 standing spots in the toilet rooms (see TOILET_SPOTS).
  */
 export const WANDER_SPOTS: WanderSpot[] = [
   // Musola prayer rows face the qibla (west) on arrival so the
@@ -80,6 +97,7 @@ export const WANDER_SPOTS: WanderSpot[] = [
     arriveActivity: "break" as const,
     arrivePose: "desk" as const,
   })),
+  ...TOILET_SPOTS,
   // Lobby sofa at (6.5,6.5) faces south (+Z) toward the coffee table —
   // the agent SITS on it (arrivePose "desk" sinks the model onto the
   // seat) facing the table (facing 0), not standing inside the sofa.
@@ -91,7 +109,7 @@ export const WANDER_SPOTS: WanderSpot[] = [
 function getState(id: string): WanderState {
   let s = states.get(id);
   if (!s) {
-    s = { cooldownUntil: 0, returnAt: null, wandering: false, pantryChair: null };
+    s = { cooldownUntil: 0, returnAt: null, wandering: false, pantryChair: null, toiletSpot: null };
     states.set(id, s);
   }
   return s;
@@ -117,6 +135,7 @@ function tick(): void {
       s.returnAt = null;
       s.wandering = false;
       s.pantryChair = null;
+      s.toiletSpot = null;
       if (agent && !inMeeting.has(id)) {
         const [dx, , dz] = AGENT_SPAWN_POSITION(agent.workstationId);
         movement.navigateTo(id, dx, dz, {
@@ -165,8 +184,24 @@ function tick(): void {
     if (s?.pantryChair !== null && s?.pantryChair !== undefined)
       takenChairs.add(s.pantryChair);
   }
+  // Toilet spots are single-occupancy too, mirroring the chairs.
+  const takenToilets = new Set<number>();
+  for (const [otherId, s] of states) {
+    if (otherId === agent.id) continue;
+    if (s.toiletSpot !== null) takenToilets.add(s.toiletSpot);
+  }
+  for (const [otherId, p] of Object.entries(
+    usePresenceStore.getState().presences,
+  )) {
+    if (otherId === agent.id || p.activity !== "pup") continue;
+    const s = states.get(otherId);
+    if (s?.toiletSpot !== null && s?.toiletSpot !== undefined)
+      takenToilets.add(s.toiletSpot);
+  }
   const freeSpots = WANDER_SPOTS.filter(
-    (sp) => sp.pantryChair === undefined || !takenChairs.has(sp.pantryChair),
+    (sp) =>
+      (sp.pantryChair === undefined || !takenChairs.has(sp.pantryChair)) &&
+      (sp.toiletSpot === undefined || !takenToilets.has(sp.toiletSpot)),
   );
   if (freeSpots.length === 0) return;
   const spot = freeSpots[Math.floor(Math.random() * freeSpots.length)];
@@ -184,6 +219,7 @@ function tick(): void {
     const s = getState(agent.id);
     s.wandering = true;
     s.pantryChair = spot.pantryChair ?? null;
+    s.toiletSpot = spot.toiletSpot ?? null;
     s.cooldownUntil = now + rand(COOLDOWN_MIN_MS, COOLDOWN_MAX_MS);
   }
 }

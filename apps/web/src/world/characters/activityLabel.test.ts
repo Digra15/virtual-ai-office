@@ -19,6 +19,10 @@ describe("activityLabel", () => {
     expect(activityLabel({ status: "idle", activity: "meeting" }).text).toBe("meeting");
   });
 
+  it("shows pup on a toilet trip", () => {
+    expect(activityLabel({ status: "idle", activity: "pup" }).text).toBe("pup");
+  });
+
   it("shows praying whenever a prayer pose is active", () => {
     expect(
       activityLabel({ status: "working", activity: "seated", prayerPose: "bowing" }).text,

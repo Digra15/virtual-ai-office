@@ -8,13 +8,15 @@ import { WANDER_SPOTS } from "../features/wander/WanderDirector";
 import { BUILDING, roomAt } from "./building/floorPlan";
 
 describe("wander spots", () => {
-  it("has the expected 10 spots", () => {
-    expect(WANDER_SPOTS).toHaveLength(10);
+  it("has the expected 12 spots", () => {
+    expect(WANDER_SPOTS).toHaveLength(12);
     const labels = WANDER_SPOTS.map((s) => s.label);
     expect(labels.filter((l) => l === "musola")).toHaveLength(3);
     // Pantry is 4 dining chairs now (one agent per chair), not the
     // old single table-center spot agents used to stand inside.
     expect(labels.filter((l) => l === "pantry")).toHaveLength(4);
+    // Toilet trips: one standing spot per toilet room.
+    expect(labels.filter((l) => l === "toilet")).toHaveLength(2);
     expect(labels).toContain("lobby sofa");
     expect(labels).toContain("corridor");
     expect(labels).toContain("aisle");
@@ -36,6 +38,10 @@ describe("wander spots", () => {
         expect(roomId, `musola spot at (${s.x}, ${s.z})`).toBe("musola");
       } else if (s.label === "pantry") {
         expect(roomId, `pantry spot`).toBe("pantry");
+      } else if (s.label === "toilet") {
+        expect(roomId, `toilet spot at (${s.x}, ${s.z})`).toMatch(
+          /^toilet_(pria|wanita)$/,
+        );
       } else if (s.label === "lobby sofa") {
         expect(roomId, `sofa spot`).toBe("lobby");
       } else {
