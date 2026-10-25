@@ -3,6 +3,7 @@ import {
   BUILDING,
   CAMERA_PRESETS,
   FLOOR_HEIGHT,
+  INTERIOR_FLOOR,
   RECOVERY_BEDS,
   RECOVERY_ROOM_ID,
   ROOM_BY_ID,
@@ -24,6 +25,16 @@ describe("floorPlan constants", () => {
   it("building bounds are ordered", () => {
     expect(BUILDING.minX).toBeLessThan(BUILDING.maxX);
     expect(BUILDING.minZ).toBeLessThan(BUILDING.maxZ);
+  });
+
+  it("interior floor covers the whole building footprint exactly", () => {
+    // Regression test for the floating-furniture bug: the floor plane
+    // must span the full footprint, otherwise furniture at y=0 floats
+    // above the exterior ground (y -0.26) showing through.
+    expect(INTERIOR_FLOOR.x - INTERIOR_FLOOR.w / 2).toBe(BUILDING.minX);
+    expect(INTERIOR_FLOOR.x + INTERIOR_FLOOR.w / 2).toBe(BUILDING.maxX);
+    expect(INTERIOR_FLOOR.z - INTERIOR_FLOOR.d / 2).toBe(BUILDING.minZ);
+    expect(INTERIOR_FLOOR.z + INTERIOR_FLOOR.d / 2).toBe(BUILDING.maxZ);
   });
 
   it("all room rects are inside the building bounds", () => {

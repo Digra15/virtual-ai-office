@@ -12,7 +12,7 @@
 import { memo, useMemo } from "react";
 import * as THREE from "three";
 import { useBuildingViewStore } from "../../stores/useBuildingViewStore";
-import { FLOOR_VISIBILITY, WALL_H } from "./floorPlan";
+import { FLOOR_VISIBILITY, INTERIOR_FLOOR, WALL_H } from "./floorPlan";
 import { Exterior } from "../exterior/Exterior";
 import { ROOM_COMPONENTS } from "./rooms";
 import {
@@ -307,8 +307,17 @@ export const Building = memo(function Building() {
 
   return (
     <group>
-      {/* marble-tile floor: 32×22 plane at (0,0,-1) */}
-      <mesh geometry={geoPlane} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -1]} receiveShadow>
+      {/* marble-tile floor: 32×22 plane at (0,0,-1). The scale is load-
+          bearing: geoPlane is a unit 1x1 plane, so without it the floor
+          is one 1m tile and all furniture floats over the exterior
+          ground at y -0.26 (see INTERIOR_FLOOR in floorPlan.ts). */}
+      <mesh
+        geometry={geoPlane}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[INTERIOR_FLOOR.x, 0, INTERIOR_FLOOR.z]}
+        scale={[INTERIOR_FLOOR.w, INTERIOR_FLOOR.d, 1]}
+        receiveShadow
+      >
         <meshStandardMaterial map={tile} roughness={0.5} metalness={0.05} />
       </mesh>
 

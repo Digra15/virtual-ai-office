@@ -5,6 +5,8 @@
 export * from "./textures";
 export { CozyChair, chairFacing, COZY_CHAIR_PINK } from "./CozyChair";
 export type { CozyChairProps } from "./CozyChair";
+export { GamingChair, GAMING_CHAIR_SEAT_Y, GAMING_CHAIR_HEIGHT } from "./GamingChair";
+export type { GamingChairProps } from "./GamingChair";
 export {
   Doorway,
   doorwayVariantStyle,

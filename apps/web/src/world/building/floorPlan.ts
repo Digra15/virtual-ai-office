@@ -37,6 +37,22 @@ export const BUILDING = {
   maxZ: 10,
 } as const;
 
+/**
+ * Interior floor slab: exactly the BUILDING footprint, centered at
+ * (0, -1) like the roof. Building.tsx renders it as a scaled plane —
+ * the scale MUST stay here, not as a bare 1x1 plane: without it the
+ * marble floor is a single 1m tile at the center and every piece of
+ * furniture appears to float 0.26 m above the exterior ground (y -0.26)
+ * showing through underneath. That missing scale was the real cause
+ * of the "furniture floats" report (2026-10-25).
+ */
+export const INTERIOR_FLOOR = {
+  x: 0,
+  z: -1,
+  w: 32,
+  d: 22,
+} as const;
+
 export type RoomType =
   | "reception"
   | "workspace"
