@@ -7,14 +7,14 @@
  *
  * Desk convention (layout.ts): rotationY 0, desk opens south; the chair
  * sits at desk-local +z (world z+0.95) with rotationY PI, facing the
- * monitor. Free3DGamingChair backs sit at local -Z, so rotationY PI faces -Z
+ * monitor. GamingChair backs sit at local -Z, so rotationY PI faces -Z
  * (north, toward the desk) — consistent with layout.deskChairSlot.
  */
 import { memo } from "react";
 import * as THREE from "three";
 import { WORKSTATIONS, type WorkstationDef } from "../floorPlan";
 import { deskChairSlot } from "../../layout";
-import { CozyPlant, Free3DGamingChair, Mug } from "../../cozy";
+import { CozyPlant, GamingChair, Mug } from "../../cozy";
 import { useCozyTexture } from "../../cozy";
 import { geoBox, geoCylinder, geoPlane, geoTorus } from "../../geometries";
 
@@ -156,9 +156,10 @@ const WorkstationDressing = memo(function WorkstationDressing({
       {/* agent gaming chair south of the desk, facing north at the monitor
           (same slot, facing convention and seat height as the old
           CozyChair, so the seated-agent fake is unchanged) */}
-      <Free3DGamingChair
+      <GamingChair
         position={[plan.chair.position[0] - x, 0, plan.chair.position[2] - z]}
         rotationY={plan.chair.rotationY}
+        pinkStripe
       />
     </group>
   );

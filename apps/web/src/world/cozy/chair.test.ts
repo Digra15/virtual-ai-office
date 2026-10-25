@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chairFacing } from "./CozyChair";
+import { GAMING_CHAIR_HEIGHT, GAMING_CHAIR_SEAT_Y } from "./GamingChair";
 
 /**
  * Facing-convention contract (documented on CozyChairProps):
@@ -39,3 +40,21 @@ describe("chairFacing — the chair facing convention", () => {
   });
 });
 
+
+/**
+ * GamingChair drop-in contract: it replaces CozyChair in the
+ * workstation slots, so its seat height must match CozyChair's
+ * (0.52) or the seated-agent fake breaks, and its tall bucket back
+ * must actually be taller than CozyChair's (~1.33) to read as a
+ * gaming chair.
+ */
+describe("GamingChair dimensions", () => {
+  it("seat height matches CozyChair's seat", () => {
+    expect(GAMING_CHAIR_SEAT_Y).toBe(0.52);
+  });
+
+  it("is a tall racing back, not a regular office chair", () => {
+    expect(GAMING_CHAIR_HEIGHT).toBeGreaterThan(1.33);
+    expect(GAMING_CHAIR_HEIGHT).toBeLessThan(1.6);
+  });
+});

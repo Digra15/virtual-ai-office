@@ -5,7 +5,7 @@
  */
 import { memo } from "react";
 import * as THREE from "three";
-import { CozyPlant, Free3DGamingChair, Mug, useCozyTexture } from "../../cozy";
+import { CozyPlant, GamingChair, Mug, useCozyTexture } from "../../cozy";
 import { geoBox, geoPlane } from "../../geometries";
 import { PolyModel } from "../../PolyModel";
 
@@ -78,7 +78,7 @@ export const Reception = memo(function Reception() {
       <Counter />
       <CounterLogo />
       {/* receptionist chair behind the counter, faces the visitors */}
-      <Free3DGamingChair position={[-4, 0, 6.7]} rotationY={0} />
+      <GamingChair position={[-4, 0, 6.7]} rotationY={0} pinkStripe />
       {/* flanking plants (west plant flanks the counter's east end — the
           gap between the counter's west edge and the wall fits no pot) */}
       <CozyPlant position={[-1.6, 0, 7.4]} />

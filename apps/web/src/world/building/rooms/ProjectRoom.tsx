@@ -9,7 +9,7 @@ import { memo, useMemo } from "react";
 import * as THREE from "three";
 import { RoundedBox, Text } from "@react-three/drei";
 import { useTaskStore, type TaskStatus } from "../../../stores/useTaskStore";
-import { CozyPlant, Free3DGamingChair } from "../../cozy";
+import { CozyPlant, GamingChair } from "../../cozy";
 import { geoBox, geoCircle, geoPlane } from "../../geometries";
 
 const matDeskWood = new THREE.MeshStandardMaterial({ color: "#9a6a3b", roughness: 0.6 });
@@ -132,11 +132,11 @@ export const ProjectRoom = memo(function ProjectRoom() {
       <ProjectBoard />
       <BossDesk />
       <Bookshelf />
-      {/* boss chair north of the desk, faces the guests */}
-      <Free3DGamingChair position={[-11.5, 0, 4.8]} rotationY={0} />
+      {/* boss chair north of the desk, pink-striped, faces the guests */}
+      <GamingChair position={[-11.5, 0, 4.8]} rotationY={0} pinkStripe />
       {/* 2 guest chairs facing north toward the boss desk */}
-      <Free3DGamingChair position={[-12.5, 0, 6.4]} rotationY={Math.PI} />
-      <Free3DGamingChair position={[-10.5, 0, 6.4]} rotationY={Math.PI} />
+      <GamingChair position={[-12.5, 0, 6.4]} rotationY={Math.PI} />
+      <GamingChair position={[-10.5, 0, 6.4]} rotationY={Math.PI} />
       <CozyPlant position={[-7.3, 0, 8.8]} scale={1.1} />
       <CozyPlant position={[-15.2, 0, 2.0]} scale={0.9} />
     </group>
