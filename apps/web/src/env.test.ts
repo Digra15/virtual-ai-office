@@ -39,7 +39,7 @@ describe("resolveBackendEnv", () => {
     expect(env.configured).toBe(true);
     expect(env.apiUrl).toBe(DEFAULT_API_URL);
     expect(env.wsUrl).toBe(DEFAULT_WS_URL);
-    expect(DEFAULT_API_URL).toContain("dalikamira.workers.dev");
+    expect(DEFAULT_API_URL).toContain("zythera.ai.id");
   });
 
   it("production falls back per variable, not all-or-nothing", () => {

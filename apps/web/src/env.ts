@@ -19,10 +19,8 @@ export interface BackendEnv {
 }
 
 /** This project's live Worker — the production default backend. */
-export const DEFAULT_API_URL =
-  "https://virtual-ai-office-api.dalikamira.workers.dev";
-export const DEFAULT_WS_URL =
-  "wss://virtual-ai-office-api.dalikamira.workers.dev/ws";
+export const DEFAULT_API_URL = "https://api.zythera.ai.id";
+export const DEFAULT_WS_URL = "wss://api.zythera.ai.id/ws";
 
 export function resolveBackendEnv(env: {
   DEV: boolean;
