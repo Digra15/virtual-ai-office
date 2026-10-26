@@ -37,7 +37,7 @@ beforeEach(() => {
 describe('PBKDF2 password hashing', () => {
   it('hashes and verifies a roundtrip', async () => {
     const hash = await hashPassword('correct horse battery staple');
-    expect(hash.startsWith('pbkdf2-sha256$210000$')).toBe(true);
+    expect(hash.startsWith('pbkdf2-sha256$100000$')).toBe(true);
     expect(await verifyPassword('correct horse battery staple', hash)).toBe(true);
   });
 

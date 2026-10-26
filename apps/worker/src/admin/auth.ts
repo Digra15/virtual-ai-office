@@ -1,8 +1,10 @@
 /**
  * Admin authentication for the Cloudflare Worker.
  *
- * - Passwords: PBKDF2-SHA256 via WebCrypto, 210k iterations, 32-byte salt,
- *   32-byte key. Stored format: `pbkdf2-sha256$210000$<b64 salt>$<b64 hash>`.
+ * - Passwords: PBKDF2-SHA256 via WebCrypto, 100k iterations, 32-byte salt,
+ *   32-byte key. Stored format: `pbkdf2-sha256$100000$<b64 salt>$<b64 hash>`.
+ *   (100k is the Cloudflare Workers WebCrypto cap: workerd rejects
+ *   iteration counts above 100000.)
  *   Verification uses constant-time comparison.
  * - Sessions: 32 random bytes, hex-encoded, delivered in an HttpOnly cookie;
  *   only sha256(token) is stored in D1. 24h TTL with sliding expiry.
@@ -26,7 +28,7 @@ import { err, json, readJson } from './http';
 
 export const SESSION_COOKIE_NAME = 'vao_admin_session';
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-const PBKDF2_ITERATIONS = 210_000;
+const PBKDF2_ITERATIONS = 100_000;
 const PBKDF2_HASH = 'SHA-256';
 const SALT_BYTES = 32;
 const KEY_BYTES = 32;
