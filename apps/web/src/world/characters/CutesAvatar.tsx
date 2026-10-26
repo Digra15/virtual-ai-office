@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Text, useGLTF, useAnimations } from "@react-three/drei";
 import type { Group } from "three";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { CUTES_MODEL_SCALE, LYING } from "./lying";
 import { buildTypingPoseClip, TYPING_LEAN_X } from "./typingPose";
 import { activityLabel } from "./activityLabel";
@@ -23,6 +24,14 @@ export const CUTES_MODEL: Record<string, string> = {
   data: "/models/cutes/Citizen 1.glb",
   automation: "/models/cutes/Retail Worker.glb",
   monitoring: "/models/cutes/Prisoner.glb",
+  // Live seats (2026-10-26): same roles as their demo predecessors, so
+  // each seat gets its own model instead of sharing the nika fallback.
+  // Sharing one URL used to leave all but the last-mounted agent as a
+  // floating name: a three.js node has a single parent, so the shared
+  // cached scene could only hang under one avatar at a time.
+  difia: "/models/cutes/Generic Female.glb",
+  kirana: "/models/cutes/Citizen 3.glb",
+  reno: "/models/cutes/Generic Male.glb",
 };
 
 /** Activity caption colors live in activityLabel.ts (single source). */
@@ -65,6 +74,12 @@ export function CutesAvatar({
   const url = CUTES_MODEL[agentId] ?? CUTES_MODEL.nika;
   const { scene, animations } = useGLTF(url);
   const { actions, mixer } = useAnimations(animations, group);
+  // One skinned clone per avatar instance (same fix as NpcAvatar):
+  // plain scene.clone() — and especially sharing useGLTF's cached scene
+  // across avatars — breaks skinned models, because a node has a single
+  // parent and the clone keeps pointing at bones outside the render
+  // graph. SkeletonUtils' clone rebinds the skeleton to cloned bones.
+  const cloned = useMemo(() => cloneSkinned(scene), [scene]);
 
   // Static typing pose: only a working agent seated at its desk, never
   // while walking, lying, or praying (those take precedence below).
@@ -211,7 +226,7 @@ export function CutesAvatar({
         scale={modelScale}
         rotation={modelRotation}
       >
-        <primitive object={scene} />
+        <primitive object={cloned} />
         {/* Prayer outfit rides inside the model group, so bowing,
             prostrate and sitting transforms carry it along. */}
         {prayerWear && <PrayerOutfit modelUrl={url} wear={prayerWear} />}

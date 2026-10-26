@@ -139,6 +139,44 @@ const PRESETS: CharacterPreset[] = [
     expression: "cool",
     prayerWear: "sarungPeci",
   },
+  // Live seats (2026-10-26): same looks as their demo predecessors, so
+  // the 2D detail preview matches the 3D model and prayer outfit.
+  {
+    agentId: "difia",
+    hairStyle: "hime",
+    hairColor: "#6b4226",
+    eyeColor: "#8a5a2b",
+    skinTone: "#ffd9b8",
+    outfitStyle: "blazer",
+    outfitPrimary: "#2b3a55",
+    outfitSecondary: "#d98a9e",
+    accessory: "ribbon",
+    prayerWear: "mukena",
+  },
+  {
+    agentId: "kirana",
+    hairStyle: "wavy",
+    hairColor: "#b9a7e6",
+    eyeColor: "#7c5cbf",
+    skinTone: "#ffe0c2",
+    outfitStyle: "cardigan",
+    outfitPrimary: "#f5ead9",
+    outfitSecondary: "#a37fa3",
+    accessory: "beret",
+    prayerWear: "mukena",
+  },
+  {
+    agentId: "reno",
+    hairStyle: "messy",
+    hairColor: "#2d3a55",
+    eyeColor: "#4ade80",
+    skinTone: "#e8b48a",
+    outfitStyle: "smartShirt",
+    outfitPrimary: "#4a6fa5",
+    outfitSecondary: "#2d3a55",
+    accessory: "headphones",
+    prayerWear: "sarungPeci",
+  },
 ];
 
 // Sanity: every preset in this file must validate.
@@ -166,6 +204,9 @@ export const DEFAULT_PRAYER_WEAR: Record<string, PrayerWear> = {
   data: "sarungPeci",
   automation: "sarungPeci",
   monitoring: "sarungPeci",
+  difia: "mukena",
+  kirana: "mukena",
+  reno: "sarungPeci",
 };
 
 /**
