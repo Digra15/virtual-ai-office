@@ -22,6 +22,7 @@ import { MissionKanbanPage } from "./pages/MissionKanbanPage";
 import { MissionMeetingPage } from "./pages/MissionMeetingPage";
 import { MissionSpawnPage } from "./pages/MissionSpawnPage";
 import { MissionConnectionPage } from "./pages/MissionConnectionPage";
+import { GuestChatPage } from "./pages/GuestChatPage";
 
 // ---------------------------------------------------------------------------
 // Backend not configured — honest setup guide, no mockups
@@ -286,6 +287,7 @@ function Shell() {
         {page === "mission-meeting" && <MissionMeetingPage />}
         {page === "mission-spawn" && <MissionSpawnPage />}
         {page === "mission-connection" && <MissionConnectionPage />}
+        {page === "guest-chat" && <GuestChatPage />}
       </main>
     </div>
   );

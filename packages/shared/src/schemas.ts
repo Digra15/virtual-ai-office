@@ -98,3 +98,49 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   announcement: '',
   offlineTimeoutMs: 600_000,
 };
+
+/**
+ * Guest chat (visitor → Difia). Visitors chat with Difia the receptionist
+ * (played by the main assistant, answering via the poller — replies arrive
+ * within minutes, not seconds). Threads live in the Durable Object, NOT in
+ * D1, so no migration is needed. `at`/`updatedAt` are server ms timestamps.
+ */
+export const GuestChatMessageSchema = z.object({
+  id: z.string(),
+  guestId: z.string(),
+  guestName: z.string(),
+  from: z.enum(['guest', 'difia', 'admin']),
+  text: z.string().min(1).max(1000),
+  at: z.number().int(),
+});
+
+export type GuestChatMessage = z.infer<typeof GuestChatMessageSchema>;
+
+export const GuestThreadSchema = z.object({
+  guestId: z.string(),
+  guestName: z.string(),
+  messages: z.array(GuestChatMessageSchema),
+  updatedAt: z.number().int(),
+});
+
+export type GuestThread = z.infer<typeof GuestThreadSchema>;
+
+/** POST /api/guest-chat body (public). guestId is client-generated. */
+export const GuestChatPostSchema = z.object({
+  guestId: z
+    .string()
+    .min(8)
+    .max(64)
+    .regex(/^[A-Za-z0-9_-]+$/, 'guestId must be URL-safe (letters, digits, - _)'),
+  guestName: z.string().max(40).optional(),
+  text: z.string().min(1).max(1000),
+});
+
+export type GuestChatPost = z.infer<typeof GuestChatPostSchema>;
+
+/** Reply body (agent bearer auth, or admin session auth). */
+export const GuestReplySchema = z.object({
+  text: z.string().min(1).max(1000),
+});
+
+export type GuestReply = z.infer<typeof GuestReplySchema>;

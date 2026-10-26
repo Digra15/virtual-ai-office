@@ -15,7 +15,8 @@ export type AdminPage =
   | "mission-kanban"
   | "mission-meeting"
   | "mission-spawn"
-  | "mission-connection";
+  | "mission-connection"
+  | "guest-chat";
 
 export const ADMIN_PAGES: Array<{ id: AdminPage; label: string }> = [
   { id: "dashboard", label: "Dashboard" },
@@ -35,4 +36,5 @@ export const ADMIN_PAGES: Array<{ id: AdminPage; label: string }> = [
   { id: "mission-meeting", label: "Meeting" },
   { id: "mission-spawn", label: "Spawn" },
   { id: "mission-connection", label: "Koneksi" },
+  { id: "guest-chat", label: "Pesan Tamu" },
 ];

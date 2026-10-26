@@ -269,3 +269,16 @@ export const getPublicServices = (): Promise<unknown> => get(PUBLIC_API.services
 /** Worker health probe (root /health on the API Worker). */
 export const getHealth = (): Promise<unknown> =>
   get("/health");
+
+// ---------------------------------------------------------------------------
+// Guest chat (visitor threads live in the DO; the admin API forwards)
+// ---------------------------------------------------------------------------
+
+export const listGuestThreads = (): Promise<{ threads: import("@virtual-ai-office/shared").GuestThread[] }> =>
+  get("/api/admin/guest-chat");
+
+export const replyGuestChat = (
+  messageId: string,
+  text: string,
+): Promise<{ reply: import("@virtual-ai-office/shared").GuestChatMessage }> =>
+  post(`/api/admin/guest-chat/${encodeURIComponent(messageId)}/reply`, { text });

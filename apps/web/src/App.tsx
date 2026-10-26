@@ -21,6 +21,7 @@ import { WanderDirector } from "./features/wander/WanderDirector";
 import { PrayerDirector } from "./features/prayer/PrayerDirector";
 import { RecoveryDirector } from "./features/recovery/RecoveryDirector";
 import { useTaskStore } from "./stores/useTaskStore";
+import { GuestChatWidget } from "./features/guestchat/GuestChatWidget";
 
 // Code-split the 3D scene: the 2D dashboard stays interactive while three.js loads.
 const OfficeScene = React.lazy(() => import("./world/OfficeScene"));
@@ -251,6 +252,7 @@ function Dashboard() {
         </div>
       </div>
       <EventTimeline />
+      <GuestChatWidget />
     </div>
   );
 }

@@ -16,6 +16,8 @@ import type {
   AgentStatus,
   AgentTask,
   EventPost,
+  GuestChatMessage,
+  GuestThread,
   SiteConfig,
 } from '@virtual-ai-office/shared';
 import { DEFAULT_SITE_CONFIG } from '@virtual-ai-office/shared';
@@ -77,7 +79,12 @@ export interface RegistrySnapshot {
   tasks?: AgentTask[];
   taskCounter?: number;
   siteConfig?: SiteConfig;
+  guestThreads?: GuestThread[];
+  guestCounter?: number;
 }
+
+/** Cooldown between two guest messages in the same thread (ms). */
+export const GUEST_CHAT_COOLDOWN_MS = 15_000;
 
 export class AgentRegistry {
   private readonly agents = new Map<string, AgentInfo>();
@@ -86,6 +93,17 @@ export class AgentRegistry {
   private taskCounter = 0;
   private siteConfig: SiteConfig = { ...DEFAULT_SITE_CONFIG };
   private siteConfigFromStorage = false;
+  private readonly guestThreads = new Map<string, GuestThread>();
+  private guestCounter = 0;
+  /** Monotonic clock for guest-chat timestamps (same-ms posts must still order). */
+  private lastGuestAt = 0;
+
+  /** Strictly increasing ms timestamp for guest messages/threads. */
+  private nextGuestAt(): number {
+    const now = Date.now();
+    this.lastGuestAt = Math.max(now, this.lastGuestAt + 1);
+    return this.lastGuestAt;
+  }
 
   /** Restore from a previously persisted snapshot. */
   restore(snapshot: RegistrySnapshot): void {
@@ -106,6 +124,14 @@ export class AgentRegistry {
       this.siteConfig = { ...DEFAULT_SITE_CONFIG };
       this.siteConfigFromStorage = false;
     }
+    this.guestThreads.clear();
+    for (const thread of snapshot.guestThreads ?? []) {
+      this.guestThreads.set(thread.guestId, {
+        ...thread,
+        messages: thread.messages.map((m) => ({ ...m })),
+      });
+    }
+    this.guestCounter = snapshot.guestCounter ?? 0;
   }
 
   snapshot(): RegistrySnapshot {
@@ -115,6 +141,11 @@ export class AgentRegistry {
       tasks: [...this.tasks.values()].map((t) => ({ ...t })),
       taskCounter: this.taskCounter,
       siteConfig: { ...this.siteConfig },
+      guestThreads: [...this.guestThreads.values()].map((t) => ({
+        ...t,
+        messages: t.messages.map((m) => ({ ...m })),
+      })),
+      guestCounter: this.guestCounter,
     };
   }
 
@@ -331,6 +362,109 @@ export class AgentRegistry {
       this.appendEntry(agent, this.makeEntry(agentId, 'task', `Task completed: ${task.title}`));
     }
     return { ...task };
+  }
+
+  /**
+   * Guest chat (visitor → Difia). Threads are keyed by the client-generated
+   * guestId; a visitor can only ever read their own thread (enforced by
+   * the route handler passing their guestId back). Replies from Difia (the
+   * assistant, via the poller) or from an admin append to the same thread.
+   */
+  postGuestMessage(
+    guestId: string,
+    guestName: string | undefined,
+    text: string,
+  ): { message: GuestChatMessage; thread: GuestThread } | { cooldownMs: number } {
+    const now = this.nextGuestAt();
+    const existing = this.guestThreads.get(guestId);
+    if (existing) {
+      const lastGuest = [...existing.messages].reverse().find((m) => m.from === 'guest');
+      if (lastGuest && now - lastGuest.at < GUEST_CHAT_COOLDOWN_MS) {
+        return { cooldownMs: GUEST_CHAT_COOLDOWN_MS - (now - lastGuest.at) };
+      }
+    }
+    this.guestCounter += 1;
+    const message: GuestChatMessage = {
+      id: `${now}-${this.guestCounter}`,
+      guestId,
+      guestName: guestName?.trim() ? guestName.trim() : (existing?.guestName ?? 'Tamu'),
+      from: 'guest',
+      text,
+      at: now,
+    };
+    const thread: GuestThread = existing ?? {
+      guestId,
+      guestName: message.guestName,
+      messages: [],
+      updatedAt: now,
+    };
+    if (guestName?.trim()) thread.guestName = guestName.trim();
+    thread.messages.push(message);
+    thread.updatedAt = now;
+    this.guestThreads.set(guestId, thread);
+    return { message: { ...message }, thread: this.copyThread(thread) };
+  }
+
+  /** A copy of one guest's thread, or undefined when they never wrote. */
+  getGuestThread(guestId: string): GuestThread | undefined {
+    const thread = this.guestThreads.get(guestId);
+    return thread ? this.copyThread(thread) : undefined;
+  }
+
+  /** All threads, newest-updated first (admin + poller views only). */
+  listGuestThreads(): GuestThread[] {
+    return [...this.guestThreads.values()]
+      .map((t) => this.copyThread(t))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  /**
+   * Guest messages that have no Difia/admin reply after them, with the
+   * thread owner attached — this is what the poller answers.
+   */
+  pendingGuestMessages(): Array<{ guestId: string; guestName: string; message: GuestChatMessage }> {
+    const out: Array<{ guestId: string; guestName: string; message: GuestChatMessage }> = [];
+    for (const thread of this.guestThreads.values()) {
+      let lastReplyIdx = -1;
+      thread.messages.forEach((m, i) => {
+        if (m.from !== 'guest') lastReplyIdx = i;
+      });
+      thread.messages.forEach((m, i) => {
+        if (m.from === 'guest' && i > lastReplyIdx) {
+          out.push({ guestId: thread.guestId, guestName: thread.guestName, message: { ...m } });
+        }
+      });
+    }
+    return out.sort((a, b) => a.message.at - b.message.at);
+  }
+
+  /** Append a Difia/admin reply to the thread owning the message. */
+  replyToGuestMessage(
+    messageId: string,
+    from: 'difia' | 'admin',
+    text: string,
+  ): { thread: GuestThread; reply: GuestChatMessage } | null {
+    for (const thread of this.guestThreads.values()) {
+      if (!thread.messages.some((m) => m.id === messageId)) continue;
+      const now = this.nextGuestAt();
+      this.guestCounter += 1;
+      const reply: GuestChatMessage = {
+        id: `${now}-${this.guestCounter}`,
+        guestId: thread.guestId,
+        guestName: from === 'difia' ? 'Difia' : 'Admin',
+        from,
+        text,
+        at: now,
+      };
+      thread.messages.push(reply);
+      thread.updatedAt = now;
+      return { thread: this.copyThread(thread), reply: { ...reply } };
+    }
+    return null;
+  }
+
+  private copyThread(thread: GuestThread): GuestThread {
+    return { ...thread, messages: thread.messages.map((m) => ({ ...m })) };
   }
 
   /**

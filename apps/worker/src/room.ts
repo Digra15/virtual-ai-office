@@ -17,6 +17,8 @@ import { DurableObject } from 'cloudflare:workers';
 import {
   ADMIN_BROADCAST_TYPES,
   EventPostSchema,
+  GuestChatPostSchema,
+  GuestReplySchema,
   SiteConfigSchema,
   TaskPostSchema,
   type ActivityEntry,
@@ -136,6 +138,51 @@ export class AgentRoom extends DurableObject<Env> {
       }
     }
 
+    // Guest chat (visitor → Difia). POST + thread GET are public but
+    // rate-limited and cooldown-guarded; a visitor only ever sees their
+    // own thread. Replies and the pending queue require AGENT_SECRET.
+    if (pathname === '/api/guest-chat') {
+      if (request.method === 'POST') {
+        return this.handleGuestPost(request);
+      }
+      if (request.method === 'GET') {
+        const guestId = url.searchParams.get('guestId') ?? '';
+        if (!guestId) return json({ error: 'guestId is required' }, 400);
+        const thread = this.registry.getGuestThread(guestId);
+        return json({
+          thread: thread ?? { guestId, guestName: 'Tamu', messages: [], updatedAt: 0 },
+        });
+      }
+    }
+    if (request.method === 'GET' && pathname === '/api/guest-chat/pending') {
+      const authError = this.requireAgentAuth(request);
+      if (authError) return authError;
+      return json({ pending: this.registry.pendingGuestMessages() });
+    }
+    const guestReplyMatch = pathname.match(/^\/api\/guest-chat\/([^/]+)\/reply$/);
+    if (guestReplyMatch && request.method === 'POST') {
+      const authError = this.requireAgentAuth(request);
+      if (authError) return authError;
+      return this.handleGuestReply(request, decodeURIComponent(guestReplyMatch[1] ?? ''), 'difia');
+    }
+
+    // Internal guest-chat channel for the admin API (routes.ts): the
+    // Worker forwards session-authenticated admin requests here with
+    // INTERNAL_SECRET, exactly like /__internal/publish. Never public.
+    if (pathname === '/__internal/guest-chat') {
+      const internalError = this.requireInternalSecret(request);
+      if (internalError) return internalError;
+      if (request.method === 'GET') {
+        return json({ threads: this.registry.listGuestThreads() });
+      }
+    }
+    const internalReplyMatch = pathname.match(/^\/__internal\/guest-chat\/([^/]+)\/reply$/);
+    if (internalReplyMatch && request.method === 'POST') {
+      const internalError = this.requireInternalSecret(request);
+      if (internalError) return internalError;
+      return this.handleGuestReply(request, decodeURIComponent(internalReplyMatch[1] ?? ''), 'admin');
+    }
+
     const agentMatch = pathname.match(/^\/api\/agents\/([^/]+)(\/events)?$/);
     if (agentMatch) {
       const agentId = decodeURIComponent(agentMatch[1] ?? '');
@@ -236,6 +283,78 @@ export class AgentRoom extends DurableObject<Env> {
     const config = this.registry.setSiteConfig(parsed.data);
     await this.persist();
     return json({ config });
+  }
+
+  /**
+   * POST /api/guest-chat — a visitor writes to Difia. Public, but
+   * per-IP rate-limited (same window as agent events) and guarded by a
+   * 15 s per-thread cooldown so one guest cannot flood the queue.
+   */
+  private async handleGuestPost(request: Request): Promise<Response> {
+    const cfg = loadWorkerConfig(this.env);
+    const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+    this.limiter.configure(60_000, cfg.rateLimitPerMinute);
+    if (!this.limiter.take(`guest:${ip}`)) {
+      return json({ error: 'Rate limit exceeded — slow down and retry.' }, 429);
+    }
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const parsed = GuestChatPostSchema.safeParse(body);
+    if (!parsed.success) {
+      return json({ error: 'Invalid guest message', details: parsed.error.flatten() }, 400);
+    }
+    const result = this.registry.postGuestMessage(
+      parsed.data.guestId,
+      parsed.data.guestName,
+      parsed.data.text,
+    );
+    if ('cooldownMs' in result) {
+      return json(
+        { error: 'Tunggu sebentar sebelum mengirim pesan lagi.', retryAfterMs: result.cooldownMs },
+        429,
+      );
+    }
+    await this.persist();
+    return json({ message: result.message, thread: result.thread }, 201);
+  }
+
+  /** Shared reply path: agent bearer auth posts as Difia, admin as admin. */
+  private async handleGuestReply(
+    request: Request,
+    messageId: string,
+    from: 'difia' | 'admin',
+  ): Promise<Response> {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const parsed = GuestReplySchema.safeParse(body);
+    if (!parsed.success) {
+      return json({ error: 'Invalid reply', details: parsed.error.flatten() }, 400);
+    }
+    const result = this.registry.replyToGuestMessage(messageId, from, parsed.data.text);
+    if (!result) return json({ error: `Unknown message: ${messageId}` }, 404);
+    await this.persist();
+    return json({ reply: result.reply, thread: result.thread }, 201);
+  }
+
+  /** Internal-secret auth for Worker→DO admin forwarding (see publish). */
+  private requireInternalSecret(request: Request): Response | null {
+    const secret = this.env.INTERNAL_SECRET;
+    if (!secret) {
+      return json({ error: 'Internal publish not configured' }, 503);
+    }
+    const provided = request.headers.get('X-Internal-Secret') ?? '';
+    if (!timingSafeEqual(provided, secret)) {
+      return json({ error: 'Forbidden' }, 403);
+    }
+    return null;
   }
 
   private async handleHealth(): Promise<Response> {

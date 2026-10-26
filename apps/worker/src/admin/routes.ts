@@ -25,6 +25,7 @@ import {
   ASSET_UPLOAD_LIMITS,
   ErrorEventCreateSchema,
   ErrorEventUpdateSchema,
+  GuestReplySchema,
   OFFICE_CONFIG_SCHEMAS,
   OrderCreateSchema,
   OrderPaymentSchema,
@@ -117,6 +118,43 @@ export async function notifyClients(env: Env, type: AdminBroadcastType): Promise
   } catch {
     // Swallowed on purpose — see doc comment.
   }
+}
+
+/**
+ * Forward a session-authenticated admin request to the AgentRoom DO, which
+ * owns guest-chat state. The DO checks X-Internal-Secret; the caller here
+ * already checked the admin session, so the DO never sees credentials.
+ */
+async function forwardToDo(
+  env: Env,
+  path: string,
+  method: string,
+  body?: unknown,
+): Promise<Response> {
+  const ns = env.AGENT_ROOM;
+  if (!ns) return err(503, 'agent room not configured');
+  const stub = ns.get(ns.idFromName('global'));
+  const res = await stub.fetch(
+    new Request(`https://internal${path}`, {
+      method,
+      headers: {
+        'content-type': 'application/json',
+        'X-Internal-Secret': env.INTERNAL_SECRET ?? '',
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
+  );
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { error: text };
+  }
+  return new Response(JSON.stringify(data), {
+    status: res.status,
+    headers: { 'content-type': 'application/json; charset=utf-8' },
+  });
 }
 
 // ------------------------------------------------------------------ helpers
@@ -1165,6 +1203,38 @@ async function handleAdmin(request: Request, env: Env): Promise<Response> {
       if (method === 'POST') return createErrorEvent(db, request, env, actor);
     } else if (!tail && method === 'PATCH') {
       return patchErrorEvent(db, id, request, env, actor);
+    }
+    return err(404, 'Not found');
+  }
+
+  // Guest chat threads live in the DO, not D1 — forward to it. GET is
+  // readable by viewers; replies are admin-only (enforced above).
+  if (head === 'guest-chat') {
+    if (!id && method === 'GET') {
+      return forwardToDo(env, '/__internal/guest-chat', 'GET');
+    }
+    if (id && tail === 'reply' && method === 'POST') {
+      const body = await readJson(request);
+      if (!body.ok) return err(400, 'Invalid JSON body');
+      const parsed = GuestReplySchema.safeParse(body.value);
+      if (!parsed.success) return err(400, 'Invalid reply', parsed.error.flatten());
+      const res = await forwardToDo(
+        env,
+        `/__internal/guest-chat/${encodeURIComponent(id)}/reply`,
+        'POST',
+        { text: parsed.data.text },
+      );
+      if (res.status < 300) {
+        await audit(db, {
+          actor,
+          action: 'guestChat.reply',
+          entity: 'guestChat',
+          entityId: id,
+          detail: {},
+          ip: clientIp(request),
+        });
+      }
+      return res;
     }
     return err(404, 'Not found');
   }
