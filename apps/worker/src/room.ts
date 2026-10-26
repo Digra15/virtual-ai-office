@@ -32,6 +32,11 @@ import { SlidingWindowLimiter } from './ratelimit';
 import { demoTick } from './demo';
 import { loadWorkerConfig, type Env } from './env';
 import { timingSafeEqual } from './admin/auth';
+import {
+  getReceptionistConfig,
+  requestReceptionistReply,
+  type ChatHistoryItem,
+} from './receptionist';
 
 const STATE_KEY = 'vao-state-v1';
 const ALARM_FLAG_KEY = 'vao-alarm-set';
@@ -153,6 +158,13 @@ export class AgentRoom extends DurableObject<Env> {
           thread: thread ?? { guestId, guestName: 'Tamu', messages: [], updatedAt: 0 },
         });
       }
+    }
+    // Public by design: returns ONLY { pendingCount } — a bare number
+    // with no message content, guestIds, or guest names — so the VM
+    // watcher service and hook detectors can poll it without any
+    // credential. The full queue stays behind AGENT_SECRET below.
+    if (request.method === 'GET' && pathname === '/api/guest-chat/pending-count') {
+      return json({ pendingCount: this.registry.pendingGuestCount() });
     }
     if (request.method === 'GET' && pathname === '/api/guest-chat/pending') {
       const authError = this.requireAgentAuth(request);
@@ -319,7 +331,43 @@ export class AgentRoom extends DurableObject<Env> {
       );
     }
     await this.persist();
+    // AI receptionist (when configured): never blocks the 201 — the call
+    // runs via waitUntil, and ANY failure leaves the message unanswered so
+    // the 1-minute poller answers it as backstop. When the endpoint is
+    // unconfigured this is a no-op.
+    this.ctx.waitUntil(this.runReceptionistReply(result.thread.guestId, result.message.id));
     return json({ message: result.message, thread: result.thread }, 201);
+  }
+
+  /**
+   * Ask the configured AI receptionist endpoint for a reply to one guest
+   * message and store it as Difia. Best-effort only: every failure path
+   * returns silently, leaving the message pending for the poller. The
+   * double-reply guard in replyToGuestMessage also protects the case
+   * where the poller answered first.
+   */
+  private async runReceptionistReply(guestId: string, messageId: string): Promise<void> {
+    try {
+      const config = getReceptionistConfig(this.env);
+      if (!config.url) return;
+      const thread = this.registry.getGuestThread(guestId);
+      if (!thread) return;
+      const target = thread.messages.find((m) => m.id === messageId);
+      if (!target || target.from !== 'guest') return;
+      const history: ChatHistoryItem[] = thread.messages
+        .filter((m) => m.id !== messageId)
+        .slice(-20)
+        .map((m) => ({
+          role: m.from === 'guest' ? ('user' as const) : ('assistant' as const),
+          text: m.text,
+        }));
+      const text = await requestReceptionistReply(config, history, target.text);
+      if (!text) return;
+      const replied = this.registry.replyToGuestMessage(messageId, 'difia', text);
+      if (replied) await this.persist();
+    } catch {
+      // Best-effort: never surface receptionist failures to the guest path.
+    }
   }
 
   /** Shared reply path: agent bearer auth posts as Difia, admin as admin. */
@@ -339,7 +387,15 @@ export class AgentRoom extends DurableObject<Env> {
       return json({ error: 'Invalid reply', details: parsed.error.flatten() }, 400);
     }
     const result = this.registry.replyToGuestMessage(messageId, from, parsed.data.text);
-    if (!result) return json({ error: `Unknown message: ${messageId}` }, 404);
+    if (!result) {
+      // replyToGuestMessage returns null for both unknown messages and
+      // double replies; tell them apart so a second same-from reply is a
+      // 409 (already replied) instead of a misleading 404.
+      if (!this.registry.guestMessageExists(messageId)) {
+        return json({ error: `Unknown message: ${messageId}` }, 404);
+      }
+      return json({ error: 'already replied' }, 409);
+    }
     await this.persist();
     return json({ reply: result.reply, thread: result.thread }, 201);
   }

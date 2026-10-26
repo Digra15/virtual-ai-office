@@ -50,6 +50,27 @@ describe('guest chat (visitor → Difia)', () => {
     expect(registry.pendingGuestMessages()).toHaveLength(0);
   });
 
+  it('pending-count exposes a bare number only, never content or ids', () => {
+    const registry = new AgentRegistry();
+    expect(registry.pendingGuestCount()).toBe(0);
+    const first = registry.postGuestMessage('guest-cnt01', 'Rahasia', 'Isi pesan rahasia');
+    if ('cooldownMs' in first) throw new Error('unexpected cooldown');
+    const second = registry.postGuestMessage('guest-cnt02', 'Lain', 'Pesan kedua');
+    if ('cooldownMs' in second) throw new Error('unexpected cooldown');
+    const count = registry.pendingGuestCount();
+    expect(count).toBe(2);
+    expect(typeof count).toBe('number');
+    // The public endpoint can only serialize this number: nothing else
+    // (no text, guestId, or guestName) is reachable through it.
+    const payload = JSON.stringify({ pendingCount: count });
+    expect(payload).toBe('{"pendingCount":2}');
+    expect(payload).not.toContain('Rahasia');
+    expect(payload).not.toContain('Isi pesan rahasia');
+    expect(payload).not.toContain('guest-cnt01');
+    registry.replyToGuestMessage(first.message.id, 'difia', 'Ok');
+    expect(registry.pendingGuestCount()).toBe(1);
+  });
+
   it('returns null when replying to an unknown message', () => {
     const registry = new AgentRegistry();
     expect(registry.replyToGuestMessage('nope-1', 'difia', 'Hai')).toBeNull();
@@ -61,6 +82,39 @@ describe('guest chat (visitor → Difia)', () => {
     registry.postGuestMessage('guest-new001', undefined, 'Baru');
     const threads = registry.listGuestThreads();
     expect(threads.map((t) => t.guestId)).toEqual(['guest-new001', 'guest-old001']);
+  });
+
+  it('refuses a second reply to one messageId from the SAME from-value', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-dbl01', undefined, 'Tanya');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Jawaban 1')).not.toBeNull();
+    // Same from again → refused (this is what stops the AI endpoint and
+    // the poller ever double-answering one message).
+    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Jawaban 2')).toBeNull();
+    expect(registry.getGuestThread('guest-dbl01')?.messages).toHaveLength(2);
+  });
+
+  it('still allows a follow-up from a DIFFERENT from-value', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-dbl02', undefined, 'Tanya');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Dari Difia')).not.toBeNull();
+    expect(registry.replyToGuestMessage(posted.message.id, 'admin', 'Dari Admin')).not.toBeNull();
+    expect(registry.getGuestThread('guest-dbl02')?.messages).toHaveLength(3);
+  });
+
+  it('distinguishes unknown messages from already-replied ones', () => {
+    const registry = new AgentRegistry();
+    expect(registry.guestMessageExists('nope-1')).toBe(false);
+    const posted = registry.postGuestMessage('guest-dbl03', undefined, 'Tanya');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    expect(registry.guestMessageExists(posted.message.id)).toBe(true);
+    registry.replyToGuestMessage(posted.message.id, 'difia', 'Jawaban');
+    // Still exists (so the route answers 409, not 404), but a second
+    // same-from reply is refused.
+    expect(registry.guestMessageExists(posted.message.id)).toBe(true);
+    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Lagi')).toBeNull();
   });
 
   it('survives a snapshot/restore round-trip (backward-compatible)', () => {

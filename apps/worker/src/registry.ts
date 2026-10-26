@@ -438,14 +438,41 @@ export class AgentRegistry {
     return out.sort((a, b) => a.message.at - b.message.at);
   }
 
-  /** Append a Difia/admin reply to the thread owning the message. */
+  /**
+   * Count of unanswered guest messages, as a bare number. This is the
+   * ONLY value the public /api/guest-chat/pending-count endpoint
+   * returns — no message content, guestIds, or guest names ever leave
+   * through that route, so it is safe to call without auth.
+   */
+  pendingGuestCount(): number {
+    return this.pendingGuestMessages().length;
+  }
+
+  /** True when the message exists in any thread. */
+  guestMessageExists(messageId: string): boolean {
+    for (const thread of this.guestThreads.values()) {
+      if (thread.messages.some((m) => m.id === messageId)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Append a Difia/admin reply to the thread owning the message.
+   * Returns null for an unknown message AND for a second reply to the
+   * same messageId from the SAME from-value (difia/admin separately) —
+   * this is the double-reply guard that stops the AI endpoint and the
+   * poller ever answering one message twice. A follow-up from a
+   * DIFFERENT from-value is still allowed.
+   */
   replyToGuestMessage(
     messageId: string,
     from: 'difia' | 'admin',
     text: string,
   ): { thread: GuestThread; reply: GuestChatMessage } | null {
     for (const thread of this.guestThreads.values()) {
-      if (!thread.messages.some((m) => m.id === messageId)) continue;
+      const idx = thread.messages.findIndex((m) => m.id === messageId);
+      if (idx === -1) continue;
+      if (thread.messages.slice(idx + 1).some((m) => m.from === from)) return null;
       const now = this.nextGuestAt();
       this.guestCounter += 1;
       const reply: GuestChatMessage = {

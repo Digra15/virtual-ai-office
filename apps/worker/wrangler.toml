@@ -40,6 +40,14 @@ database_id = "5e176465-5858-4a78-a5a1-0060643012a3"
 #   npx wrangler secret put AGENT_SECRET     # required: agent event + task auth
 #   npx wrangler secret put SETUP_TOKEN     # admin first-run setup
 #   npx wrangler secret put INTERNAL_SECRET # admin live-update channel
+#   npx wrangler secret put RECEPTIONIST_API_KEY # AI receptionist endpoint key (optional)
+# ---------------------------------------------------------------------------
+# AI receptionist (ANOTHER AI via an owner-supplied endpoint — not the
+# poller agent, not Workers AI). Inert until the owner sets the URL:
+#   RECEPTIONIST_API_URL = "https://example.com/v1/chat/completions"  # [vars]
+#   npx wrangler secret put RECEPTIONIST_API_KEY                     # if needed
+# RECEPTIONIST_API_FORMAT = "openai" is the v1 default; any other value
+# disables the adapter. RECEPTIONIST_MODEL is optional (sent only if set).
 # ---------------------------------------------------------------------------
 
 [vars]
@@ -66,3 +74,8 @@ RATE_LIMIT_PER_MINUTE = "60"
 # (or `npx wrangler secret put ADMIN_ORIGIN`). Without it, admin login from a
 # browser on a different origin will not work.
 ADMIN_ORIGIN = "https://virtual-ai-office.pages.dev"
+# AI receptionist wire format (v1: only "openai" is supported; any other
+# value makes the adapter inert). The endpoint URL itself is intentionally
+# NOT set here — until the owner supplies it, the integration stays inert
+# and the poller answers guest messages as before.
+RECEPTIONIST_API_FORMAT = "openai"

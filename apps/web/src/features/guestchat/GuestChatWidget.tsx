@@ -10,9 +10,11 @@ const POLL_MS = 15_000;
 /**
  * Visitor chat with Difia the receptionist (no login). The greeting is
  * client-side only — it is never stored as a server message. Replies come
- * from Difia (the main assistant) via the poller, so they arrive within
- * minutes, not seconds: the panel says so honestly while a guest message
- * is still unanswered. A failed send is reported, never faked as sent.
+ * from the AI receptionist endpoint (when configured) and arrive within
+ * seconds via the 15 s poll below, with the 1-minute poller as backstop
+ * for anything the endpoint leaves unanswered: the panel says so
+ * honestly while a guest message is still unanswered. A failed send is
+ * reported, never faked as sent.
  */
 export const DIFIA_GREETING =
   "Halo! Selamat datang di Virtual AI Office. Saya Difia, resepsionis di sini. Ada yang bisa saya bantu?";
@@ -173,7 +175,7 @@ export function GuestChatWidget() {
           </div>
           {awaitingReply && (
             <p className="guest-chat-pending" role="status">
-              Difia akan membalas dalam beberapa menit
+              Difia akan membalas segera
             </p>
           )}
           {error && (
