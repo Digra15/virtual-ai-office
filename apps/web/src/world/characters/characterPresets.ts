@@ -144,7 +144,7 @@ const PRESETS: CharacterPreset[] = [
   {
     agentId: "difia",
     hairStyle: "hime",
-    hairColor: "#6b4226",
+    hairColor: "#3f2a14",
     eyeColor: "#8a5a2b",
     skinTone: "#ffd9b8",
     outfitStyle: "blazer",
@@ -156,7 +156,7 @@ const PRESETS: CharacterPreset[] = [
   {
     agentId: "kirana",
     hairStyle: "wavy",
-    hairColor: "#b9a7e6",
+    hairColor: "#8a7bd8",
     eyeColor: "#7c5cbf",
     skinTone: "#ffe0c2",
     outfitStyle: "cardigan",
@@ -168,7 +168,7 @@ const PRESETS: CharacterPreset[] = [
   {
     agentId: "reno",
     hairStyle: "messy",
-    hairColor: "#2d3a55",
+    hairColor: "#1f2a44",
     eyeColor: "#4ade80",
     skinTone: "#e8b48a",
     outfitStyle: "smartShirt",

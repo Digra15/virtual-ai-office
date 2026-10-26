@@ -8,7 +8,7 @@ import {
 import { PRAYER_WEARS, validateCharacterPreset } from "./characterTypes";
 
 describe("character presets", () => {
-  it("covers the 8 demo agents plus the reference character", () => {
+  it("covers the 8 demo agents, the reference character, and the 3 live seats", () => {
     expect(PRESET_AGENT_IDS).toEqual([
       "nika",
       "research",
@@ -19,6 +19,9 @@ describe("character presets", () => {
       "automation",
       "monitoring",
       "reference",
+      "difia",
+      "kirana",
+      "reno",
     ]);
   });
 

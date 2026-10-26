@@ -68,7 +68,7 @@ describe("sprite dimensions", () => {
   it("renders 48x48 RGBA buffers for all presets", () => {
     expect(SPRITE_W).toBe(48);
     expect(SPRITE_H).toBe(48);
-    expect(PRESETS).toHaveLength(9);
+    expect(PRESETS).toHaveLength(12);
     for (const preset of PRESETS) {
       const buf = renderSpriteFrame(preset, "front", "idle", 0);
       expect(buf.length).toBe(SPRITE_W * SPRITE_H * 4);

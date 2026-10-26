@@ -80,7 +80,7 @@ describe("vector sprite dimensions", () => {
   it("renders 192x192 RGBA buffers for all presets", () => {
     expect(VECTOR_W).toBe(192);
     expect(VECTOR_H).toBe(192);
-    expect(PRESETS).toHaveLength(9);
+    expect(PRESETS).toHaveLength(12);
     for (const preset of PRESETS) {
       const buf = renderVectorFrame(preset, "front", "idle", 0);
       expect(buf.length).toBe(VECTOR_W * VECTOR_H * 4);
