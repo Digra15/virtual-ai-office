@@ -15,6 +15,7 @@ import { useDayNightStore } from "./stores/useDayNightStore";
 import { useSceneReadyStore } from "./stores/useSceneReadyStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { useOfficeConfigStore } from "./stores/useOfficeConfigStore";
+import { useSiteConfigStore } from "./stores/useSiteConfigStore";
 import { connectSocket } from "./services/socket";
 import { buildLocalDemoAgents, buildStressAgents } from "./services/demoAgents";
 import { backendEnv } from "./env";
@@ -55,6 +56,34 @@ function PublicOfficeSync() {
     if (!backendEnv.configured || status === "live") return;
     const timer = window.setInterval(() => {
       void useOfficeConfigStore.getState().fetchPublic(backendEnv.apiUrl);
+    }, PUBLIC_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [status]);
+
+  return null;
+}
+
+/**
+ * Applies the runtime site settings (office name override, announcement
+ * banner, offline timeout display inputs) from the Worker (/api/config,
+ * DO storage — no D1 needed). Fetches once on mount, refetches on the
+ * same 30s fallback poll as the public config while the socket is not
+ * live. A failed fetch leaves the previous defaults in place; it never
+ * blocks the dashboard. Pages already open pick up a saved announcement
+ * on the next poll, or on reload.
+ */
+function SiteConfigSync() {
+  const status = useConnectionStore((s) => s.status);
+
+  useEffect(() => {
+    if (!backendEnv.configured) return;
+    void useSiteConfigStore.getState().fetchSiteConfig(backendEnv.apiUrl);
+  }, []);
+
+  useEffect(() => {
+    if (!backendEnv.configured || status === "live") return;
+    const timer = window.setInterval(() => {
+      void useSiteConfigStore.getState().fetchSiteConfig(backendEnv.apiUrl);
     }, PUBLIC_POLL_MS);
     return () => window.clearInterval(timer);
   }, [status]);
@@ -205,6 +234,7 @@ function Dashboard() {
   return (
     <div className="app">
       <PublicOfficeSync />
+      <SiteConfigSync />
       <DayNightSync />
       <WanderDirector />
       <PrayerDirector />

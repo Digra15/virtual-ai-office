@@ -37,7 +37,7 @@ function corsHeadersFor(request: Request, env: Env): Record<string, string> {
       'access-control-allow-origin': origin,
       'access-control-allow-credentials': 'true',
       'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'access-control-allow-headers': 'content-type',
+      'access-control-allow-headers': 'content-type, authorization',
       'access-control-max-age': '86400',
       vary: 'Origin',
     };
@@ -48,7 +48,7 @@ function corsHeadersFor(request: Request, env: Env): Record<string, string> {
 const CORS_HEADERS: Record<string, string> = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type',
+  'access-control-allow-headers': 'content-type, authorization',
   'access-control-max-age': '86400',
 };
 

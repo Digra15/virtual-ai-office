@@ -1,9 +1,13 @@
 /**
- * Resolves backend connection settings from Vite env vars.
+ * Resolves backend connection settings.
  *
- * - In dev (`import.meta.env.DEV`), missing vars fall back to a local backend.
- * - In production, missing vars mean `configured: false` — the UI must show a
- *   "backend not configured" error state instead of silently using localhost.
+ * - In dev (`DEV`), missing vars fall back to a local backend.
+ * - In production, the project's live Worker is the default: env vars win
+ *   when set, otherwise the baked-in live URLs are used. Missing vars no
+ *   longer mean "backend not configured" — that state previously trapped
+ *   the public deployment in local demo data whenever the dashboard env
+ *   was forgotten (2026-10-26). A per-browser override in Settings still
+ *   wins over both (see useSettingsStore).
  * Localhost is NEVER used outside of dev.
  */
 export interface BackendEnv {
@@ -14,21 +18,30 @@ export interface BackendEnv {
   wsUrl: string;
 }
 
-function resolveBackendEnv(): BackendEnv {
-  const dev = import.meta.env.DEV;
-  const api = import.meta.env.VITE_API_URL as string | undefined;
-  const ws = import.meta.env.VITE_WS_URL as string | undefined;
+/** This project's live Worker — the production default backend. */
+export const DEFAULT_API_URL =
+  "https://virtual-ai-office-api.dalikamira.workers.dev";
+export const DEFAULT_WS_URL =
+  "wss://virtual-ai-office-api.dalikamira.workers.dev/ws";
 
-  if (dev) {
+export function resolveBackendEnv(env: {
+  DEV: boolean;
+  VITE_API_URL?: string;
+  VITE_WS_URL?: string;
+}): BackendEnv {
+  if (env.DEV) {
     return {
       configured: true,
-      apiUrl: api || "http://localhost:4000",
-      wsUrl: ws || "ws://localhost:4000/ws",
+      apiUrl: env.VITE_API_URL || "http://localhost:4000",
+      wsUrl: env.VITE_WS_URL || "ws://localhost:4000/ws",
     };
   }
 
-  const configured = Boolean(api && ws);
-  return { configured, apiUrl: api ?? "", wsUrl: ws ?? "" };
+  return {
+    configured: true,
+    apiUrl: env.VITE_API_URL || DEFAULT_API_URL,
+    wsUrl: env.VITE_WS_URL || DEFAULT_WS_URL,
+  };
 }
 
-export const backendEnv: BackendEnv = resolveBackendEnv();
+export const backendEnv: BackendEnv = resolveBackendEnv(import.meta.env);

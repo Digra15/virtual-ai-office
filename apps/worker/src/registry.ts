@@ -16,7 +16,9 @@ import type {
   AgentStatus,
   AgentTask,
   EventPost,
+  SiteConfig,
 } from '@virtual-ai-office/shared';
+import { DEFAULT_SITE_CONFIG } from '@virtual-ai-office/shared';
 
 /** Maximum activity entries kept per agent (newest-first). */
 export const MAX_HISTORY = 100;
@@ -74,6 +76,7 @@ export interface RegistrySnapshot {
   entryCounter: number;
   tasks?: AgentTask[];
   taskCounter?: number;
+  siteConfig?: SiteConfig;
 }
 
 export class AgentRegistry {
@@ -81,6 +84,8 @@ export class AgentRegistry {
   private entryCounter = 0;
   private readonly tasks = new Map<string, AgentTask>();
   private taskCounter = 0;
+  private siteConfig: SiteConfig = { ...DEFAULT_SITE_CONFIG };
+  private siteConfigFromStorage = false;
 
   /** Restore from a previously persisted snapshot. */
   restore(snapshot: RegistrySnapshot): void {
@@ -94,6 +99,13 @@ export class AgentRegistry {
       this.tasks.set(task.id, { ...task });
     }
     this.taskCounter = snapshot.taskCounter ?? 0;
+    if (snapshot.siteConfig) {
+      this.siteConfig = { ...DEFAULT_SITE_CONFIG, ...snapshot.siteConfig };
+      this.siteConfigFromStorage = true;
+    } else {
+      this.siteConfig = { ...DEFAULT_SITE_CONFIG };
+      this.siteConfigFromStorage = false;
+    }
   }
 
   snapshot(): RegistrySnapshot {
@@ -102,7 +114,32 @@ export class AgentRegistry {
       entryCounter: this.entryCounter,
       tasks: [...this.tasks.values()].map((t) => ({ ...t })),
       taskCounter: this.taskCounter,
+      siteConfig: { ...this.siteConfig },
     };
+  }
+
+  /** Current runtime site settings (a copy — mutate via setSiteConfig). */
+  getSiteConfig(): SiteConfig {
+    return { ...this.siteConfig };
+  }
+
+  /** Replace the runtime site settings; returns the stored copy. */
+  setSiteConfig(config: SiteConfig): SiteConfig {
+    this.siteConfig = { ...config };
+    this.siteConfigFromStorage = true;
+    return this.getSiteConfig();
+  }
+
+  /**
+   * Seed the offline timeout from the env var on a fresh deployment that
+   * has no stored config yet. Returns true when it changed anything.
+   * Once a config has been saved, the stored value wins over the env var.
+   */
+  ensureSiteConfig(fallbackTimeoutMs: number): boolean {
+    if (this.siteConfigFromStorage) return false;
+    this.siteConfig = { ...DEFAULT_SITE_CONFIG, offlineTimeoutMs: fallbackTimeoutMs };
+    this.siteConfigFromStorage = true;
+    return true;
   }
 
   /**

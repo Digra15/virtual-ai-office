@@ -4,7 +4,7 @@
  * Run with `npm run test --workspace @virtual-ai-office/shared`.
  */
 import { describe, expect, it } from 'vitest';
-import { EventPostSchema, TaskPostSchema } from './schemas';
+import { DEFAULT_SITE_CONFIG, EventPostSchema, SiteConfigSchema, TaskPostSchema } from './schemas';
 
 describe('EventPostSchema', () => {
   it('accepts a status event', () => {
@@ -99,5 +99,38 @@ describe('TaskPostSchema', () => {
 
   it('rejects a missing title', () => {
     expect(TaskPostSchema.safeParse({ detail: 'no title' }).success).toBe(false);
+  });
+});
+
+describe('SiteConfigSchema', () => {
+  it('accepts a full valid config', () => {
+    const result = SiteConfigSchema.safeParse({
+      officeName: 'Acme Office',
+      announcement: 'Rapat 10:00',
+      offlineTimeoutMs: 600_000,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an empty office name and an overlong announcement', () => {
+    expect(
+      SiteConfigSchema.safeParse({ officeName: '', announcement: '', offlineTimeoutMs: 600_000 }).success,
+    ).toBe(false);
+    expect(
+      SiteConfigSchema.safeParse({ officeName: 'X', announcement: 'a'.repeat(501), offlineTimeoutMs: 600_000 }).success,
+    ).toBe(false);
+  });
+
+  it('rejects timeouts outside 30s..60min', () => {
+    const base = { officeName: 'X', announcement: '' };
+    expect(SiteConfigSchema.safeParse({ ...base, offlineTimeoutMs: 29_999 }).success).toBe(false);
+    expect(SiteConfigSchema.safeParse({ ...base, offlineTimeoutMs: 3_600_001 }).success).toBe(false);
+    expect(SiteConfigSchema.safeParse({ ...base, offlineTimeoutMs: 30_000 }).success).toBe(true);
+  });
+
+  it('defaults match the deployed 10-minute timeout', () => {
+    expect(DEFAULT_SITE_CONFIG.officeName).toBe('Virtual AI Office');
+    expect(DEFAULT_SITE_CONFIG.announcement).toBe('');
+    expect(DEFAULT_SITE_CONFIG.offlineTimeoutMs).toBe(600_000);
   });
 });

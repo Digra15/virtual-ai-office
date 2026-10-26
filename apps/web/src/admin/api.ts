@@ -21,6 +21,7 @@ import {
   type Service,
   type ServiceCreate,
   type ServiceUpdate,
+  type SiteConfig,
   type Worker,
   type WorkerCreate,
   type WorkerUpdate,
@@ -39,6 +40,7 @@ export class ApiError extends Error {
 interface RequestOptions {
   body?: unknown;
   form?: FormData;
+  headers?: Record<string, string>;
 }
 
 async function request<T>(
@@ -51,8 +53,10 @@ async function request<T>(
   if (opts.form) {
     init.body = opts.form; // browser sets multipart content-type + boundary
   } else if (opts.body !== undefined) {
-    init.headers = { "Content-Type": "application/json" };
+    init.headers = { "Content-Type": "application/json", ...opts.headers };
     init.body = JSON.stringify(opts.body);
+  } else if (opts.headers) {
+    init.headers = opts.headers;
   }
   let res: Response;
   try {
@@ -183,6 +187,29 @@ export const putConfigKey = (
   value: unknown,
 ): Promise<{ key: string; value: unknown }> =>
   put(ADMIN_API.configKey(key), { value });
+
+// ---------------------------------------------------------------------------
+// Runtime site settings (DO storage, no D1 needed)
+// ---------------------------------------------------------------------------
+
+/** Public read of the runtime site settings. */
+export const getSiteConfig = (): Promise<{ config: SiteConfig }> =>
+  get("/api/config");
+
+/**
+ * Replace the runtime site settings. Bearer auth (interim): the caller
+ * passes the agent secret, which must never be stored outside the tab
+ * session (see SettingsPage). The session cookie is NOT accepted here —
+ * the endpoint checks the bearer only.
+ */
+export const postSiteConfig = (
+  body: SiteConfig,
+  token: string,
+): Promise<{ config: SiteConfig }> =>
+  request("POST", "/api/config", {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
 // ---------------------------------------------------------------------------
 // Assets

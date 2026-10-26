@@ -17,6 +17,7 @@ import { DurableObject } from 'cloudflare:workers';
 import {
   ADMIN_BROADCAST_TYPES,
   EventPostSchema,
+  SiteConfigSchema,
   TaskPostSchema,
   type ActivityEntry,
   type AgentInfo,
@@ -81,6 +82,9 @@ export class AgentRoom extends DurableObject<Env> {
         changed = this.registry.purgeDemoAgents() > 0 || changed;
         changed = this.registry.seedLiveAgents() > 0 || changed;
       }
+      // Runtime site settings: the env var seeds the offline timeout on a
+      // fresh deployment; a saved config wins over the env var afterwards.
+      changed = this.registry.ensureSiteConfig(cfg.offlineTimeoutMs) || changed;
       if (changed) await this.persist();
     });
   }
@@ -118,6 +122,18 @@ export class AgentRoom extends DurableObject<Env> {
     }
     if (request.method === 'GET' && pathname === '/api/agents') {
       return json({ agents: this.registry.list() });
+    }
+
+    // Runtime site settings (DO storage, no D1 needed). GET is public;
+    // POST requires the agent bearer secret (interim auth until the full
+    // admin session auth lands — the browser never holds the secret).
+    if (pathname === '/api/config') {
+      if (request.method === 'GET') {
+        return json({ config: this.registry.getSiteConfig() });
+      }
+      if (request.method === 'POST') {
+        return this.handlePostConfig(request);
+      }
     }
 
     const agentMatch = pathname.match(/^\/api\/agents\/([^/]+)(\/events)?$/);
@@ -197,6 +213,29 @@ export class AgentRoom extends DurableObject<Env> {
     const task = this.registry.createTask(agentId, parsed.data.title, parsed.data.detail);
     await this.persist();
     return json({ task }, 201);
+  }
+
+  /**
+   * POST /api/config — replace the runtime site settings. Requires the
+   * agent bearer secret (same interim auth as task endpoints). Validates
+   * the full object; unknown keys are stripped by the schema.
+   */
+  private async handlePostConfig(request: Request): Promise<Response> {
+    const authError = this.requireAgentAuth(request);
+    if (authError) return authError;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const parsed = SiteConfigSchema.safeParse(body);
+    if (!parsed.success) {
+      return json({ error: 'Invalid config payload', details: parsed.error.flatten() }, 400);
+    }
+    const config = this.registry.setSiteConfig(parsed.data);
+    await this.persist();
+    return json({ config });
   }
 
   private async handleHealth(): Promise<Response> {
@@ -376,7 +415,9 @@ export class AgentRoom extends DurableObject<Env> {
       }
     }
 
-    const changed = this.registry.markOfflineSweep(cfg.offlineTimeoutMs);
+    const changed = this.registry.markOfflineSweep(
+      this.registry.getSiteConfig().offlineTimeoutMs,
+    );
     for (const agent of changed) {
       this.broadcast({ type: 'agent.update', agent });
     }

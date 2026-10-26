@@ -13,6 +13,7 @@ import { OfficePage } from "./pages/OfficePage";
 import { RoomsPage } from "./pages/RoomsPage";
 import { RecoveryPage } from "./pages/RecoveryPage";
 import { BrandingPage } from "./pages/BrandingPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { AssetsPage } from "./pages/AssetsPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AuthSettingsPage } from "./pages/AuthSettingsPage";
@@ -271,6 +272,7 @@ function Shell() {
         {page === "rooms" && <RoomsPage />}
         {page === "recovery" && <RecoveryPage />}
         {page === "branding" && <BrandingPage />}
+        {page === "settings" && <SettingsPage />}
         {page === "assets" && <AssetsPage />}
         {page === "activity" && <ActivityPage />}
         {page === "auth" && <AuthSettingsPage />}
@@ -282,14 +284,51 @@ function Shell() {
 function Gated() {
   const { user, loading, backendReady, refresh } = useAuth();
   const [showSetup, setShowSetup] = useState(false);
+  // Runtime settings are bearer-gated (sessionStorage token), not session
+  // gated — so they stay reachable before the full admin backend (D1)
+  // lands. Reading needs no token; only saving asks for one.
+  const [showRuntimeSettings, setShowRuntimeSettings] = useState(false);
 
   if (!backendReady) return <BackendSetupGuide />;
   if (loading) return <div className="admin-gate"><p className="muted">Loading…</p></div>;
+  if (showRuntimeSettings) {
+    return (
+      <div className="admin-shell">
+        <main className="admin-main">
+          <button
+            type="button"
+            className="link-btn"
+            onClick={() => setShowRuntimeSettings(false)}
+          >
+            ← Kembali ke login admin
+          </button>
+          <SettingsPage />
+        </main>
+      </div>
+    );
+  }
   if (!user) {
-    return showSetup ? (
-      <SetupPage onDone={() => { setShowSetup(false); void refresh(); }} />
-    ) : (
-      <LoginPage onNeedSetup={() => setShowSetup(true)} />
+    return (
+      <>
+        {showSetup ? (
+          <SetupPage onDone={() => { setShowSetup(false); void refresh(); }} />
+        ) : (
+          <LoginPage onNeedSetup={() => setShowSetup(true)} />
+        )}
+        <div className="admin-gate">
+          <p className="muted small">
+            Pengaturan runtime tidak butuh login admin (pakai token, bukan
+            sesi).{" "}
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => setShowRuntimeSettings(true)}
+            >
+              Buka Pengaturan runtime
+            </button>
+          </p>
+        </div>
+      </>
     );
   }
   return (

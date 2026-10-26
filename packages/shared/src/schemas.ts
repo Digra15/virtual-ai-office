@@ -76,3 +76,25 @@ export interface AgentTask {
   createdAt: string;
   completedAt: string | null;
 }
+
+/**
+ * Runtime site settings (office → admin). Stored in the Durable Object,
+ * NOT in D1, so they work without the admin backend: GET /api/config is
+ * public, POST /api/config requires the agent bearer secret (interim auth
+ * until the full admin session auth lands). The offline timeout here
+ * replaces the OFFLINE_TIMEOUT_MS env var once a value has been saved;
+ * the env var remains the initial default for a fresh deployment.
+ */
+export const SiteConfigSchema = z.object({
+  officeName: z.string().min(1).max(80),
+  announcement: z.string().max(500),
+  offlineTimeoutMs: z.number().int().min(30_000).max(3_600_000),
+});
+
+export type SiteConfig = z.infer<typeof SiteConfigSchema>;
+
+export const DEFAULT_SITE_CONFIG: SiteConfig = {
+  officeName: 'Virtual AI Office',
+  announcement: '',
+  offlineTimeoutMs: 600_000,
+};

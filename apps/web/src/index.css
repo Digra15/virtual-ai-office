@@ -58,8 +58,8 @@ input {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: 58px;
-  padding: 0 16px;
+  min-height: 58px;
+  padding: 6px 16px;
   border-bottom: 1px solid var(--panel-border);
   background: var(--panel);
   z-index: 20;
@@ -77,6 +77,14 @@ input {
   color: var(--muted);
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+.app-announcement {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #fcd34d;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .header-right {

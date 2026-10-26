@@ -7,6 +7,7 @@ export type AdminPage =
   | "rooms"
   | "recovery"
   | "branding"
+  | "settings"
   | "assets"
   | "activity"
   | "auth";
@@ -20,6 +21,7 @@ export const ADMIN_PAGES: Array<{ id: AdminPage; label: string }> = [
   { id: "rooms", label: "Rooms" },
   { id: "recovery", label: "Recovery" },
   { id: "branding", label: "Branding" },
+  { id: "settings", label: "Pengaturan" },
   { id: "assets", label: "Assets" },
   { id: "activity", label: "Activity" },
   { id: "auth", label: "Auth" },
