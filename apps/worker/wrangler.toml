@@ -19,19 +19,22 @@ tag = "v1"
 new_sqlite_classes = ["AgentRoom"]
 
 # ---------------------------------------------------------------------------
-# Admin panel bindings (D1 + R2) — ACTIVE since 2026-10-26. The agent
-# surface (registry + WebSocket + task queue) works with or without them;
-# /api/admin/* answers 503 when unbound. Setup steps live in
-# apps/worker/SETUP.md.
+# Admin panel bindings — D1 ONLY since 2026-10-26 (user decision: no R2,
+# because enabling R2 asks for a payment method). D1 IS SQLite at the
+# edge, and it backs everything except character-file uploads: admin
+# users, sessions, workers, services, orders, office config, audit log.
+# Asset upload/delete answers 503 without the bucket — that is expected,
+# not an error. To re-enable uploads later: enable R2 in the dashboard,
+# create bucket vao-assets, uncomment the block below, redeploy.
 # ---------------------------------------------------------------------------
 [[d1_databases]]
 binding = "DB"
 database_name = "vao-admin"
 database_id = "5e176465-5858-4a78-a5a1-0060643012a3"
 
-[[r2_buckets]]
-binding = "ASSETS"
-bucket_name = "vao-assets"
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "vao-assets"
 #
 # Secrets (NEVER commit real values — set via CLI or dashboard):
 #   npx wrangler secret put AGENT_SECRET     # required: agent event + task auth
