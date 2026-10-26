@@ -47,7 +47,11 @@ new_sqlite_classes = ["AgentRoom"]
 # "true" restores the old clearly-labeled demo simulator (8 demo agents).
 DEMO_MODE = "false"
 # Live agents silent longer than this (ms) are marked offline.
-OFFLINE_TIMEOUT_MS = "30000"
+# 600000 (10 min) so the 5-minute poller keeps all 3 live seats visibly
+# online even if one poll run fails; a genuinely silent seat still flips
+# to offline within 10 minutes. Previously 30000, which made poller-kept
+# seats flicker offline between polls.
+OFFLINE_TIMEOUT_MS = "600000"
 # Max POST /api/agents/:id/events requests per IP per minute.
 RATE_LIMIT_PER_MINUTE = "60"
 # Public base URL of the vao-assets R2 bucket, e.g.
