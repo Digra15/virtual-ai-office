@@ -1,13 +1,11 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect } from "react";
 import { ErrorBoundary } from "./app/ErrorBoundary";
 import { LoadingOverlay } from "./app/LoadingOverlay";
 import { AssetGuard } from "./components/AssetGuard";
 import { Header } from "./features/monitoring/Header";
 import { StatCards } from "./features/monitoring/StatCards";
 import { CameraControls } from "./features/monitoring/CameraControls";
-import { SettingsPanel } from "./features/monitoring/SettingsPanel";
 import { AgentList } from "./features/agents/AgentList";
-import { AgentDetailPanel } from "./features/agents/AgentDetailPanel";
 import { EventTimeline } from "./features/agents/EventTimeline";
 import { useAgentStore } from "./stores/useAgentStore";
 import { useConnectionStore } from "./stores/useConnectionStore";
@@ -19,9 +17,6 @@ import { useSiteConfigStore } from "./stores/useSiteConfigStore";
 import { connectSocket } from "./services/socket";
 import { buildLocalDemoAgents, buildStressAgents } from "./services/demoAgents";
 import { backendEnv } from "./env";
-import { KanbanBoard } from "./features/kanban/KanbanBoard";
-import { MeetingPanel } from "./features/meetings/MeetingPanel";
-import { SpawnPanel } from "./features/agents/SpawnPanel";
 import { WanderDirector } from "./features/wander/WanderDirector";
 import { PrayerDirector } from "./features/prayer/PrayerDirector";
 import { RecoveryDirector } from "./features/recovery/RecoveryDirector";
@@ -123,17 +118,9 @@ function fallbackToLocalDemo(reason: string) {
 }
 
 function Dashboard() {
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [kanbanOpen, setKanbanOpen] = useState(false);
-  const [meetingOpen, setMeetingOpen] = useState(false);
-  const [spawnOpen, setSpawnOpen] = useState(false);
-
   const wsUrl = useSettingsStore((s) => s.wsUrl);
   const reconnectToken = useSettingsStore((s) => s.reconnectToken);
   const stressMode = useSettingsStore((s) => s.stressMode);
-  const selectedId = useAgentStore((s) => s.selectedId);
-  const agents = useAgentStore((s) => s.agents);
-  const select = useAgentStore((s) => s.select);
   // Honest loading gate: stays up until the Canvas has rendered a real frame.
   const sceneReady = useSceneReadyStore((s) => s.ready);
 
@@ -229,8 +216,9 @@ function Dashboard() {
     }
   }, [stressMode]);
 
-  const selected = selectedId ? agents[selectedId] : null;
-
+  // Mission control panels (agent detail, Kanban, meetings, spawn,
+  // connection settings) live in /admin now; the dashboard is a pure
+  // 3D view + connection status.
   return (
     <div className="app">
       <PublicOfficeSync />
@@ -239,17 +227,12 @@ function Dashboard() {
       <WanderDirector />
       <PrayerDirector />
       <RecoveryDirector />
-      <Header
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenKanban={() => setKanbanOpen(true)}
-        onOpenMeetings={() => setMeetingOpen(true)}
-        onOpenSpawn={() => setSpawnOpen(true)}
-      />
+      <Header />
       {!backendConfigured && (
         <div className="config-error" role="alert">
           Backend not configured — set <code>VITE_API_URL</code> /{" "}
-          <code>VITE_WS_URL</code> and redeploy, or enter the URLs in Settings.
-          Showing local simulated data.
+          <code>VITE_WS_URL</code> and redeploy, or enter the URLs in the
+          Koneksi section of the admin console. Showing local simulated data.
         </div>
       )}
       <div className="main">
@@ -265,16 +248,9 @@ function Dashboard() {
           </AssetGuard>
           {!sceneReady && <LoadingOverlay />}
           <CameraControls />
-          {selected && (
-            <AgentDetailPanel agent={selected} onClose={() => select(null)} />
-          )}
         </div>
       </div>
       <EventTimeline />
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      {kanbanOpen && <KanbanBoard onClose={() => setKanbanOpen(false)} />}
-      {meetingOpen && <MeetingPanel onClose={() => setMeetingOpen(false)} />}
-      {spawnOpen && <SpawnPanel onClose={() => setSpawnOpen(false)} />}
     </div>
   );
 }

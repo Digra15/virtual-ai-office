@@ -10,7 +10,12 @@ export type AdminPage =
   | "settings"
   | "assets"
   | "activity"
-  | "auth";
+  | "auth"
+  | "mission-agents"
+  | "mission-kanban"
+  | "mission-meeting"
+  | "mission-spawn"
+  | "mission-connection";
 
 export const ADMIN_PAGES: Array<{ id: AdminPage; label: string }> = [
   { id: "dashboard", label: "Dashboard" },
@@ -25,4 +30,9 @@ export const ADMIN_PAGES: Array<{ id: AdminPage; label: string }> = [
   { id: "assets", label: "Assets" },
   { id: "activity", label: "Activity" },
   { id: "auth", label: "Auth" },
+  { id: "mission-agents", label: "Agen" },
+  { id: "mission-kanban", label: "Kanban" },
+  { id: "mission-meeting", label: "Meeting" },
+  { id: "mission-spawn", label: "Spawn" },
+  { id: "mission-connection", label: "Koneksi" },
 ];

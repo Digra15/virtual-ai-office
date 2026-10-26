@@ -27,7 +27,10 @@ export const useSettingsStore = create<SettingsState>()(
       reconnect: () => set((s) => ({ reconnectToken: s.reconnectToken + 1 })),
     }),
     {
-      name: "vao-settings",
+      // Persist key bumped from "vao-settings": the old key stored the
+      // workers.dev URLs, which the user's network blocks; a fresh key
+      // forces the new api.zythera.ai.id defaults from env.ts.
+      name: "vao-settings-v2",
       // reconnectToken is intentionally not persisted.
       partialize: (s) => ({
         apiUrl: s.apiUrl,

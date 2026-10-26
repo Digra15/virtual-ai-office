@@ -17,6 +17,11 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { AssetsPage } from "./pages/AssetsPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AuthSettingsPage } from "./pages/AuthSettingsPage";
+import { MissionAgentsPage } from "./pages/MissionAgentsPage";
+import { MissionKanbanPage } from "./pages/MissionKanbanPage";
+import { MissionMeetingPage } from "./pages/MissionMeetingPage";
+import { MissionSpawnPage } from "./pages/MissionSpawnPage";
+import { MissionConnectionPage } from "./pages/MissionConnectionPage";
 
 // ---------------------------------------------------------------------------
 // Backend not configured — honest setup guide, no mockups
@@ -276,6 +281,11 @@ function Shell() {
         {page === "assets" && <AssetsPage />}
         {page === "activity" && <ActivityPage />}
         {page === "auth" && <AuthSettingsPage />}
+        {page === "mission-agents" && <MissionAgentsPage />}
+        {page === "mission-kanban" && <MissionKanbanPage />}
+        {page === "mission-meeting" && <MissionMeetingPage />}
+        {page === "mission-spawn" && <MissionSpawnPage />}
+        {page === "mission-connection" && <MissionConnectionPage />}
       </main>
     </div>
   );
