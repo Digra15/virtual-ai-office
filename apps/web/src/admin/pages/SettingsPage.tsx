@@ -153,6 +153,55 @@ export function SettingsPage() {
                 onChange={(e) => setMinutes(Number(e.target.value))}
               />
             </Field>
+            <Field
+              label="URL endpoint resepsionis AI"
+              hint="Kosong = resepsionis AI nonaktif, pesan tamu dijawab poller. Berlaku langsung tanpa redeploy."
+            >
+              <input
+                type="text"
+                value={draft.receptionistApiUrl}
+                onChange={(e) =>
+                  setDraft({ ...draft, receptionistApiUrl: e.target.value })
+                }
+                placeholder="https://…/v1/chat/completions"
+                autoComplete="off"
+              />
+            </Field>
+            <Field
+              label="Format endpoint"
+              hint="openai untuk endpoint OpenAI-compatible; nilai lain menonaktifkan pemanggilan."
+            >
+              <input
+                type="text"
+                value={draft.receptionistApiFormat}
+                onChange={(e) =>
+                  setDraft({ ...draft, receptionistApiFormat: e.target.value })
+                }
+                placeholder="openai"
+                autoComplete="off"
+              />
+            </Field>
+            <Field
+              label="Model resepsionis (opsional)"
+              hint="Kosong = nama model tidak dikirim ke endpoint (sebagian endpoint tidak membutuhkannya)."
+            >
+              <input
+                type="text"
+                value={draft.receptionistModel}
+                onChange={(e) =>
+                  setDraft({ ...draft, receptionistModel: e.target.value })
+                }
+                autoComplete="off"
+              />
+            </Field>
+            <p className="muted">
+              Mengubah tiga kolom resepsionis di atas tidak butuh redeploy
+              — berlaku langsung setelah disimpan. Kunci API, bila
+              endpoint membutuhkannya, tetap diset sekali lewat{" "}
+              <code>npx wrangler secret put RECEPTIONIST_API_KEY</code>{" "}
+              dari apps/worker, dan tidak pernah ditampilkan atau disimpan
+              di sini.
+            </p>
             <div className="admin-form-actions">
               <button
                 type="button"

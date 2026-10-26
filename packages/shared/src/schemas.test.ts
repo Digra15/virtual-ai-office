@@ -133,4 +133,55 @@ describe('SiteConfigSchema', () => {
     expect(DEFAULT_SITE_CONFIG.announcement).toBe('');
     expect(DEFAULT_SITE_CONFIG.offlineTimeoutMs).toBe(600_000);
   });
+
+  it('accepts receptionist endpoint fields and fills defaults when omitted', () => {
+    const base = { officeName: 'X', announcement: '', offlineTimeoutMs: 600_000 };
+    const full = SiteConfigSchema.safeParse({
+      ...base,
+      receptionistApiUrl: 'https://example.com/v1/chat/completions',
+      receptionistApiFormat: 'openai',
+      receptionistModel: 'some-model',
+    });
+    expect(full.success).toBe(true);
+    if (full.success) {
+      expect(full.data.receptionistApiUrl).toBe('https://example.com/v1/chat/completions');
+      expect(full.data.receptionistModel).toBe('some-model');
+    }
+    const omitted = SiteConfigSchema.safeParse(base);
+    expect(omitted.success).toBe(true);
+    if (omitted.success) {
+      expect(omitted.data.receptionistApiUrl).toBe('');
+      expect(omitted.data.receptionistApiFormat).toBe('openai');
+      expect(omitted.data.receptionistModel).toBe('');
+    }
+    expect(DEFAULT_SITE_CONFIG.receptionistApiUrl).toBe('');
+    expect(DEFAULT_SITE_CONFIG.receptionistApiFormat).toBe('openai');
+    expect(DEFAULT_SITE_CONFIG.receptionistModel).toBe('');
+  });
+
+  it('rejects non-http(s) or overlong receptionist URLs and overlong format/model', () => {
+    const base = { officeName: 'X', announcement: '', offlineTimeoutMs: 600_000 };
+    expect(SiteConfigSchema.safeParse({ ...base, receptionistApiUrl: 'ftp://x.com' }).success).toBe(false);
+    expect(SiteConfigSchema.safeParse({ ...base, receptionistApiUrl: 'not-a-url' }).success).toBe(false);
+    expect(
+      SiteConfigSchema.safeParse({ ...base, receptionistApiUrl: `https://x.com/${'a'.repeat(500)}` }).success,
+    ).toBe(false);
+    expect(SiteConfigSchema.safeParse({ ...base, receptionistApiFormat: 'a'.repeat(51) }).success).toBe(false);
+    expect(SiteConfigSchema.safeParse({ ...base, receptionistModel: 'a'.repeat(101) }).success).toBe(false);
+  });
+
+  it('never carries a credential: unknown key fields are stripped', () => {
+    const parsed = SiteConfigSchema.safeParse({
+      officeName: 'X',
+      announcement: '',
+      offlineTimeoutMs: 600_000,
+      receptionistApiKey: 'sk-should-never-be-here',
+      receptionistApiUrl: 'https://example.com/v1',
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect('receptionistApiKey' in parsed.data).toBe(false);
+      expect(JSON.stringify(parsed.data)).not.toContain('sk-should-never-be-here');
+    }
+  });
 });

@@ -43,11 +43,17 @@ database_id = "5e176465-5858-4a78-a5a1-0060643012a3"
 #   npx wrangler secret put RECEPTIONIST_API_KEY # AI receptionist endpoint key (optional)
 # ---------------------------------------------------------------------------
 # AI receptionist (ANOTHER AI via an owner-supplied endpoint — not the
-# poller agent, not Workers AI). Inert until the owner sets the URL:
+# poller agent, not Workers AI). PRIMARY setup is the admin panel
+# (/admin → Pengaturan runtime → endpoint resepsionis AI): it writes to
+# the DO-stored site config and takes effect live, no redeploy. The env
+# vars below remain only as fallback when the admin panel value is empty.
+# Inert until a URL is set in either place:
 #   RECEPTIONIST_API_URL = "https://example.com/v1/chat/completions"  # [vars]
 #   npx wrangler secret put RECEPTIONIST_API_KEY                     # if needed
 # RECEPTIONIST_API_FORMAT = "openai" is the v1 default; any other value
 # disables the adapter. RECEPTIONIST_MODEL is optional (sent only if set).
+# The API key is NEVER part of the admin-editable config (GET /api/config
+# is public) — it lives only in the Worker secret above.
 # ---------------------------------------------------------------------------
 
 [vars]

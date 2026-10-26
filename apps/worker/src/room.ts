@@ -33,7 +33,7 @@ import { demoTick } from './demo';
 import { loadWorkerConfig, type Env } from './env';
 import { timingSafeEqual } from './admin/auth';
 import {
-  getReceptionistConfig,
+  getReceptionistConfigWithStored,
   requestReceptionistReply,
   type ChatHistoryItem,
 } from './receptionist';
@@ -348,7 +348,9 @@ export class AgentRoom extends DurableObject<Env> {
    */
   private async runReceptionistReply(guestId: string, messageId: string): Promise<void> {
     try {
-      const config = getReceptionistConfig(this.env);
+      // Live-read the stored siteConfig: the admin panel is the primary
+      // way to set the endpoint (no redeploy), env vars are fallback.
+      const config = getReceptionistConfigWithStored(this.env, this.registry.getSiteConfig());
       if (!config.url) return;
       const thread = this.registry.getGuestThread(guestId);
       if (!thread) return;

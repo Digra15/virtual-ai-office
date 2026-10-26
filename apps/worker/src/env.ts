@@ -49,10 +49,13 @@ export interface Env {
   ADMIN_ORIGIN?: string;
   /**
    * AI receptionist endpoint (ANOTHER AI, not the poller agent, not
-   * Workers AI). OPTIONAL: when unset, the receptionist integration is
-   * inert — no call is made and the poller answers guest messages as
-   * before. Set the URL via [vars]; the key ONLY via
-   * `npx wrangler secret put RECEPTIONIST_API_KEY`. NEVER commit a value.
+   * Workers AI). OPTIONAL fallback: the admin panel (DO-stored site
+   * config) is the PRIMARY way to set the endpoint and wins whenever
+   * its URL is non-empty; these env vars apply only when the admin
+   * value is empty. When both are unset, the receptionist integration
+   * is inert — no call is made and the poller answers guest messages
+   * as before. The key ONLY via `npx wrangler secret put
+   * RECEPTIONIST_API_KEY`. NEVER commit a value.
    */
   RECEPTIONIST_API_URL?: string;
   RECEPTIONIST_API_KEY?: string;

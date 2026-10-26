@@ -20,6 +20,7 @@
  * - Never log the API key or a URL carrying credentials. This module logs
  *   nothing at all; callers log at most a generic status line.
  */
+import type { SiteConfig } from '@virtual-ai-office/shared';
 import type { Env } from './env';
 
 export interface ReceptionistConfig {
@@ -40,6 +41,31 @@ export function getReceptionistConfig(env: Env): ReceptionistConfig {
     apiKey: env.RECEPTIONIST_API_KEY?.trim() ? env.RECEPTIONIST_API_KEY : undefined,
     model: env.RECEPTIONIST_MODEL?.trim() ? env.RECEPTIONIST_MODEL : undefined,
     format: env.RECEPTIONIST_API_FORMAT?.trim() ? env.RECEPTIONIST_API_FORMAT : 'openai',
+  };
+}
+
+/**
+ * Effective receptionist config: the admin-edited stored siteConfig wins
+ * whenever its URL is non-empty (this is the primary way to set the
+ * endpoint — the admin panel, no redeploy needed); otherwise the env
+ * vars above remain as fallback. The API key ALWAYS comes from the env
+ * secret only — stored siteConfig can never supply or override it, and
+ * the admin UI never sees it.
+ */
+export function getReceptionistConfigWithStored(
+  env: Env,
+  stored: SiteConfig | undefined,
+): ReceptionistConfig {
+  const base = getReceptionistConfig(env);
+  const storedUrl = stored?.receptionistApiUrl?.trim();
+  if (!storedUrl) return base;
+  const storedFormat = stored?.receptionistApiFormat?.trim();
+  const storedModel = stored?.receptionistModel?.trim();
+  return {
+    ...base,
+    url: storedUrl,
+    format: storedFormat ? storedFormat : base.format,
+    model: storedModel ? storedModel : undefined,
   };
 }
 

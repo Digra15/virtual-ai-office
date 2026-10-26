@@ -84,11 +84,38 @@ export interface AgentTask {
  * until the full admin session auth lands). The offline timeout here
  * replaces the OFFLINE_TIMEOUT_MS env var once a value has been saved;
  * the env var remains the initial default for a fresh deployment.
+ *
+ * The three receptionist* fields are NON-SECRET endpoint settings for the
+ * AI receptionist (another AI via an owner-supplied endpoint): they are
+ * edited in the admin panel and returned by the public GET /api/config,
+ * so they must NEVER carry a credential. The API key, when the endpoint
+ * needs one, lives ONLY in the Worker secret RECEPTIONIST_API_KEY and is
+ * never part of this schema, never shown in the admin UI, never stored
+ * here. An empty URL means the endpoint integration is inert and the
+ * poller answers guest messages as before.
  */
 export const SiteConfigSchema = z.object({
   officeName: z.string().min(1).max(80),
   announcement: z.string().max(500),
   offlineTimeoutMs: z.number().int().min(30_000).max(3_600_000),
+  receptionistApiUrl: z
+    .string()
+    .max(500)
+    .refine(
+      (v) => {
+        if (v === '') return true;
+        try {
+          const u = new URL(v);
+          return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      },
+      { message: 'receptionistApiUrl must be empty or a valid http(s) URL' },
+    )
+    .default(''),
+  receptionistApiFormat: z.string().max(50).default('openai'),
+  receptionistModel: z.string().max(100).default(''),
 });
 
 export type SiteConfig = z.infer<typeof SiteConfigSchema>;
@@ -97,6 +124,9 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   officeName: 'Virtual AI Office',
   announcement: '',
   offlineTimeoutMs: 600_000,
+  receptionistApiUrl: '',
+  receptionistApiFormat: 'openai',
+  receptionistModel: '',
 };
 
 /**
