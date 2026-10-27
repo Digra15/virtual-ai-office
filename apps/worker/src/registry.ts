@@ -81,6 +81,12 @@ export interface RegistrySnapshot {
   siteConfig?: SiteConfig;
   guestThreads?: GuestThread[];
   guestCounter?: number;
+  /**
+   * Receptionist API key stored server-side only (admin-panel managed).
+   * Deliberately NOT part of SiteConfigSchema: GET /api/config is public
+   * and must never return this value. Missing in old snapshots = empty.
+   */
+  receptionistApiKey?: string;
 }
 
 /** Cooldown between two guest messages in the same thread (ms). */
@@ -93,6 +99,8 @@ export class AgentRegistry {
   private taskCounter = 0;
   private siteConfig: SiteConfig = { ...DEFAULT_SITE_CONFIG };
   private siteConfigFromStorage = false;
+  /** Receptionist API key (admin-panel managed, server-side only). */
+  private receptionistApiKey = '';
   private readonly guestThreads = new Map<string, GuestThread>();
   private guestCounter = 0;
   /** Monotonic clock for guest-chat timestamps (same-ms posts must still order). */
@@ -132,6 +140,8 @@ export class AgentRegistry {
       });
     }
     this.guestCounter = snapshot.guestCounter ?? 0;
+    // Missing in snapshots predating admin-panel key management = empty.
+    this.receptionistApiKey = snapshot.receptionistApiKey ?? '';
   }
 
   snapshot(): RegistrySnapshot {
@@ -146,7 +156,28 @@ export class AgentRegistry {
         messages: t.messages.map((m) => ({ ...m })),
       })),
       guestCounter: this.guestCounter,
+      receptionistApiKey: this.receptionistApiKey,
     };
+  }
+
+  /** Whether a receptionist API key is stored (never reveals the value). */
+  hasReceptionistApiKey(): boolean {
+    return this.receptionistApiKey !== '';
+  }
+
+  /**
+   * Server-side-only accessor for the stored key. Callers must never put
+   * this value into any response (GET /api/config returns getSiteConfig(),
+   * which structurally cannot contain it).
+   */
+  getReceptionistApiKey(): string {
+    return this.receptionistApiKey;
+  }
+
+  /** Store (or clear, with '') the receptionist API key. Returns hasKey. */
+  setReceptionistApiKey(key: string): boolean {
+    this.receptionistApiKey = key;
+    return this.hasReceptionistApiKey();
   }
 
   /** Current runtime site settings (a copy — mutate via setSiteConfig). */

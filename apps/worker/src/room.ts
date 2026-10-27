@@ -143,6 +143,23 @@ export class AgentRoom extends DurableObject<Env> {
       }
     }
 
+    // Receptionist API key (DO storage, server-side only). Unlike
+    // /api/config, BOTH directions require the agent bearer secret —
+    // GET returns only { hasKey }, never the value, so the admin panel
+    // can show a status line without ever receiving the key. The key
+    // itself is deliberately NOT part of SiteConfigSchema: GET
+    // /api/config is public and must never be able to return it.
+    if (pathname === '/api/config/receptionist-key') {
+      const authError = this.requireAgentAuth(request);
+      if (authError) return authError;
+      if (request.method === 'GET') {
+        return json({ hasKey: this.registry.hasReceptionistApiKey() });
+      }
+      if (request.method === 'POST') {
+        return this.handlePostReceptionistKey(request);
+      }
+    }
+
     // Guest chat (visitor → Difia). POST + thread GET are public but
     // rate-limited and cooldown-guarded; a visitor only ever sees their
     // own thread. Replies and the pending queue require AGENT_SECRET.
@@ -298,6 +315,28 @@ export class AgentRoom extends DurableObject<Env> {
   }
 
   /**
+   * POST /api/config/receptionist-key — set (or clear, with an empty
+   * string) the admin-panel-managed receptionist API key. Bearer auth
+   * already checked by the route. The value is stored in DO storage
+   * only and is never returned by any endpoint.
+   */
+  private async handlePostReceptionistKey(request: Request): Promise<Response> {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const key = (body as { key?: unknown } | null)?.key;
+    if (typeof key !== 'string' || key.length > 500) {
+      return json({ error: 'Invalid key: expected a string of at most 500 characters' }, 400);
+    }
+    const hasKey = this.registry.setReceptionistApiKey(key);
+    await this.persist();
+    return json({ hasKey });
+  }
+
+  /**
    * POST /api/guest-chat — a visitor writes to Difia. Public, but
    * per-IP rate-limited (same window as agent events) and guarded by a
    * 15 s per-thread cooldown so one guest cannot flood the queue.
@@ -348,9 +387,14 @@ export class AgentRoom extends DurableObject<Env> {
    */
   private async runReceptionistReply(guestId: string, messageId: string): Promise<void> {
     try {
-      // Live-read the stored siteConfig: the admin panel is the primary
-      // way to set the endpoint (no redeploy), env vars are fallback.
-      const config = getReceptionistConfigWithStored(this.env, this.registry.getSiteConfig());
+      // Live-read the stored siteConfig and stored key: the admin panel
+      // is the primary way to set the endpoint and its key (no redeploy),
+      // env vars / CLI secret are fallback.
+      const config = getReceptionistConfigWithStored(
+        this.env,
+        this.registry.getSiteConfig(),
+        this.registry.getReceptionistApiKey(),
+      );
       if (!config.url) return;
       const thread = this.registry.getGuestThread(guestId);
       if (!thread) return;

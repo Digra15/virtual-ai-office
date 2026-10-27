@@ -83,6 +83,35 @@ describe('runtime site settings', () => {
     expect(saved.getSiteConfig().offlineTimeoutMs).toBe(120_000);
   });
 
+  it('receptionist API key: set/clear/hasKey, never in the public config', () => {
+    const registry = new AgentRegistry();
+    expect(registry.hasReceptionistApiKey()).toBe(false);
+    expect(registry.setReceptionistApiKey('sk-test-key')).toBe(true);
+    expect(registry.hasReceptionistApiKey()).toBe(true);
+    // The public GET /api/config payload structurally cannot contain it.
+    const config = registry.getSiteConfig();
+    expect('receptionistApiKey' in config).toBe(false);
+    expect(JSON.stringify(config)).not.toContain('sk-test-key');
+    expect(registry.setReceptionistApiKey('')).toBe(false);
+    expect(registry.hasReceptionistApiKey()).toBe(false);
+  });
+
+  it('receptionist API key survives snapshot/restore; old snapshots default to empty', () => {
+    const registry = new AgentRegistry();
+    registry.setReceptionistApiKey('sk-persisted');
+    const restored = new AgentRegistry();
+    restored.restore(registry.snapshot());
+    expect(restored.hasReceptionistApiKey()).toBe(true);
+    expect(restored.getReceptionistApiKey()).toBe('sk-persisted');
+
+    const legacy = new AgentRegistry();
+    const snapshot = registry.snapshot();
+    delete (snapshot as { receptionistApiKey?: string }).receptionistApiKey;
+    legacy.restore(snapshot);
+    expect(legacy.hasReceptionistApiKey()).toBe(false);
+    expect(legacy.getReceptionistApiKey()).toBe('');
+  });
+
   it('the offline sweep uses the stored timeout, not a fixed value', () => {
     const registry = new AgentRegistry();
     registry.seedLiveAgents();

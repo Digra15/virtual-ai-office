@@ -225,3 +225,42 @@ describe('receptionist config resolution (admin panel wins, env fallback)', () =
     expect(cfg.model).toBeUndefined();
   });
 });
+
+describe('receptionist key resolution (admin-panel key wins, env secret fallback)', () => {
+  const env = {
+    RECEPTIONIST_API_URL: 'https://env.example.com/v1',
+    RECEPTIONIST_API_KEY: 'env-key',
+    RECEPTIONIST_API_FORMAT: 'openai',
+  } as never;
+
+  function stored(overrides: Partial<SiteConfig>): SiteConfig {
+    return { ...DEFAULT_SITE_CONFIG, ...overrides };
+  }
+
+  it('non-empty stored key beats the env secret, with or without a stored URL', () => {
+    const withUrl = getReceptionistConfigWithStored(
+      env,
+      stored({ receptionistApiUrl: 'https://admin.example.com/v1/chat' }),
+      'admin-key',
+    );
+    expect(withUrl.apiKey).toBe('admin-key');
+    const withoutUrl = getReceptionistConfigWithStored(env, stored({ receptionistApiUrl: '' }), 'admin-key');
+    expect(withoutUrl.apiKey).toBe('admin-key');
+    expect(withoutUrl.url).toBe('https://env.example.com/v1');
+  });
+
+  it('empty or whitespace-only stored key falls back to the env secret', () => {
+    expect(getReceptionistConfigWithStored(env, undefined, '').apiKey).toBe('env-key');
+    expect(getReceptionistConfigWithStored(env, undefined, '   ').apiKey).toBe('env-key');
+    expect(getReceptionistConfigWithStored(env, undefined, undefined).apiKey).toBe('env-key');
+  });
+
+  it('no stored key and no env secret means no Authorization header value', () => {
+    const cfg = getReceptionistConfigWithStored(
+      { RECEPTIONIST_API_URL: 'https://env.example.com/v1' } as never,
+      undefined,
+      '',
+    );
+    expect(cfg.apiKey).toBeUndefined();
+  });
+});

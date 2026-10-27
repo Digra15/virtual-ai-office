@@ -4,7 +4,13 @@ import {
   SiteConfigSchema,
   type SiteConfig,
 } from "@virtual-ai-office/shared";
-import { ApiError, getSiteConfig, postSiteConfig } from "../api";
+import {
+  ApiError,
+  getReceptionistKeyStatus,
+  getSiteConfig,
+  postReceptionistKey,
+  postSiteConfig,
+} from "../api";
 import { Field, FormError, PageHeader, toast } from "../ui";
 
 /**
@@ -27,13 +33,37 @@ export function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [token, setToken] = useState<string>("");
+  // Receptionist API key: the value is NEVER displayed or prefilled —
+  // the panel only ever learns whether one is stored.
+  const [keyInput, setKeyInput] = useState("");
+  const [keyStatus, setKeyStatus] = useState<boolean | null>(null);
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+
+  const refreshKeyStatus = async (t: string) => {
+    if (!t.trim()) {
+      setKeyStatus(null);
+      return;
+    }
+    try {
+      const { hasKey } = await getReceptionistKeyStatus(t.trim());
+      setKeyStatus(hasKey);
+    } catch {
+      // Token wrong or Worker unreachable: leave status unknown; the
+      // save path below surfaces token errors when the user acts.
+      setKeyStatus(null);
+    }
+  };
 
   useEffect(() => {
+    let storedToken = "";
     try {
-      setToken(window.sessionStorage.getItem(TOKEN_KEY) ?? "");
+      storedToken = window.sessionStorage.getItem(TOKEN_KEY) ?? "";
+      setToken(storedToken);
     } catch {
       setToken("");
     }
+    if (storedToken) void refreshKeyStatus(storedToken);
     let cancelled = false;
     getSiteConfig()
       .then(({ config: c }) => {
@@ -95,6 +125,57 @@ export function SettingsPage() {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveKey = async () => {
+    setKeyError(null);
+    if (!token.trim()) {
+      setKeyError("Masukkan token admin dulu untuk menyimpan kunci.");
+      return;
+    }
+    // Saving an empty field must NEVER overwrite: only explicit Hapus
+    // clears. The button is disabled when empty; this is the backstop.
+    if (!keyInput.trim()) return;
+    setKeyBusy(true);
+    try {
+      const { hasKey } = await postReceptionistKey(keyInput, token.trim());
+      setKeyStatus(hasKey);
+      setKeyInput("");
+      toast("Kunci API resepsionis disimpan", "ok");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setKeyError("Token ditolak — periksa kembali token admin.");
+      } else if (err instanceof ApiError && err.status === 503) {
+        setKeyError("Worker belum diset AGENT_SECRET — simpan belum bisa jalan.");
+      } else {
+        setKeyError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setKeyBusy(false);
+    }
+  };
+
+  const clearKey = async () => {
+    setKeyError(null);
+    if (!token.trim()) {
+      setKeyError("Masukkan token admin dulu untuk menghapus kunci.");
+      return;
+    }
+    setKeyBusy(true);
+    try {
+      const { hasKey } = await postReceptionistKey("", token.trim());
+      setKeyStatus(hasKey);
+      setKeyInput("");
+      toast("Kunci API resepsionis dihapus", "ok");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setKeyError("Token ditolak — periksa kembali token admin.");
+      } else {
+        setKeyError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setKeyBusy(false);
     }
   };
 
@@ -194,13 +275,57 @@ export function SettingsPage() {
                 autoComplete="off"
               />
             </Field>
+            <Field
+              label="Kunci API resepsionis (opsional)"
+              hint="Tidak pernah ditampilkan dan tidak bisa dilihat lagi setelah disimpan. Kolom kosong berarti jangan ubah — hanya tombol Hapus yang menghapus."
+            >
+              <input
+                type="password"
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                placeholder="Tempel kunci API baru…"
+                autoComplete="off"
+              />
+            </Field>
+            {keyError && (
+              <p className="error-text" role="alert">
+                {keyError}
+              </p>
+            )}
             <p className="muted">
-              Mengubah tiga kolom resepsionis di atas tidak butuh redeploy
-              — berlaku langsung setelah disimpan. Kunci API, bila
-              endpoint membutuhkannya, tetap diset sekali lewat{" "}
-              <code>npx wrangler secret put RECEPTIONIST_API_KEY</code>{" "}
-              dari apps/worker, dan tidak pernah ditampilkan atau disimpan
-              di sini.
+              Status kunci:{" "}
+              {keyStatus === null
+                ? "belum diketahui (masukkan token admin)"
+                : keyStatus
+                  ? "Kunci tersimpan."
+                  : "Belum ada kunci."}
+            </p>
+            <div className="admin-form-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={saveKey}
+                disabled={keyBusy || !token.trim() || !keyInput.trim()}
+              >
+                {keyBusy ? "Saving…" : "Simpan kunci"}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={clearKey}
+                disabled={keyBusy || !token.trim() || keyStatus !== true}
+              >
+                Hapus kunci
+              </button>
+            </div>
+            <p className="muted">
+              Mengubah kolom resepsionis di atas tidak butuh redeploy —
+              berlaku langsung setelah disimpan. Kunci API disimpan hanya
+              di sisi server (Worker) dan tidak pernah dikirim ke browser:
+              halaman ini hanya tahu ada atau tidak, bukan nilainya.
+              Secret CLI{" "}
+              <code>RECEPTIONIST_API_KEY</code> tetap berfungsi sebagai
+              cadangan bila di sini belum ada kunci.
             </p>
             <div className="admin-form-actions">
               <button
@@ -225,6 +350,9 @@ export function SettingsPage() {
                 type="password"
                 value={token}
                 onChange={(e) => setTokenStored(e.target.value)}
+                onBlur={() => {
+                  if (token.trim()) void refreshKeyStatus(token.trim());
+                }}
                 placeholder="Tempel token admin…"
                 autoComplete="off"
               />

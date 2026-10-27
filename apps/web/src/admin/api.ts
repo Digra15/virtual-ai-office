@@ -212,6 +212,36 @@ export const postSiteConfig = (
   });
 
 // ---------------------------------------------------------------------------
+// Receptionist API key (DO storage, server-side only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether a receptionist API key is stored. Bearer token required (same
+ * interim auth as postSiteConfig). The value itself is NEVER returned —
+ * only this boolean, so the admin panel can show a status line without
+ * ever receiving the key.
+ */
+export const getReceptionistKeyStatus = (
+  token: string,
+): Promise<{ hasKey: boolean }> =>
+  request("GET", "/api/config/receptionist-key", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+/**
+ * Set (or clear, with an empty string) the receptionist API key.
+ * Bearer token required. The value is stored server-side only.
+ */
+export const postReceptionistKey = (
+  key: string,
+  token: string,
+): Promise<{ hasKey: boolean }> =>
+  request("POST", "/api/config/receptionist-key", {
+    body: { key },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+// ---------------------------------------------------------------------------
 // Assets
 // ---------------------------------------------------------------------------
 

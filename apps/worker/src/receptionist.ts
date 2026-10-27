@@ -48,17 +48,22 @@ export function getReceptionistConfig(env: Env): ReceptionistConfig {
  * Effective receptionist config: the admin-edited stored siteConfig wins
  * whenever its URL is non-empty (this is the primary way to set the
  * endpoint — the admin panel, no redeploy needed); otherwise the env
- * vars above remain as fallback. The API key ALWAYS comes from the env
- * secret only — stored siteConfig can never supply or override it, and
- * the admin UI never sees it.
+ * vars above remain as fallback. The API key resolution is separate
+ * from the URL: a non-empty admin-panel-stored key (DO storage) wins,
+ * otherwise the env secret RECEPTIONIST_API_KEY (CLI path) is the
+ * fallback. Stored siteConfig itself can never supply a key, and the
+ * admin UI never sees any key value — only whether one is stored.
  */
 export function getReceptionistConfigWithStored(
   env: Env,
   stored: SiteConfig | undefined,
+  storedKey?: string,
 ): ReceptionistConfig {
   const base = getReceptionistConfig(env);
+  const resolvedKey =
+    storedKey && storedKey.trim() ? storedKey : base.apiKey;
   const storedUrl = stored?.receptionistApiUrl?.trim();
-  if (!storedUrl) return base;
+  if (!storedUrl) return { ...base, apiKey: resolvedKey };
   const storedFormat = stored?.receptionistApiFormat?.trim();
   const storedModel = stored?.receptionistModel?.trim();
   return {
@@ -66,6 +71,7 @@ export function getReceptionistConfigWithStored(
     url: storedUrl,
     format: storedFormat ? storedFormat : base.format,
     model: storedModel ? storedModel : undefined,
+    apiKey: resolvedKey,
   };
 }
 
