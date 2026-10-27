@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GuestChatMessage } from "@virtual-ai-office/shared";
 import { backendEnv } from "../../env";
+import {
+  LOCAL_GUEST_WINDOW_MS,
+  useGuestPresenceStore,
+} from "../../stores/useGuestPresenceStore";
 
 const GUEST_ID_KEY = "vao-guest-id";
 const GUEST_NAME_KEY = "vao-guest-name";
@@ -133,6 +137,22 @@ export function GuestChatWidget() {
   }, [draft, name, sending, fetchThread]);
 
   const awaitingReply = hasUnansweredGuestMessage(messages);
+
+  // Local presence signal for the reception standby director: this
+  // browser's widget open with a recent or unanswered local thread
+  // counts as guest activity when the Worker presence route is
+  // unavailable (old deploy). When the route works, the remote signal
+  // wins and this value is ignored.
+  useEffect(() => {
+    const store = useGuestPresenceStore.getState();
+    const lastGuestAt =
+      [...messages].reverse().find((m) => m.from === "guest")?.at ?? 0;
+    const recent = Date.now() - lastGuestAt < LOCAL_GUEST_WINDOW_MS;
+    store.setLocalActive(open && (awaitingReply || recent));
+    return () => {
+      useGuestPresenceStore.getState().setLocalActive(false);
+    };
+  }, [open, messages, awaitingReply]);
 
   return (
     <div className="guest-chat">

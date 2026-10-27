@@ -82,6 +82,12 @@ export interface RegistrySnapshot {
   guestThreads?: GuestThread[];
   guestCounter?: number;
   /**
+   * Last guest-message timestamp per thread (ms), for the privacy-safe
+   * presence signal. Missing in old snapshots = derived from thread
+   * messages on restore (see restore()).
+   */
+  guestLastMessageAt?: Record<string, number>;
+  /**
    * Receptionist API key stored server-side only (admin-panel managed).
    * Deliberately NOT part of SiteConfigSchema: GET /api/config is public
    * and must never return this value. Missing in old snapshots = empty.
@@ -91,6 +97,9 @@ export interface RegistrySnapshot {
 
 /** Cooldown between two guest messages in the same thread (ms). */
 export const GUEST_CHAT_COOLDOWN_MS = 15_000;
+
+/** Window in which a guest message counts as "recent" for presence (ms). */
+export const GUEST_PRESENCE_WINDOW_MS = 5 * 60_000;
 
 export class AgentRegistry {
   private readonly agents = new Map<string, AgentInfo>();
@@ -103,6 +112,8 @@ export class AgentRegistry {
   private receptionistApiKey = '';
   private readonly guestThreads = new Map<string, GuestThread>();
   private guestCounter = 0;
+  /** Last guest-message timestamp per thread (ms) — presence signal only. */
+  private readonly guestLastMessageAt = new Map<string, number>();
   /** Monotonic clock for guest-chat timestamps (same-ms posts must still order). */
   private lastGuestAt = 0;
 
@@ -133,11 +144,26 @@ export class AgentRegistry {
       this.siteConfigFromStorage = false;
     }
     this.guestThreads.clear();
+    this.guestLastMessageAt.clear();
     for (const thread of snapshot.guestThreads ?? []) {
       this.guestThreads.set(thread.guestId, {
         ...thread,
         messages: thread.messages.map((m) => ({ ...m })),
       });
+    }
+    if (snapshot.guestLastMessageAt) {
+      for (const [gid, at] of Object.entries(snapshot.guestLastMessageAt)) {
+        this.guestLastMessageAt.set(gid, at);
+      }
+    } else {
+      // Snapshots predating presence tracking: backfill from the threads'
+      // own last guest messages so the signal still works after restore.
+      for (const thread of this.guestThreads.values()) {
+        const lastGuest = [...thread.messages]
+          .reverse()
+          .find((m) => m.from === 'guest');
+        if (lastGuest) this.guestLastMessageAt.set(thread.guestId, lastGuest.at);
+      }
     }
     this.guestCounter = snapshot.guestCounter ?? 0;
     // Missing in snapshots predating admin-panel key management = empty.
@@ -156,6 +182,7 @@ export class AgentRegistry {
         messages: t.messages.map((m) => ({ ...m })),
       })),
       guestCounter: this.guestCounter,
+      guestLastMessageAt: Object.fromEntries(this.guestLastMessageAt),
       receptionistApiKey: this.receptionistApiKey,
     };
   }
@@ -433,6 +460,7 @@ export class AgentRegistry {
     thread.messages.push(message);
     thread.updatedAt = now;
     this.guestThreads.set(guestId, thread);
+    this.guestLastMessageAt.set(guestId, now);
     return { message: { ...message }, thread: this.copyThread(thread) };
   }
 
@@ -477,6 +505,20 @@ export class AgentRegistry {
    */
   pendingGuestCount(): number {
     return this.pendingGuestMessages().length;
+  }
+
+  /**
+   * Privacy-safe guest presence for the reception standby signal. True
+   * when any thread has a guest message within GUEST_PRESENCE_WINDOW_MS
+   * or has an unanswered guest message. Returns a bare boolean only —
+   * never message content, guestIds, or guest names.
+   */
+  isGuestActive(now: number = Date.now()): boolean {
+    if (this.pendingGuestMessages().length > 0) return true;
+    for (const at of this.guestLastMessageAt.values()) {
+      if (now - at < GUEST_PRESENCE_WINDOW_MS) return true;
+    }
+    return false;
   }
 
   /** True when the message exists in any thread. */

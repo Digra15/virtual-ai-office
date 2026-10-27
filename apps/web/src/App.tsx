@@ -19,6 +19,7 @@ import { buildLocalDemoAgents, buildStressAgents } from "./services/demoAgents";
 import { backendEnv } from "./env";
 import { WanderDirector } from "./features/wander/WanderDirector";
 import { PrayerDirector } from "./features/prayer/PrayerDirector";
+import { ReceptionDirector } from "./features/reception/ReceptionDirector";
 import { RecoveryDirector } from "./features/recovery/RecoveryDirector";
 import { useTaskStore } from "./stores/useTaskStore";
 import { GuestChatWidget } from "./features/guestchat/GuestChatWidget";
@@ -238,6 +239,7 @@ function Dashboard() {
       <DayNightSync />
       <WanderDirector />
       <PrayerDirector />
+      <ReceptionDirector />
       <RecoveryDirector />
       <Header
         onToggleSidebar={() => setSidebarOpen((o) => !o)}

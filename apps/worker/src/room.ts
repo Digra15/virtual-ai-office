@@ -183,6 +183,13 @@ export class AgentRoom extends DurableObject<Env> {
     if (request.method === 'GET' && pathname === '/api/guest-chat/pending-count') {
       return json({ pendingCount: this.registry.pendingGuestCount() });
     }
+    // Public by design: returns ONLY { guestActive } — a bare boolean
+    // with no message content, guestIds, or guest names — so the
+    // dashboard can poll it without any credential to drive Difia's
+    // reception standby. The full queue stays behind AGENT_SECRET below.
+    if (request.method === 'GET' && pathname === '/api/guest-chat/presence') {
+      return json({ guestActive: this.registry.isGuestActive() });
+    }
     if (request.method === 'GET' && pathname === '/api/guest-chat/pending') {
       const authError = this.requireAgentAuth(request);
       if (authError) return authError;

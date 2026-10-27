@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AgentRegistry, GUEST_CHAT_COOLDOWN_MS } from '../registry';
+import { AgentRegistry, GUEST_CHAT_COOLDOWN_MS, GUEST_PRESENCE_WINDOW_MS } from '../registry';
 
 describe('guest chat (visitor → Difia)', () => {
   it('posts a guest message and reads back only that thread', () => {
@@ -134,5 +134,68 @@ describe('guest chat (visitor → Difia)', () => {
     legacy.restore({ agents: [], entryCounter: 0 });
     expect(legacy.listGuestThreads()).toHaveLength(0);
     expect(legacy.getGuestThread('guest-snap01')).toBeUndefined();
+  });
+});
+
+describe('guest presence (reception standby signal)', () => {
+  it('is true with a recent guest message', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-pres01', 'Tamu', 'Halo?');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    expect(registry.isGuestActive()).toBe(true);
+  });
+
+  it('stays true for an old unanswered message, even outside the window', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-pres02', 'Tamu', 'Masih ada?');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    // Far past the 5-minute window, but nobody answered yet.
+    expect(registry.isGuestActive(Date.now() + GUEST_PRESENCE_WINDOW_MS + 60_000)).toBe(true);
+  });
+
+  it('is false when only old answered messages exist', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-pres03', 'Tamu', 'Sudah dijawab?');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    const replied = registry.replyToGuestMessage(posted.message.id, 'difia', 'Sudah, ini jawabannya.');
+    expect(replied).not.toBeNull();
+    // Inside the window the recent message still counts…
+    expect(registry.isGuestActive()).toBe(true);
+    // …but once it ages out and everything is answered, presence clears.
+    expect(registry.isGuestActive(Date.now() + GUEST_PRESENCE_WINDOW_MS + 60_000)).toBe(false);
+  });
+
+  it('is false with no guest messages at all', () => {
+    expect(new AgentRegistry().isGuestActive()).toBe(false);
+  });
+
+  it('exposes a bare boolean only, never content or ids', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-pres04', 'Rahasia', 'Isi pesan rahasia');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    const signal = registry.isGuestActive();
+    expect(typeof signal).toBe('boolean');
+    expect(signal).toBe(true);
+    // The route shape is exactly { guestActive } — the boolean above is
+    // the only value the endpoint returns (see room.ts).
+  });
+
+  it('survives snapshot/restore, including old snapshots without the field', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-pres05', 'Tamu', 'Halo lagi');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    const snap = registry.snapshot();
+    expect(snap.guestLastMessageAt?.['guest-pres05']).toBeGreaterThan(0);
+
+    const restored = new AgentRegistry();
+    restored.restore(snap);
+    expect(restored.isGuestActive()).toBe(true);
+
+    // Old snapshot predating presence tracking: backfilled from messages.
+    const legacy = { ...snap };
+    delete legacy.guestLastMessageAt;
+    const legacyRestored = new AgentRegistry();
+    legacyRestored.restore(legacy);
+    expect(legacyRestored.isGuestActive()).toBe(true);
   });
 });
