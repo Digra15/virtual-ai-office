@@ -40,3 +40,31 @@ describe("prayer outfit colors", () => {
     expect(SARUNG_BAND_COLOR).toBe("#c9a227");
   });
 });
+
+describe("prayerOutfitFor — gender field precedence", () => {
+  it("an explicit gender wins over the legacy per-id list", () => {
+    // nika is legacy-mukena, research is legacy-sarungPeci: a gender
+    // field pointing the other way must win.
+    expect(prayerOutfitFor("nika", "bowing", "male")).toBe("sarungPeci");
+    expect(prayerOutfitFor("research", "bowing", "female")).toBe("mukena");
+  });
+
+  it("an unknown id with a gender resolves from the gender, not the hash fallback", () => {
+    expect(prayerOutfitFor("some-new-agent", "prostrate", "female")).toBe("mukena");
+    expect(prayerOutfitFor("some-new-agent", "prostrate", "male")).toBe("sarungPeci");
+  });
+
+  it("an unknown id without a gender keeps the legacy behavior", () => {
+    for (const id of ["nika", "writing", "design"]) {
+      expect(prayerOutfitFor(id, "bowing")).toBe("mukena");
+    }
+    for (const id of ["research", "coding", "data", "automation", "monitoring"]) {
+      expect(prayerOutfitFor(id, "bowing")).toBe("sarungPeci");
+    }
+  });
+
+  it("no outfit when not praying, even with a gender", () => {
+    expect(prayerOutfitFor("tara", null, "female")).toBeNull();
+    expect(prayerOutfitFor("tara", undefined, "male")).toBeNull();
+  });
+});

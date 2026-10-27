@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AgentRegistry, isLiveSeat, LIVE_SEEDS } from '../registry';
+import { AgentRegistry, LIVE_SEEDS } from '../registry';
 
 describe('live seats (no demo)', () => {
   it('seeds exactly the 3 live agents, idempotently', () => {
@@ -43,14 +43,6 @@ describe('live seats (no demo)', () => {
     expect(agent.name).toBe('ext-9');
     expect(agent.role).toBe('External Agent');
     expect(agent.workstationId).toBe('ws-remote');
-  });
-
-  it('isLiveSeat matches exactly the 3 seats', () => {
-    expect(isLiveSeat('difia')).toBe(true);
-    expect(isLiveSeat('kirana')).toBe(true);
-    expect(isLiveSeat('reno')).toBe(true);
-    expect(isLiveSeat('nika')).toBe(false);
-    expect(isLiveSeat('ext-9')).toBe(false);
   });
 });
 

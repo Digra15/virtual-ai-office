@@ -25,6 +25,13 @@ export type ActivityKind = 'status' | 'task' | 'note' | 'system';
 /** Where an agent's data comes from. `demo` = clearly-labeled simulator output. */
 export type AgentSource = 'demo' | 'live';
 
+/** Agent gender, sent on (first) report. Drives the 3D model pool and the
+ * prayer outfit — never inferred from the agent id. Absent = unknown:
+ * the frontend falls back to the legacy nika model and the legacy
+ * per-id prayer list. */
+export const AGENT_GENDERS = ['male', 'female'] as const;
+export type AgentGender = (typeof AGENT_GENDERS)[number];
+
 /** One row in an agent's activity log. `activityHistory` is newest-first. */
 export interface ActivityEntry {
   id: string;
@@ -46,6 +53,8 @@ export interface AgentInfo {
   workstationId: string;
   activityHistory: ActivityEntry[]; /* newest-first */
   source: AgentSource;
+  /** Explicit gender when reported; absent = unknown (legacy fallback). */
+  gender?: AgentGender;
 }
 
 /** Event types a real agent can POST to `/api/agents/:id/events`. */

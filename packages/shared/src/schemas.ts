@@ -6,9 +6,11 @@
  * their runtime behavior from this module.
  */
 import { z } from 'zod';
-import { AGENT_STATUSES } from './types';
+import { AGENT_GENDERS, AGENT_STATUSES } from './types';
 
 export const AgentStatusSchema = z.enum(AGENT_STATUSES);
+
+export const AgentGenderSchema = z.enum(AGENT_GENDERS);
 
 export const ActivityKindSchema = z.enum(['status', 'task', 'note', 'system']);
 
@@ -23,6 +25,17 @@ export const EventPostSchema = z
     message: z.string().min(1).max(2000).optional(),
     kind: ActivityKindSchema.optional(),
     timestamp: z.string().datetime().optional(),
+    // Identity fields for (first) reports: a reporting agent may declare
+    // its name, role, and workstation. The registry applies them on seat
+    // creation and on later reports (identity updates). Absent = keep the
+    // existing identity (or the seed/default for a brand-new seat).
+    name: z.string().min(1).max(80).optional(),
+    role: z.string().min(1).max(80).optional(),
+    workstationId: z.string().min(1).max(50).optional(),
+    // Explicit gender (male/female). The registry applies it like the
+    // other identity fields; absent = keep the existing gender (or
+    // unknown for a brand-new seat). Never inferred from the id.
+    gender: AgentGenderSchema.optional(),
   })
   .superRefine((value, ctx) => {
     // Per-type required fields (monitoring only — no remote commands here).

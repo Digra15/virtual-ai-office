@@ -1,4 +1,5 @@
 import { memo } from "react";
+import type { AgentGender } from "@virtual-ai-office/shared";
 import {
   getCharacterPreset,
   prayerWearFor,
@@ -25,12 +26,20 @@ export const MUKENA_COLOR = "#f8f8f5";
 export const SARUNG_COLOR = "#2e5d43";
 export const SARUNG_BAND_COLOR = "#c9a227";
 
-/** Resolve the outfit for an agent: null when not praying. */
+/** Resolve the outfit for an agent: null when not praying.
+ * Precedence: an explicit gender field wins (female → mukena, male →
+ * sarung+peci); without one, the legacy path below runs unchanged —
+ * the per-id list in DEFAULT_PRAYER_WEAR plus the generated fallback —
+ * so demo/legacy agents without a gender keep exactly their old outfit.
+ */
 export function prayerOutfitFor(
   agentId: string,
   prayerPose: "bowing" | "prostrate" | "sitting" | null | undefined,
+  gender?: AgentGender,
 ): PrayerWear | null {
   if (!prayerPose) return null;
+  if (gender === "female") return "mukena";
+  if (gender === "male") return "sarungPeci";
   return prayerWearFor(getCharacterPreset(agentId));
 }
 

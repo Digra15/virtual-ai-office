@@ -185,3 +185,20 @@ describe('SiteConfigSchema', () => {
     }
   });
 });
+
+describe('EventPostSchema gender', () => {
+  it('accepts male and female gender on a heartbeat', () => {
+    for (const gender of ['male', 'female']) {
+      const result = EventPostSchema.safeParse({ type: 'heartbeat', gender });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.gender).toBe(gender);
+      }
+    }
+  });
+
+  it('rejects a gender outside the enum', () => {
+    const result = EventPostSchema.safeParse({ type: 'heartbeat', gender: 'other' });
+    expect(result.success).toBe(false);
+  });
+});

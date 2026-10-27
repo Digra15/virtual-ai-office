@@ -27,12 +27,14 @@ import {
   type HealthResponse,
   type ServerMessage,
 } from '@virtual-ai-office/shared';
-import { AgentRegistry, isLiveSeat, type RegistrySnapshot } from './registry';
+import { AgentRegistry, isValidAgentId, normalizeAgentId, type RegistrySnapshot } from './registry';
 import { SlidingWindowLimiter } from './ratelimit';
 import { demoTick } from './demo';
 import { loadWorkerConfig, type Env } from './env';
 import { timingSafeEqual } from './admin/auth';
+import { agentAuthError } from './agentAuth';
 import {
+  buildWorkerRosterSection,
   getReceptionistConfigWithStored,
   requestReceptionistReply,
   type ChatHistoryItem,
@@ -221,7 +223,8 @@ export class AgentRoom extends DurableObject<Env> {
 
     const agentMatch = pathname.match(/^\/api\/agents\/([^/]+)(\/events)?$/);
     if (agentMatch) {
-      const agentId = decodeURIComponent(agentMatch[1] ?? '');
+      // Agent ids are case-insensitive slugs (see normalizeAgentId).
+      const agentId = normalizeAgentId(decodeURIComponent(agentMatch[1] ?? ''));
       const isEvents = agentMatch[2] === '/events';
       if (request.method === 'GET' && !isEvents) {
         const agent = this.registry.get(agentId);
@@ -236,12 +239,27 @@ export class AgentRoom extends DurableObject<Env> {
       if (request.method === 'POST' && isEvents) {
         return this.handlePostEvent(request, agentId);
       }
+      // Delete one live seat (operator tool, e.g. removing a junk seat
+      // like '--help'). Bearer auth, same as the other agent routes;
+      // unknown id → 404. No founder exception: the operator decides.
+      // Persisted via the snapshot, so the seat stays gone after a
+      // restart. Connected dashboards pick the removal up on their next
+      // snapshot (there is no agent.removed broadcast type yet).
+      if (request.method === 'DELETE' && !isEvents) {
+        const authError = this.requireAgentAuth(request);
+        if (authError) return authError;
+        if (!this.registry.removeAgent(agentId)) {
+          return json({ error: `Unknown agent: ${agentId}` }, 404);
+        }
+        await this.persist();
+        return json({ removed: agentId });
+      }
     }
 
     // Task queue (office → agent). All three endpoints require AGENT_SECRET.
     const taskMatch = pathname.match(/^\/api\/agents\/([^/]+)\/tasks(?:\/([^/]+)\/complete)?$/);
     if (taskMatch) {
-      const agentId = decodeURIComponent(taskMatch[1] ?? '');
+      const agentId = normalizeAgentId(decodeURIComponent(taskMatch[1] ?? ''));
       const taskId = taskMatch[2] ? decodeURIComponent(taskMatch[2]) : null;
       const authError = this.requireAgentAuth(request);
       if (authError) return authError;
@@ -271,12 +289,11 @@ export class AgentRoom extends DurableObject<Env> {
    * in Worker secrets — the browser never holds it.
    */
   private requireAgentAuth(request: Request): Response | null {
-    const secret = this.env.AGENT_SECRET;
-    if (!secret) {
+    const code = agentAuthError(this.env.AGENT_SECRET, request.headers.get('Authorization'));
+    if (code === 503) {
       return json({ error: 'Agent reporting not configured — set AGENT_SECRET' }, 503);
     }
-    const provided = request.headers.get('Authorization') ?? '';
-    if (!provided.startsWith('Bearer ') || !timingSafeEqual(provided.slice('Bearer '.length), secret)) {
+    if (code === 403) {
       return json({ error: 'Forbidden' }, 403);
     }
     return null;
@@ -414,7 +431,14 @@ export class AgentRoom extends DurableObject<Env> {
           role: m.from === 'guest' ? ('user' as const) : ('assistant' as const),
           text: m.text,
         }));
-      const text = await requestReceptionistReply(config, history, target.text);
+      // Live worker roster for the receptionist: every real worker
+      // (source 'live', including auto-registered seats) — demo agents
+      // are simulated and must never be presented as real workers.
+      // Fresh on every call, so statuses/tasks are current.
+      const roster = buildWorkerRosterSection(
+        this.registry.list().filter((a) => a.source === 'live'),
+      );
+      const text = await requestReceptionistReply(config, history, target.text, undefined, undefined, roster);
       if (!text) return;
       const replied = this.registry.replyToGuestMessage(messageId, 'difia', text);
       if (replied) await this.persist();
@@ -487,6 +511,11 @@ export class AgentRoom extends DurableObject<Env> {
     // a live agent's status). Auth runs before rate limiting.
     const authError = this.requireAgentAuth(request);
     if (authError) return authError;
+
+    // Ids are normalized slugs (letter first, [a-z0-9_-], max 50 chars).
+    // Anything else — empty, '--help', spaces, symbols — is rejected
+    // here, before any seat can be created by the report below.
+    if (!isValidAgentId(agentId)) return json({ error: 'Invalid agent id' }, 400);
 
     // Per-IP sliding-window rate limit (mirrors the Node 60/min limiter).
     const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
@@ -586,21 +615,27 @@ export class AgentRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'heartbeat' && typeof msg.agentId === 'string' && msg.agentId.length > 0) {
-      // Live seats cannot be revived by an unauthenticated WS heartbeat —
-      // only authenticated REST reports revive them. Otherwise anyone could
-      // fake a live agent's liveness. (No current client sends heartbeats
-      // with an agentId, so nothing legitimate breaks.)
-      if (isLiveSeat(msg.agentId)) {
-        const secret = this.env.AGENT_SECRET;
-        const token = typeof msg.token === 'string' ? msg.token : '';
-        if (!secret || !timingSafeEqual(token, secret)) {
-          this.sendTo(ws, { type: 'error', message: 'Live-seat heartbeat requires a valid token' });
-          return;
-        }
+      // Every heartbeat carrying an agentId must authenticate — founder
+      // seats, auto-registered seats, and unknown ids alike. The old code
+      // only gated the 3 hardcoded live seats, which left unauthenticated
+      // creation of live seats open through this path. (No current client
+      // sends heartbeats with an agentId, so nothing legitimate breaks.)
+      const agentId = normalizeAgentId(msg.agentId);
+      if (!isValidAgentId(agentId)) {
+        this.sendTo(ws, { type: 'error', message: 'Invalid agent id' });
+        return;
+      }
+      const authCode = agentAuthError(
+        this.env.AGENT_SECRET,
+        typeof msg.token === 'string' ? `Bearer ${msg.token}` : null,
+      );
+      if (authCode !== null) {
+        this.sendTo(ws, { type: 'error', message: 'Heartbeat requires a valid token' });
+        return;
       }
       // A client heartbeat revives the named agent's lastSeen (and broadcasts
       // the revival when the agent comes back from offline).
-      const { agent, entry } = this.registry.upsertFromEvent(msg.agentId, { type: 'heartbeat' });
+      const { agent, entry } = this.registry.upsertFromEvent(agentId, { type: 'heartbeat' });
       await this.persist();
       this.broadcast({ type: 'agent.update', agent });
       if (entry) this.broadcast({ type: 'agent.event', agentId: agent.id, entry });

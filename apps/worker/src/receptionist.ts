@@ -86,6 +86,42 @@ export const RECEPTIONIST_SYSTEM_PROMPT =
   'Jawablah dengan Bahasa Indonesia yang ramah dan singkat, gaya chat (1–3 kalimat, tanpa format markdown berat). ' +
   'Jangan pernah mengarang fakta tentang kantor ini, layanan, harga, atau orang-orangnya: kalau kamu tidak tahu jawabannya, katakan terus terang bahwa kamu tidak tahu dan tawarkan untuk mencatat pertanyaan pengunjung agar diteruskan ke admin.';
 
+/**
+ * One worker row for the live roster section. Structural subset of
+ * AgentInfo — the caller (room.ts) passes registry agents directly.
+ */
+export interface RosterAgent {
+  name: string;
+  role: string;
+  status: string;
+  currentTask: string;
+  gender?: string;
+}
+
+/**
+ * Render the live worker roster as a system-prompt section, so the
+ * receptionist AI can answer questions about the office's workers from
+ * real data instead of pleading ignorance. Returns '' when there are no
+ * workers, in which case the caller sends the base persona prompt alone
+ * (the receptionist then falls back to its honest "I don't know" line).
+ * Contains no secrets — only names, roles, genders, statuses, and
+ * current tasks.
+ */
+export function buildWorkerRosterSection(agents: RosterAgent[]): string {
+  if (agents.length === 0) return '';
+  const lines = agents.map((a) => {
+    const task = a.currentTask?.trim();
+    const genderLabel =
+      a.gender === 'female' ? ', perempuan' : a.gender === 'male' ? ', laki-laki' : '';
+    return `- ${a.name} (${a.role}${genderLabel}) — ${a.status}${task ? ` — ${task}` : ''}`;
+  });
+  return (
+    'DAFTAR WORKER KANTOR (data live saat ini — pakai daftar ini untuk menjawab pertanyaan tentang worker/agen kantor; ' +
+    'jangan mengarang worker yang tidak ada di daftar, dan kalau yang ditanyakan tidak ada di daftar, katakan terus terang bahwa kamu tidak tahu):\n' +
+    lines.join('\n')
+  );
+}
+
 export interface ChatHistoryItem {
   role: 'user' | 'assistant';
   text: string;
@@ -107,13 +143,17 @@ export async function requestReceptionistReply(
   newText: string,
   fetchImpl: FetchImpl = fetch as unknown as FetchImpl,
   timeoutMs = 25_000,
+  rosterSection = '',
 ): Promise<string | null> {
   if (!config.url || config.format !== 'openai') return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const system = rosterSection
+      ? `${RECEPTIONIST_SYSTEM_PROMPT}\n\n${rosterSection}`
+      : RECEPTIONIST_SYSTEM_PROMPT;
     const messages = [
-      { role: 'system', content: RECEPTIONIST_SYSTEM_PROMPT },
+      { role: 'system', content: system },
       ...history.map((h) => ({ role: h.role, content: h.text })),
       { role: 'user', content: newText },
     ];

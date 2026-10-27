@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Text, useGLTF, useAnimations } from "@react-three/drei";
 import type { Group } from "three";
+import type { AgentGender } from "@virtual-ai-office/shared";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { CUTES_MODEL_SCALE, LYING } from "./lying";
 import { buildTypingPoseClip, TYPING_LEAN_X } from "./typingPose";
 import { activityLabel } from "./activityLabel";
 import { hudHeights } from "./hud";
 import { PrayerOutfit, prayerOutfitFor } from "./prayerOutfit";
+import { resolveCutesModel } from "./modelPools";
 
 /**
  * CUTES 3D character (poly.pizza bundle by J-Toastie, CC-BY).
@@ -40,6 +42,10 @@ interface CutesAvatarProps {
   agentId: string;
   /** Display name shown above the head. */
   name: string;
+  /** Explicit gender from the agent record (absent = unknown). Drives
+   * the generic-model pool pick and the prayer outfit; agents with a
+   * per-id mapping above are unaffected by it. */
+  gender?: AgentGender;
   /** Agent status driving the overhead icon. */
   status: string;
   /** Body activity (drives the coffee-cup icon on pantry break). */
@@ -60,6 +66,7 @@ interface CutesAvatarProps {
 export function CutesAvatar({
   agentId,
   name,
+  gender,
   status,
   activity,
   prayerPose,
@@ -71,7 +78,10 @@ export function CutesAvatar({
 }: CutesAvatarProps) {
   const group = useRef<Group>(null);
   const labelRef = useRef<Group>(null);
-  const url = CUTES_MODEL[agentId] ?? CUTES_MODEL.nika;
+  // Model precedence (see modelPools.ts): per-id mapping first, then
+  // the gender pool pick, then the legacy nika fallback. Every pool URL
+  // is already a CUTES_MODEL value, so the preload below covers them.
+  const url = resolveCutesModel(agentId, gender, CUTES_MODEL);
   const { scene, animations } = useGLTF(url);
   const { actions, mixer } = useAnimations(animations, group);
   // One skinned clone per avatar instance (same fix as NpcAvatar):
@@ -219,7 +229,7 @@ export function CutesAvatar({
   // Prayer outfit (mukena / sarung+peci, see prayerOutfit.tsx): only
   // while praying, never while lying (the two never coincide: prayer
   // only triggers in the musola, lying only on a recovery bed).
-  const prayerWear = !lying ? prayerOutfitFor(agentId, prayerPose) : null;
+  const prayerWear = !lying ? prayerOutfitFor(agentId, prayerPose, gender) : null;
   // Per-model HUD heights (see hud.ts): Citizen 2's tall hair reaches
   // 2.41, so a fixed 2.25 caption sat inside it. Lying keeps the flat
   // body's own HUD heights from lying.ts.

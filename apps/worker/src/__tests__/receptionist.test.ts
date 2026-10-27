@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   RECEPTIONIST_SYSTEM_PROMPT,
+  buildWorkerRosterSection,
   getReceptionistConfig,
   getReceptionistConfigWithStored,
   requestReceptionistReply,
@@ -262,5 +263,90 @@ describe('receptionist key resolution (admin-panel key wins, env secret fallback
       '',
     );
     expect(cfg.apiKey).toBeUndefined();
+  });
+});
+
+describe('worker roster section for the receptionist', () => {
+  const agents = [
+    { name: 'Difia', role: 'Receptionist', status: 'idle', currentTask: 'Standing by at the reception desk' },
+    { name: 'Kirana', role: 'Writer', status: 'working', currentTask: 'Menulis artikel' },
+    { name: 'Reno', role: 'Software Engineering', status: 'idle', currentTask: '' },
+  ];
+
+  it('renders one line per worker with name, role, status, and task', () => {
+    const section = buildWorkerRosterSection(agents);
+    expect(section).toContain('DAFTAR WORKER KANTOR');
+    expect(section).toContain('- Difia (Receptionist) — idle — Standing by at the reception desk');
+    expect(section).toContain('- Kirana (Writer) — working — Menulis artikel');
+    expect(section).toContain('- Reno (Software Engineering) — idle');
+  });
+
+  it('omits the trailing task separator when the task is blank', () => {
+    const section = buildWorkerRosterSection(agents);
+    const renoLine = section.split('\n').find((l) => l.startsWith('- Reno'));
+    expect(renoLine).toBe('- Reno (Software Engineering) — idle');
+  });
+
+  it('returns empty string when there are no workers', () => {
+    expect(buildWorkerRosterSection([])).toBe('');
+  });
+
+  it('appends the roster to the system prompt when provided', async () => {
+    const fetchImpl = vi.fn(async () => okPayload('Ok')) as unknown as FetchImpl;
+    const config: ReceptionistConfig = {
+      url: 'https://example.com/v1/chat/completions',
+      apiKey: 'key-123',
+      model: undefined,
+      format: 'openai',
+    };
+    const roster = buildWorkerRosterSection(agents);
+    await requestReceptionistReply(config, [], 'Siapa itu Reno?', fetchImpl, undefined, roster);
+    const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      { method: string; headers: Record<string, string>; body: string },
+    ];
+    expect(url).toBe('https://example.com/v1/chat/completions');
+    const body = JSON.parse(init.body) as { messages: Array<{ role: string; content: string }> };
+    expect(body.messages[0].role).toBe('system');
+    expect(body.messages[0].content).toContain(RECEPTIONIST_SYSTEM_PROMPT);
+    expect(body.messages[0].content).toContain('- Reno (Software Engineering) — idle');
+    expect(body.messages[0].content).toContain('- Kirana (Writer) — working — Menulis artikel');
+  });
+
+  it('sends the bare persona prompt when no roster is given', async () => {
+    const fetchImpl = vi.fn(async () => okPayload('Ok')) as unknown as FetchImpl;
+    const config: ReceptionistConfig = {
+      url: 'https://example.com/v1/chat/completions',
+      apiKey: 'key-123',
+      model: undefined,
+      format: 'openai',
+    };
+    await requestReceptionistReply(config, [], 'Halo', fetchImpl);
+    const [, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      { method: string; headers: Record<string, string>; body: string },
+    ];
+    const body = JSON.parse(init.body) as { messages: Array<{ role: string; content: string }> };
+    expect(body.messages[0]).toEqual({ role: 'system', content: RECEPTIONIST_SYSTEM_PROMPT });
+  });
+});
+
+describe('worker roster section gender', () => {
+  it('includes gender in Indonesian when known', () => {
+    const section = buildWorkerRosterSection([
+      { name: 'Difia', role: 'Receptionist', status: 'idle', currentTask: '', gender: 'female' },
+      { name: 'Reno', role: 'Software Engineering', status: 'idle', currentTask: '', gender: 'male' },
+    ]);
+    expect(section).toContain('- Difia (Receptionist, perempuan) — idle');
+    expect(section).toContain('- Reno (Software Engineering, laki-laki) — idle');
+  });
+
+  it('omits the gender fragment when gender is unknown', () => {
+    const section = buildWorkerRosterSection([
+      { name: 'Tara', role: 'Designer', status: 'idle', currentTask: '' },
+    ]);
+    expect(section).toContain('- Tara (Designer) — idle');
+    expect(section).not.toContain('laki-laki');
+    expect(section).not.toContain('perempuan');
   });
 });

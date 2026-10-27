@@ -79,6 +79,7 @@ export const AgentAvatar = memo(function AgentAvatar({
       <CutesAvatar
         agentId={agent.id}
         name={agent.name}
+        gender={agent.gender}
         status={agent.status}
         activity={presence.activity}
         prayerPose={presence.prayerPose ?? null}

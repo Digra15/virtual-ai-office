@@ -12,6 +12,7 @@
 import type {
   ActivityEntry,
   ActivityKind,
+  AgentGender,
   AgentInfo,
   AgentStatus,
   AgentTask,
@@ -33,6 +34,7 @@ interface SeedAgent {
   status: AgentStatus;
   currentTask: string;
   progress: number | null;
+  gender?: AgentGender;
 }
 
 /** The 8 simulated agents. Everything they produce is `source: 'demo'`. */
@@ -54,22 +56,41 @@ export interface UpsertResult {
 }
 
 /**
- * The 3 live agents — the only agents the office shows once demo mode is
- * off (user decision 2026-10-25: other seats stay EMPTY, no demo agents).
- * Difia is the receptionist; Kirana writes; Reno codes. All three are
- * played by the same assistant (coordinator + one subagent per seat).
+ * The 3 founder live agents — always seeded on boot. They are NOT a closed
+ * list: any authenticated report auto-registers further live seats (see
+ * upsertFromEvent). Difia is the receptionist; Kirana writes; Reno codes.
+ * All three are played by the same assistant (coordinator + one subagent
+ * per seat).
  */
 export const LIVE_SEEDS: SeedAgent[] = [
-  { id: 'difia', name: 'Difia', role: 'Receptionist', workstationId: 'reception', status: 'idle', currentTask: 'Standing by at the reception desk', progress: null },
-  { id: 'kirana', name: 'Kirana', role: 'Writer', workstationId: 'ws-01', status: 'idle', currentTask: 'Standing by for writing work', progress: null },
-  { id: 'reno', name: 'Reno', role: 'Software Engineering', workstationId: 'ws-02', status: 'idle', currentTask: 'Standing by for coding work', progress: null },
+  { id: 'difia', name: 'Difia', role: 'Receptionist', workstationId: 'reception', status: 'idle', currentTask: 'Standing by at the reception desk', progress: null, gender: 'female' },
+  { id: 'kirana', name: 'Kirana', role: 'Writer', workstationId: 'ws-01', status: 'idle', currentTask: 'Standing by for writing work', progress: null, gender: 'female' },
+  { id: 'reno', name: 'Reno', role: 'Software Engineering', workstationId: 'ws-02', status: 'idle', currentTask: 'Standing by for coding work', progress: null, gender: 'male' },
 ];
 
 const LIVE_SEED_MAP = new Map(LIVE_SEEDS.map((s) => [s.id, s]));
 
-/** True for the 3 live seats (used to fail closed on unauthenticated reports). */
-export function isLiveSeat(agentId: string): boolean {
-  return LIVE_SEED_MAP.has(agentId);
+/**
+ * Normalize an agent id for routing and storage: trim + lowercase. Agent
+ * ids are case-insensitive slugs; without this, 'Tara', 'tara' and
+ * ' tara ' would register as three different seats. Applied at the route
+ * layer (room.ts) before any registry call.
+ */
+export function normalizeAgentId(agentId: string): string {
+  return agentId.trim().toLowerCase();
+}
+
+/**
+ * Safe seat-id pattern, checked AFTER normalizeAgentId at every route
+ * that can create a seat (REST handlePostEvent, WS heartbeat). A
+ * normalized id must start with a letter and contain only [a-z0-9_-],
+ * 1..50 chars. This is what stops a junk seat like `--help` (born when
+ * a CLI flag was passed as a seat id, 2026-10-27) from ever being
+ * created: flags, spaces, and symbols fail here, before upsertFromEvent.
+ * The three founder seats (difia, kirana, reno) all match this pattern.
+ */
+export function isValidAgentId(agentId: string): boolean {
+  return /^[a-z][a-z0-9_-]{0,49}$/.test(agentId);
 }
 
 /** Serializable snapshot of the registry for Durable Object storage. */
@@ -233,13 +254,22 @@ export class AgentRegistry {
 
   /**
    * Seed the 3 live agents (idempotent — never overwrites existing agents).
-   * Live agents are always labeled `source: 'live'`.
+   * Live agents are always labeled `source: 'live'`. Founder seats created
+   * before gender existed get their seed gender backfilled, but only
+   * when no gender was ever reported (an explicitly reported gender is
+   * never overwritten by the seed).
    */
   seedLiveAgents(): number {
     const now = new Date().toISOString();
     let added = 0;
     for (const seed of LIVE_SEEDS) {
-      if (this.agents.has(seed.id)) continue;
+      const existing = this.agents.get(seed.id);
+      if (existing) {
+        if (seed.gender && existing.gender === undefined) {
+          existing.gender = seed.gender;
+        }
+        continue;
+      }
       const agent: AgentInfo = {
         id: seed.id,
         name: seed.name,
@@ -251,6 +281,7 @@ export class AgentRegistry {
         workstationId: seed.workstationId,
         activityHistory: [],
         source: 'live',
+        ...(seed.gender ? { gender: seed.gender } : {}),
       };
       agent.activityHistory.push(this.makeEntry(seed.id, 'system', 'Live agent seat created', now));
       this.agents.set(seed.id, agent);
@@ -272,6 +303,22 @@ export class AgentRegistry {
       }
     }
     return removed;
+  }
+
+  /**
+   * Remove one seat by id, including its queued tasks. Returns true when
+   * a seat was removed, false when the id was unknown (the DELETE route
+   * maps false to 404). No founder exception by design: the operator
+   * decides which seats live or die, including difia/kirana/reno. The
+   * caller must persist afterwards so the removal survives restarts.
+   */
+  removeAgent(id: string): boolean {
+    const removed = this.agents.delete(id);
+    if (!removed) return false;
+    for (const [taskId, task] of this.tasks) {
+      if (task.agentId === id) this.tasks.delete(taskId);
+    }
+    return true;
   }
 
   /**
@@ -314,31 +361,51 @@ export class AgentRegistry {
   }
 
   /**
-   * Apply a validated event to an agent, creating the agent when unknown.
-   *
-   * Unknown agents are created as `source: 'live'` with `name` defaulting to
-   * the id, role `'External Agent'` and workstation `'ws-remote'`.
+   * Apply a validated event to an agent, dynamically registering the
+   * agent as a live seat when unknown. A report may declare identity
+   * (name/role/workstationId/gender): used at creation and applied as an
+   * update on later reports. Defaults for undeclared identity: name = id,
+   * role `'External Agent'`, workstation `'ws-remote'` (the frontend
+   * renders unknown workstations in the lobby grid, so no new desk is
+   * invented), gender unknown (frontend legacy fallback). Founder seats
+   * keep their seed identity unless a report overrides it. Source never
+   * changes on update, so demo agents can never be promoted to live by
+   * reporting.
    */
   upsertFromEvent(agentId: string, event: EventPost): UpsertResult {
     const now = new Date().toISOString();
     let agent = this.agents.get(agentId);
+    // Identity declared by the report (trimmed; blank = not declared).
+    const name = event.name?.trim() || undefined;
+    const role = event.role?.trim() || undefined;
+    const workstationId = event.workstationId?.trim() || undefined;
+    const gender = event.gender;
     if (!agent) {
-      // Known live seats get their proper identity even on first report;
-      // anything else stays a generic external agent.
+      // Dynamic registration: any authenticated report auto-creates a
+      // live seat. The seat is 'live', never demo, and survives
+      // snapshot/restore like any other live seat.
       const seed = LIVE_SEED_MAP.get(agentId);
       agent = {
         id: agentId,
-        name: seed?.name ?? agentId,
-        role: seed?.role ?? 'External Agent',
+        name: name ?? seed?.name ?? agentId,
+        role: role ?? seed?.role ?? 'External Agent',
         status: seed?.status ?? 'idle',
         currentTask: seed?.currentTask ?? '',
         progress: seed?.progress ?? null,
         lastSeen: now,
-        workstationId: seed?.workstationId ?? 'ws-remote',
+        workstationId: workstationId ?? seed?.workstationId ?? 'ws-remote',
         activityHistory: [],
         source: 'live',
+        ...(gender ?? seed?.gender ? { gender: gender ?? seed?.gender } : {}),
       };
       this.agents.set(agentId, agent);
+    } else if (name || role || workstationId || gender) {
+      // Identity updates from later authenticated reports. A gender
+      // that is not sent leaves the stored gender untouched.
+      if (name) agent.name = name;
+      if (role) agent.role = role;
+      if (workstationId) agent.workstationId = workstationId;
+      if (gender) agent.gender = gender;
     }
 
     let entry: ActivityEntry | null = null;

@@ -190,10 +190,14 @@ for (const p of PRESETS) {
 const BY_ID = new Map(PRESETS.map((p) => [p.agentId, p]));
 
 /**
- * Default prayer outfit per agent (user correction 2026-10-22: female
- * characters wear mukena in the musola, male characters wear sarung+peci).
- * Mapping: Nika, Writing, Design → mukena; Research, Coding, Data,
- * Automation, Monitoring → sarungPeci.
+ * LEGACY FALLBACK — default prayer outfit per agent (user correction
+ * 2026-10-22: female characters wear mukena in the musola, male
+ * characters wear sarung+peci). Mapping: Nika, Writing, Design → mukena;
+ * Research, Coding, Data, Automation, Monitoring → sarungPeci.
+ * Since the gender system (2026-10-27), the agent's explicit gender
+ * field is the primary source (see prayerOutfitFor); this list only
+ * still decides for agents WITHOUT a gender — demo seats and legacy
+ * records — so their outfits never change.
  */
 export const DEFAULT_PRAYER_WEAR: Record<string, PrayerWear> = {
   nika: "mukena",
