@@ -439,62 +439,64 @@ export function WorkersPage() {
         <Empty text="No workers yet. Create the first one." />
       ) : (
         <div className="admin-panel">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Display name</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Workstation</th>
-                <th>Public</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {workers.map((w) => (
-                <tr key={w.id} className={w.archived ? "archived" : ""}>
-                  <td>
-                    <strong>{w.displayName}</strong>
-                    <div className="muted small">
-                      <code>{w.id}</code>
-                    </div>
-                    {w.archived && <StatusPill text="archived" tone="warn" />}
-                  </td>
-                  <td>{w.role}</td>
-                  <td>{w.status}</td>
-                  <td>{w.workstationId || "—"}</td>
-                  <td>{w.publicVisible ? "yes" : "no"}</td>
-                  <td className="admin-row-actions">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => setEditing(w)}
-                    >
-                      Edit
-                    </button>
-                    {w.archived ? (
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() => restore(w)}
-                        disabled={busy}
-                      >
-                        Restore
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() => setConfirming(w)}
-                      >
-                        Archive
-                      </button>
-                    )}
-                  </td>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Display name</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Workstation</th>
+                  <th>Public</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {workers.map((w) => (
+                  <tr key={w.id} className={w.archived ? "archived" : ""}>
+                    <td>
+                      <strong>{w.displayName}</strong>
+                      <div className="muted small">
+                        <code>{w.id}</code>
+                      </div>
+                      {w.archived && <StatusPill text="archived" tone="warn" />}
+                    </td>
+                    <td>{w.role}</td>
+                    <td>{w.status}</td>
+                    <td>{w.workstationId || "—"}</td>
+                    <td>{w.publicVisible ? "yes" : "no"}</td>
+                    <td className="admin-row-actions">
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => setEditing(w)}
+                      >
+                        Edit
+                      </button>
+                      {w.archived ? (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => restore(w)}
+                          disabled={busy}
+                        >
+                          Restore
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => setConfirming(w)}
+                        >
+                          Archive
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {confirming && (

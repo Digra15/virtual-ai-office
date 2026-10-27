@@ -903,7 +903,6 @@ function drawFigureFront(
   if (prayer !== "mukena") {
     const rolled = preset.outfitStyle === "smartShirt";
     const short = preset.outfitStyle === "streetTee" || preset.outfitStyle === "polo";
-    let i = 0;
     for (const [sx, [a1, a2]] of [[68, pose.armL], [124, pose.armR]] as [number, [number, number]][]) {
       const { ex, ey, hx, hy } = limbPoints(sx, 100, a1, a2, 20, 18);
       const sleeveC = short ? pal.out1 : vShade(pal.out1, -0.12);
@@ -919,7 +918,6 @@ function drawFigureFront(
       v.limb(ex, ey, hx, hy, 10.5, foreC);
       // hand
       v.beginPath(); v.circle(hx, hy, 6.4); shape(v, pal.skin, 2.2);
-      i++;
     }
   }
 
@@ -1106,20 +1104,22 @@ function drawHairSide(v: VCtx, style: HairStyle, pal: VPal, cx: number): void {
     case "bob":
       paint([[cx - 32, 66], [cx - 32, 36], [cx - 14, 14], [cx + 18, 14], [cx + 32, 38], [cx + 30, 64], [cx + 12, 56]]);
       break;
-    case "twintails":
+    case "twintails": {
       paint([[cx - 30, 50], [cx - 12, 16], [cx + 20, 16], [cx + 32, 48], [cx + 14, 44]]);
       v.save(); v.translate(cx - 34, 60);
       v.beginPath(); v.smoothClosed([[0, -8], [20, 8], [24, 48], [12, 84], [-2, 86], [-8, 48]]);
       v.fill(pal.hair); const lw = v.lineWidth; v.lineWidth = 3; v.stroke(OUT); v.lineWidth = lw;
       v.restore();
       break;
-    case "ponytail":
+    }
+    case "ponytail": {
       paint([[cx - 30, 50], [cx - 12, 16], [cx + 20, 16], [cx + 32, 48], [cx + 14, 44]]);
       v.save(); v.translate(cx + 26, 30);
       v.beginPath(); v.smoothClosed([[0, -8], [22, 4], [28, 40], [18, 76], [4, 78], [-4, 44]]);
       v.fill(pal.hair); const lw2 = v.lineWidth; v.lineWidth = 3; v.stroke(OUT); v.lineWidth = lw2;
       v.restore();
       break;
+    }
     case "short":
       paint([[cx - 30, 56], [cx - 30, 34], [cx - 12, 14], [cx + 18, 14], [cx + 30, 36], [cx + 28, 54], [cx + 10, 48]]);
       break;
@@ -1158,7 +1158,6 @@ function drawFigureBack(
 
   if (prayer !== "mukena") {
     // legs
-    let i = 0;
     for (const [sx, [a1, a2]] of [[84, pose.legL], [108, pose.legR]] as [number, [number, number]][]) {
       const { ex, ey, hx, hy } = limbPoints(sx, 132, a1, a2, 15, 19);
       const c = preset.outfitStyle === "streetTee" ? pal.out2 : pal.trouser;
@@ -1167,7 +1166,6 @@ function drawFigureBack(
       v.save(); v.translate(hx, hy + 4);
       v.beginPath(); v.roundRect(-7, -4, 14, 12, 5); shape(v, pal.shoe, 2.2);
       v.restore();
-      i++;
     }
     // torso back
     v.beginPath(); v.roundRect(64, 94, 64, 40, 15); shape(v, pal.out1, 3);
@@ -1247,13 +1245,14 @@ function drawHairBack(v: VCtx, style: HairStyle, pal: VPal): void {
       }
       blob([[62, 56], [66, 22], [96, 12], [126, 22], [130, 56], [112, 48], [80, 48]]);
       break;
-    case "ponytail":
+    case "ponytail": {
       v.save(); v.translate(126, 36);
       v.beginPath(); v.smoothClosed([[0, -8], [24, 4], [30, 42], [20, 80], [6, 82], [-2, 48]]);
       v.fill(grad); const lw = v.lineWidth; v.lineWidth = 3; v.stroke(OUT); v.lineWidth = lw;
       v.restore();
       blob([[62, 54], [66, 22], [96, 10], [126, 22], [130, 54], [112, 46], [80, 46]]);
       break;
+    }
     case "short":
       blob([[62, 60], [60, 36], [70, 18], [96, 10], [122, 18], [132, 36], [130, 60], [112, 52], [80, 52]]);
       break;

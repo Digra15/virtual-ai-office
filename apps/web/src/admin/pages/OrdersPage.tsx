@@ -403,44 +403,46 @@ export function OrdersPage() {
         <Empty text="No orders match this filter." />
       ) : (
         <div className="admin-panel">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Service</th>
-                <th>Status</th>
-                <th>Paid</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((o) => (
-                <tr key={o.id}>
-                  <td>
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() => setSelectedId(o.id)}
-                    >
-                      <code>{o.id}</code>
-                    </button>
-                  </td>
-                  <td>{o.customerName || "—"}</td>
-                  <td>
-                    <code>{o.serviceId}</code>
-                  </td>
-                  <td>
-                    <StatusPill text={o.status} tone={STATUS_TONES[o.status]} />
-                  </td>
-                  <td>{o.paid ? "✓" : "—"}</td>
-                  <td className="muted small">
-                    {new Date(o.createdAt).toLocaleString()}
-                  </td>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Customer</th>
+                  <th>Service</th>
+                  <th>Status</th>
+                  <th>Paid</th>
+                  <th>Created</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((o) => (
+                  <tr key={o.id}>
+                    <td>
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() => setSelectedId(o.id)}
+                      >
+                        <code>{o.id}</code>
+                      </button>
+                    </td>
+                    <td>{o.customerName || "—"}</td>
+                    <td>
+                      <code>{o.serviceId}</code>
+                    </td>
+                    <td>
+                      <StatusPill text={o.status} tone={STATUS_TONES[o.status]} />
+                    </td>
+                    <td>{o.paid ? "✓" : "—"}</td>
+                    <td className="muted small">
+                      {new Date(o.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

@@ -404,55 +404,57 @@ export function ServicesPage() {
         <Empty text="No services yet. Create the first one." />
       ) : (
         <div className="admin-panel">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Worker</th>
-                <th>Price</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    <strong>{s.title}</strong>
-                    <div className="muted small">
-                      <code>{s.id}</code>
-                    </div>
-                  </td>
-                  <td>{workerName(s.workerId)}</td>
-                  <td>
-                    {s.price} {s.currency}
-                  </td>
-                  <td>
-                    <StatusPill
-                      text={s.status}
-                      tone={s.status === "published" ? "ok" : "warn"}
-                    />
-                  </td>
-                  <td className="admin-row-actions">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => setEditing(s)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => setConfirming(s)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Worker</th>
+                  <th>Price</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {services.map((s) => (
+                  <tr key={s.id}>
+                    <td>
+                      <strong>{s.title}</strong>
+                      <div className="muted small">
+                        <code>{s.id}</code>
+                      </div>
+                    </td>
+                    <td>{workerName(s.workerId)}</td>
+                    <td>
+                      {s.price} {s.currency}
+                    </td>
+                    <td>
+                      <StatusPill
+                        text={s.status}
+                        tone={s.status === "published" ? "ok" : "warn"}
+                      />
+                    </td>
+                    <td className="admin-row-actions">
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => setEditing(s)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => setConfirming(s)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {confirming && (

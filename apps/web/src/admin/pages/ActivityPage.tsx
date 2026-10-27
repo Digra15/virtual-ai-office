@@ -37,50 +37,52 @@ export function ActivityPage() {
         <Empty text="No audit entries yet." />
       ) : (
         <div className="admin-panel">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Actor</th>
-                <th>Action</th>
-                <th>Entity</th>
-                <th>Detail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id}>
-                  <td className="muted small">
-                    {new Date(e.at).toLocaleString()}
-                  </td>
-                  <td>{e.actor}</td>
-                  <td>
-                    <code>{e.action}</code>
-                  </td>
-                  <td>
-                    <span className="muted">{e.entity}</span>/
-                    <code>{e.entityId}</code>
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="link-btn"
-                      onClick={() =>
-                        setOpenId((prev) => (prev === e.id ? null : e.id))
-                      }
-                    >
-                      {openId === e.id ? "hide" : "show"}
-                    </button>
-                    {openId === e.id && (
-                      <pre className="admin-json">
-                        {JSON.stringify(e.detail, null, 2)}
-                      </pre>
-                    )}
-                  </td>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Actor</th>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>Detail</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {entries.map((e) => (
+                  <tr key={e.id}>
+                    <td className="muted small">
+                      {new Date(e.at).toLocaleString()}
+                    </td>
+                    <td>{e.actor}</td>
+                    <td>
+                      <code>{e.action}</code>
+                    </td>
+                    <td>
+                      <span className="muted">{e.entity}</span>/
+                      <code>{e.entityId}</code>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() =>
+                          setOpenId((prev) => (prev === e.id ? null : e.id))
+                        }
+                      >
+                        {openId === e.id ? "hide" : "show"}
+                      </button>
+                      {openId === e.id && (
+                        <pre className="admin-json">
+                          {JSON.stringify(e.detail, null, 2)}
+                        </pre>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

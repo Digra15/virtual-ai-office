@@ -215,7 +215,7 @@ export const AIAvatar = memo(function AIAvatar({
       const baseY = 0.95;
       const aspect = wantAspect;
       let y = baseY, sx = 1, sy = 1, rz = 0, rx = 0;
-      let px = 0, pz = 0; // figure local offset
+      const px = 0; let pz = 0; // figure local offset
       let flat = false; // lay the plane horizontal (sleeping)
       if (isSleeping) {
         // lying flat on the recovery bed: mattress top y≈0.68, head NORTH (pillow)

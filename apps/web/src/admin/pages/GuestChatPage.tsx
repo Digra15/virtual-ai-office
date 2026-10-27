@@ -118,38 +118,40 @@ export function GuestChatPage() {
         </div>
       ) : (
         <div className="admin-panel">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Tamu</th>
-                <th>Terakhir</th>
-                <th>Belum dibalas</th>
-                <th>Pesan terakhir</th>
-              </tr>
-            </thead>
-            <tbody>
-              {threads.map((t) => {
-                const last = t.messages[t.messages.length - 1];
-                return (
-                  <tr key={t.guestId}>
-                    <td>
-                      <button
-                        type="button"
-                        className="link-btn"
-                        onClick={() => setSelectedId(t.guestId)}
-                      >
-                        {t.guestName}
-                      </button>
-                      <div className="muted small">{t.guestId}</div>
-                    </td>
-                    <td className="muted small">{new Date(t.updatedAt).toLocaleString()}</td>
-                    <td>{unansweredCount(t)}</td>
-                    <td className="small">{last ? last.text : "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Tamu</th>
+                  <th>Terakhir</th>
+                  <th>Belum dibalas</th>
+                  <th>Pesan terakhir</th>
+                </tr>
+              </thead>
+              <tbody>
+                {threads.map((t) => {
+                  const last = t.messages[t.messages.length - 1];
+                  return (
+                    <tr key={t.guestId}>
+                      <td>
+                        <button
+                          type="button"
+                          className="link-btn"
+                          onClick={() => setSelectedId(t.guestId)}
+                        >
+                          {t.guestName}
+                        </button>
+                        <div className="muted small">{t.guestId}</div>
+                      </td>
+                      <td className="muted small">{new Date(t.updatedAt).toLocaleString()}</td>
+                      <td>{unansweredCount(t)}</td>
+                      <td className="small">{last ? last.text : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

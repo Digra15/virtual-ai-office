@@ -65,7 +65,6 @@ export function RoomsPage() {
       setDrafts(draftsFrom(stored));
     }
     // Initialize once from the loaded config.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configRes.data]);
 
   const set = (id: string, patch: Partial<RoomDraft>) =>
@@ -121,69 +120,71 @@ export function RoomsPage() {
         <Empty text="No rooms defined in the floor plan." />
       ) : (
         <div className="admin-panel">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Room</th>
-                <th>Type</th>
-                <th>Floor</th>
-                <th>Description</th>
-                <th>Visible</th>
-              </tr>
-            </thead>
-            <tbody>
-              {drafts.map((d) => {
-                const def = roomById.get(d.id);
-                return (
-                  <tr key={d.id}>
-                    <td>
-                      <input
-                        type="text"
-                        value={d.name}
-                        onChange={(e) => set(d.id, { name: e.target.value })}
-                        aria-label={`Name for room ${d.id}`}
-                        style={{ width: "100%" }}
-                      />
-                      <div className="muted small">
-                        <code>{d.id}</code>
-                      </div>
-                    </td>
-                    <td>
-                      <StatusPill
-                        text={def?.type ?? "—"}
-                        tone={TYPE_TONES[def?.type ?? ""]}
-                      />
-                    </td>
-                    <td>
-                      <StatusPill
-                        text={def?.floor === 1 ? "Second" : "Ground"}
-                        tone="info"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={d.description}
-                        onChange={(e) =>
-                          set(d.id, { description: e.target.value })
-                        }
-                        aria-label={`Description for room ${d.id}`}
-                        style={{ width: "100%" }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={d.visible}
-                        onChange={(e) => set(d.id, { visible: e.target.checked })}
-                        aria-label={`Visible: room ${d.id}`}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Room</th>
+                  <th>Type</th>
+                  <th>Floor</th>
+                  <th>Description</th>
+                  <th>Visible</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drafts.map((d) => {
+                  const def = roomById.get(d.id);
+                  return (
+                    <tr key={d.id}>
+                      <td>
+                        <input
+                          type="text"
+                          value={d.name}
+                          onChange={(e) => set(d.id, { name: e.target.value })}
+                          aria-label={`Name for room ${d.id}`}
+                          style={{ width: "100%" }}
+                        />
+                        <div className="muted small">
+                          <code>{d.id}</code>
+                        </div>
+                      </td>
+                      <td>
+                        <StatusPill
+                          text={def?.type ?? "—"}
+                          tone={TYPE_TONES[def?.type ?? ""]}
+                        />
+                      </td>
+                      <td>
+                        <StatusPill
+                          text={def?.floor === 1 ? "Second" : "Ground"}
+                          tone="info"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={d.description}
+                          onChange={(e) =>
+                            set(d.id, { description: e.target.value })
+                          }
+                          aria-label={`Description for room ${d.id}`}
+                          style={{ width: "100%" }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={d.visible}
+                          onChange={(e) => set(d.id, { visible: e.target.checked })}
+                          aria-label={`Visible: room ${d.id}`}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           <FormError error={error} />
           <div className="admin-form-actions">
             <button

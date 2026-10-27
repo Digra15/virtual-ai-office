@@ -176,55 +176,57 @@ export function AssetsPage() {
         ) : assets.length === 0 ? (
           <Empty text="No assets uploaded. The built-in procedural pixel sprite is always available." />
         ) : (
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>id</th>
-                <th>kind</th>
-                <th>attribution</th>
-                <th>license</th>
-                <th>supports</th>
-                <th>animations</th>
-                <th>url</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {assets.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <code>{a.id}</code>
-                  </td>
-                  <td>{a.kind}</td>
-                  <td>{a.attribution || "—"}</td>
-                  <td>{a.license || "—"}</td>
-                  <td className="muted small">
-                    {Object.entries(a.supports)
-                      .filter(([, v]) => v)
-                      .map(([k]) => k)
-                      .join(", ") || "none"}
-                  </td>
-                  <td className="muted small">
-                    {Object.entries(a.animations).map(([k, v]) => `${k}×${v}`).join(", ") || "—"}
-                  </td>
-                  <td>
-                    <a href={a.url} target="_blank" rel="noreferrer">
-                      open
-                    </a>
-                  </td>
-                  <td className="admin-row-actions">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => setConfirming(a)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>id</th>
+                  <th>kind</th>
+                  <th>attribution</th>
+                  <th>license</th>
+                  <th>supports</th>
+                  <th>animations</th>
+                  <th>url</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {assets.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <code>{a.id}</code>
+                    </td>
+                    <td>{a.kind}</td>
+                    <td>{a.attribution || "—"}</td>
+                    <td>{a.license || "—"}</td>
+                    <td className="muted small">
+                      {Object.entries(a.supports)
+                        .filter(([, v]) => v)
+                        .map(([k]) => k)
+                        .join(", ") || "none"}
+                    </td>
+                    <td className="muted small">
+                      {Object.entries(a.animations).map(([k, v]) => `${k}×${v}`).join(", ") || "—"}
+                    </td>
+                    <td>
+                      <a href={a.url} target="_blank" rel="noreferrer">
+                        open
+                      </a>
+                    </td>
+                    <td className="admin-row-actions">
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => setConfirming(a)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
       {confirming && (

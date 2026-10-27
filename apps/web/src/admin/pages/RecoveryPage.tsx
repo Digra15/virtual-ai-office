@@ -52,7 +52,6 @@ function RecoveryConfigEditor() {
         setAutoRecover(stored.autoRecover);
       setInitialized(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configRes.data]);
 
   const save = async () => {
@@ -275,23 +274,25 @@ function ErrorEventList() {
       ) : events.length === 0 ? (
         <Empty text="No error events recorded." />
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Category</th>
-              <th>Message</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((e) => (
-              <ErrorEventRow key={e.id} event={e} onChanged={eventsRes.refresh} />
-            ))}
-          </tbody>
-        </table>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Category</th>
+                <th>Message</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((e) => (
+                <ErrorEventRow key={e.id} event={e} onChanged={eventsRes.refresh} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       <h4 style={{ marginTop: 16 }}>Record an error event</h4>
       <div className="admin-grid-3 admin-row-gap">

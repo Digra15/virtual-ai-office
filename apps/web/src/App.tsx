@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { ErrorBoundary } from "./app/ErrorBoundary";
 import { LoadingOverlay } from "./app/LoadingOverlay";
 import { AssetGuard } from "./components/AssetGuard";
@@ -127,6 +127,17 @@ function Dashboard() {
 
   const backendConfigured = backendEnv.configured || wsUrl.trim() !== "";
 
+  // --- Mobile sidebar drawer (Phase 6 pass 1) ------------------------------
+  // Desktop is untouched: the toggle is hidden by CSS and the sidebar
+  // keeps its 322px flex layout. Below 768px the sidebar becomes an
+  // off-canvas drawer; selecting an agent closes it so the detail panel
+  // (inside the viewport) is never hidden behind the drawer.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const selectedId = useAgentStore((s) => s.selectedId);
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [selectedId]);
+
   // --- WebSocket connection lifecycle -------------------------------------
   useEffect(() => {
     const url = wsUrl.trim();
@@ -228,7 +239,10 @@ function Dashboard() {
       <WanderDirector />
       <PrayerDirector />
       <RecoveryDirector />
-      <Header />
+      <Header
+        onToggleSidebar={() => setSidebarOpen((o) => !o)}
+        sidebarOpen={sidebarOpen}
+      />
       {!backendConfigured && (
         <div className="config-error" role="alert">
           Backend not configured — set <code>VITE_API_URL</code> /{" "}
@@ -237,10 +251,18 @@ function Dashboard() {
         </div>
       )}
       <div className="main">
-        <aside className="sidebar-left">
+        <aside className={`sidebar-left${sidebarOpen ? " open" : ""}`}>
           <StatCards />
           <AgentList />
         </aside>
+        {sidebarOpen && (
+          <button
+            type="button"
+            className="sidebar-backdrop"
+            aria-label="Close sidebar"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         <div className="viewport">
           <AssetGuard label="3D office scene">
             <Suspense fallback={<LoadingOverlay />}>

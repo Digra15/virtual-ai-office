@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Text, useGLTF, useAnimations } from "@react-three/drei";
 import type { Group } from "three";
@@ -133,8 +133,35 @@ export function CutesAvatar({
 
   // Lively caption animation: big bounce + wiggle + pulse.
   // (labelRef is a child of the caption Billboard, so animate around 0.)
+  // prefers-reduced-motion: the label stays static (no bobbing, pulsing,
+  // or sway). The listener keeps it live if the user toggles the OS
+  // setting mid-session.
+  const [reduceMotion, setReduceMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReduceMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
   useFrame(({ clock }) => {
     if (!labelRef.current) return;
+    if (reduceMotion) {
+      labelRef.current.position.y = 0;
+      labelRef.current.scale.setScalar(1);
+      labelRef.current.rotation.z = 0;
+      return;
+    }
     const t = clock.getElapsedTime();
     labelRef.current.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
     const s = 1 + Math.sin(t * 6) * 0.15;

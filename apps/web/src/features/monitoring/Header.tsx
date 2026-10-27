@@ -11,7 +11,13 @@ import { useSiteConfigStore } from "../../stores/useSiteConfigStore";
  * Mission control actions (Board, Meet, Spawn, Settings) live in
  * /admin now; this header is a pure status bar.
  */
-export function Header() {
+export function Header({
+  onToggleSidebar,
+  sidebarOpen,
+}: {
+  onToggleSidebar?: () => void;
+  sidebarOpen?: boolean;
+}) {
   const branding = useOfficeConfigStore((s) => s.branding);
   const siteConfig = useSiteConfigStore((s) => s.config);
   const officeName =
@@ -27,6 +33,17 @@ export function Header() {
         )}
       </div>
       <div className="header-right">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={onToggleSidebar}
+            aria-expanded={sidebarOpen}
+            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+          >
+            ☰ Panel
+          </button>
+        )}
         <DemoBadge />
         <ConnectionBadge />
         <a className="header-action" href="/admin" target="_self">

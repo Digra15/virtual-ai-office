@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminSetupSchema } from "@virtual-ai-office/shared";
 import { ApiError, apiSetup } from "./api";
 import { AuthProvider, useAuth } from "./auth";
@@ -239,9 +239,56 @@ function LoginPage({ onNeedSetup }: { onNeedSetup: () => void }) {
 function Shell() {
   const { user, logout } = useAuth();
   const [page, setPage] = useState<AdminPage>("dashboard");
+  // Mobile nav drawer (Phase 6 pass 1): hidden toggle + off-canvas
+  // sidebar below 768px only; desktop layout is untouched.
+  const [navOpen, setNavOpen] = useState(false);
+
+  // URL hash sync (no router): the page lives in #<page-id> so the
+  // back/forward buttons and deep links work. Unknown or empty hash
+  // falls back to the dashboard page. Existing state navigation (nav
+  // buttons, dashboard quick links via `go`) keeps working through the
+  // same function.
+  const go = (p: AdminPage) => {
+    setPage(p);
+    setNavOpen(false);
+    if (window.location.hash !== `#${p}`) {
+      window.location.hash = p;
+    }
+  };
+
+  useEffect(() => {
+    const fromHash = (hash: string): AdminPage | null => {
+      const id = hash.replace(/^#/, "");
+      return ADMIN_PAGES.some((p) => p.id === id) ? (id as AdminPage) : null;
+    };
+    const initial = fromHash(window.location.hash);
+    if (initial) setPage(initial);
+    const onHashChange = () => {
+      setPage(fromHash(window.location.hash) ?? "dashboard");
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   return (
-    <div className="admin-shell">
+    <div className={`admin-shell${navOpen ? " admin-nav-open" : ""}`}>
+      <button
+        type="button"
+        className="admin-nav-toggle"
+        onClick={() => setNavOpen((o) => !o)}
+        aria-expanded={navOpen}
+        aria-label={navOpen ? "Close navigation" : "Open navigation"}
+      >
+        {navOpen ? "✕ Tutup" : "☰ Menu"}
+      </button>
+      {navOpen && (
+        <button
+          type="button"
+          className="admin-nav-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
       <aside className="admin-sidebar">
         <div className="admin-brand">
           <h1>Office Admin</h1>
@@ -253,7 +300,7 @@ function Shell() {
               key={p.id}
               type="button"
               className={`admin-nav-item${page === p.id ? " active" : ""}`}
-              onClick={() => setPage(p.id)}
+              onClick={() => go(p.id)}
               aria-current={page === p.id ? "page" : undefined}
             >
               {p.label}
@@ -270,7 +317,7 @@ function Shell() {
         </div>
       </aside>
       <main className="admin-main">
-        {page === "dashboard" && <DashboardPage go={setPage} />}
+        {page === "dashboard" && <DashboardPage go={go} />}
         {page === "workers" && <WorkersPage />}
         {page === "services" && <ServicesPage />}
         {page === "orders" && <OrdersPage />}

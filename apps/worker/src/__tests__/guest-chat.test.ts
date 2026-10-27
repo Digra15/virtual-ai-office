@@ -40,7 +40,7 @@ describe('guest chat (visitor → Difia)', () => {
     const registry = new AgentRegistry();
     const posted = registry.postGuestMessage('guest-pend01', 'Sari', 'Bisa tanya?');
     if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
-    let pending = registry.pendingGuestMessages();
+    const pending = registry.pendingGuestMessages();
     expect(pending).toHaveLength(1);
     expect(pending[0]?.message.id).toBe(posted.message.id);
     expect(pending[0]?.guestId).toBe('guest-pend01');
