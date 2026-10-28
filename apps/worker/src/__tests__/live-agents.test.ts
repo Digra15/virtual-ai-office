@@ -2,30 +2,34 @@ import { describe, expect, it } from 'vitest';
 import { AgentRegistry, LIVE_SEEDS } from '../registry';
 
 describe('live seats (no demo)', () => {
-  it('seeds exactly the 3 live agents, idempotently', () => {
+  it('seeds exactly the 4 live agents, idempotently', () => {
     const registry = new AgentRegistry();
-    expect(registry.seedLiveAgents()).toBe(3);
+    expect(registry.seedLiveAgents()).toBe(4);
     expect(registry.seedLiveAgents()).toBe(0);
     const agents = registry.list();
-    expect(agents).toHaveLength(3);
+    expect(agents).toHaveLength(4);
     expect(agents.every((a) => a.source === 'live')).toBe(true);
-    expect(agents.map((a) => a.id).sort()).toEqual(['difia', 'kirana', 'reno']);
-    expect(agents.map((a) => a.name).sort()).toEqual(['Difia', 'Kirana', 'Reno']);
+    expect(agents.map((a) => a.id).sort()).toEqual(['difia', 'kirana', 'nayla', 'reno']);
+    expect(agents.map((a) => a.name).sort()).toEqual(['Difia', 'Kirana', 'Nayla', 'Reno']);
     const difia = agents.find((a) => a.id === 'difia');
-    expect(difia?.role).toBe('Receptionist');
-    expect(difia?.workstationId).toBe('reception');
+    expect(difia?.role).toBe('Project Manager');
+    expect(difia?.workstationId).toBe('project');
+    const nayla = agents.find((a) => a.id === 'nayla');
+    expect(nayla?.role).toBe('Customer Service');
+    expect(nayla?.workstationId).toBe('reception');
+    expect(nayla?.gender).toBe('female');
     expect(agents.find((a) => a.id === 'kirana')?.workstationId).toBe('ws-01');
     expect(agents.find((a) => a.id === 'reno')?.workstationId).toBe('ws-02');
-    expect(LIVE_SEEDS.map((s) => s.id).sort()).toEqual(['difia', 'kirana', 'reno']);
+    expect(LIVE_SEEDS.map((s) => s.id).sort()).toEqual(['difia', 'kirana', 'nayla', 'reno']);
   });
 
   it('purges demo agents but keeps live ones', () => {
     const registry = new AgentRegistry();
     registry.seedDemoAgents();
     registry.seedLiveAgents();
-    expect(registry.list()).toHaveLength(11);
+    expect(registry.list()).toHaveLength(12);
     expect(registry.purgeDemoAgents()).toBe(8);
-    expect(registry.list().map((a) => a.id).sort()).toEqual(['difia', 'kirana', 'reno']);
+    expect(registry.list().map((a) => a.id).sort()).toEqual(['difia', 'kirana', 'nayla', 'reno']);
   });
 
   it('first report for a live seat uses its proper identity', () => {

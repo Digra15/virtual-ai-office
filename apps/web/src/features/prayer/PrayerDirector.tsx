@@ -8,6 +8,7 @@ import {
 import { useGuestPresenceStore } from "../../stores/useGuestPresenceStore";
 import { movement } from "../../world/movement";
 import { isInMusola, QIBLA_FACING } from "../../world/characters/facing";
+import { isInBriefing } from "../../stores/useBriefingStore";
 
 /**
  * Faked prayer-motion director (CUTES rig has no knee/waist joints, so
@@ -83,11 +84,12 @@ function tick(): void {
 
     let s = states.get(id);
     if (!s) {
-      // Reception standby: while a guest chat is active, Difia never
+      // Reception standby: while a guest chat is active, Nayla never
       // STARTS a prayer cycle — the ReceptionDirector routes her to the
       // desk instead. (A cycle already in progress is released at its
       // next phase boundary below, never yanked mid-pose.)
-      if (id === "difia" && useGuestPresenceStore.getState().guestActive) continue;
+      if (id === "nayla" && useGuestPresenceStore.getState().guestActive) continue;
+      if (isInBriefing(id)) continue;
       // Prayer start: face the qibla, begin at qiyam.
       movement.setFacing(id, QIBLA_FACING);
       s = { phaseIdx: 0, phaseUntil: now + PHASES[0].ms, appliedPose: null };
@@ -96,10 +98,10 @@ function tick(): void {
     }
 
     if (now < s.phaseUntil) continue;
-    // Reception standby: Difia's current pose was allowed to finish;
+    // Reception standby: Nayla's current pose was allowed to finish;
     // release her now instead of advancing the cycle, so the
     // ReceptionDirector can route her to the desk on its next tick.
-    if (id === "difia" && useGuestPresenceStore.getState().guestActive) {
+    if ((id === "nayla" && useGuestPresenceStore.getState().guestActive) || isInBriefing(id)) {
       clearPrayer(id);
       continue;
     }

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AgentRegistry, GUEST_CHAT_COOLDOWN_MS, GUEST_PRESENCE_WINDOW_MS } from '../registry';
+import { GuestChatMessageSchema } from '@virtual-ai-office/shared';
 
-describe('guest chat (visitor → Difia)', () => {
+describe('guest chat (visitor → Nayla)', () => {
   it('posts a guest message and reads back only that thread', () => {
     const registry = new AgentRegistry();
     const posted = registry.postGuestMessage('guest-abc123', 'Budi', 'Halo, ini kantor apa?');
@@ -44,8 +45,8 @@ describe('guest chat (visitor → Difia)', () => {
     expect(pending).toHaveLength(1);
     expect(pending[0]?.message.id).toBe(posted.message.id);
     expect(pending[0]?.guestId).toBe('guest-pend01');
-    const replied = registry.replyToGuestMessage(posted.message.id, 'difia', 'Tentu, silakan!');
-    expect(replied?.reply.from).toBe('difia');
+    const replied = registry.replyToGuestMessage(posted.message.id, 'nayla', 'Tentu, silakan!');
+    expect(replied?.reply.from).toBe('nayla');
     expect(replied?.thread.messages).toHaveLength(2);
     expect(registry.pendingGuestMessages()).toHaveLength(0);
   });
@@ -67,13 +68,13 @@ describe('guest chat (visitor → Difia)', () => {
     expect(payload).not.toContain('Rahasia');
     expect(payload).not.toContain('Isi pesan rahasia');
     expect(payload).not.toContain('guest-cnt01');
-    registry.replyToGuestMessage(first.message.id, 'difia', 'Ok');
+    registry.replyToGuestMessage(first.message.id, 'nayla', 'Ok');
     expect(registry.pendingGuestCount()).toBe(1);
   });
 
   it('returns null when replying to an unknown message', () => {
     const registry = new AgentRegistry();
-    expect(registry.replyToGuestMessage('nope-1', 'difia', 'Hai')).toBeNull();
+    expect(registry.replyToGuestMessage('nope-1', 'nayla', 'Hai')).toBeNull();
   });
 
   it('sorts threads newest-updated first', () => {
@@ -88,10 +89,10 @@ describe('guest chat (visitor → Difia)', () => {
     const registry = new AgentRegistry();
     const posted = registry.postGuestMessage('guest-dbl01', undefined, 'Tanya');
     if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
-    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Jawaban 1')).not.toBeNull();
+    expect(registry.replyToGuestMessage(posted.message.id, 'nayla', 'Jawaban 1')).not.toBeNull();
     // Same from again → refused (this is what stops the AI endpoint and
     // the poller ever double-answering one message).
-    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Jawaban 2')).toBeNull();
+    expect(registry.replyToGuestMessage(posted.message.id, 'nayla', 'Jawaban 2')).toBeNull();
     expect(registry.getGuestThread('guest-dbl01')?.messages).toHaveLength(2);
   });
 
@@ -99,7 +100,7 @@ describe('guest chat (visitor → Difia)', () => {
     const registry = new AgentRegistry();
     const posted = registry.postGuestMessage('guest-dbl02', undefined, 'Tanya');
     if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
-    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Dari Difia')).not.toBeNull();
+    expect(registry.replyToGuestMessage(posted.message.id, 'nayla', 'Dari Nayla')).not.toBeNull();
     expect(registry.replyToGuestMessage(posted.message.id, 'admin', 'Dari Admin')).not.toBeNull();
     expect(registry.getGuestThread('guest-dbl02')?.messages).toHaveLength(3);
   });
@@ -110,11 +111,11 @@ describe('guest chat (visitor → Difia)', () => {
     const posted = registry.postGuestMessage('guest-dbl03', undefined, 'Tanya');
     if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
     expect(registry.guestMessageExists(posted.message.id)).toBe(true);
-    registry.replyToGuestMessage(posted.message.id, 'difia', 'Jawaban');
+    registry.replyToGuestMessage(posted.message.id, 'nayla', 'Jawaban');
     // Still exists (so the route answers 409, not 404), but a second
     // same-from reply is refused.
     expect(registry.guestMessageExists(posted.message.id)).toBe(true);
-    expect(registry.replyToGuestMessage(posted.message.id, 'difia', 'Lagi')).toBeNull();
+    expect(registry.replyToGuestMessage(posted.message.id, 'nayla', 'Lagi')).toBeNull();
   });
 
   it('survives a snapshot/restore round-trip (backward-compatible)', () => {
@@ -134,6 +135,22 @@ describe('guest chat (visitor → Difia)', () => {
     legacy.restore({ agents: [], entryCounter: 0 });
     expect(legacy.listGuestThreads()).toHaveLength(0);
     expect(legacy.getGuestThread('guest-snap01')).toBeUndefined();
+  });
+});
+
+describe('guest message sender values (identity swap)', () => {
+  it('accepts new nayla replies and still validates legacy difia threads', () => {
+    const base = {
+      id: '1-1',
+      guestId: 'guest-legacy',
+      guestName: 'Tamu',
+      text: 'Hai',
+      at: 1000,
+    };
+    expect(GuestChatMessageSchema.safeParse({ ...base, from: 'nayla' }).success).toBe(true);
+    // Pre-swap threads (Difia as receptionist) must still read back.
+    expect(GuestChatMessageSchema.safeParse({ ...base, from: 'difia' }).success).toBe(true);
+    expect(GuestChatMessageSchema.safeParse({ ...base, from: 'unknown' }).success).toBe(false);
   });
 });
 
@@ -157,7 +174,7 @@ describe('guest presence (reception standby signal)', () => {
     const registry = new AgentRegistry();
     const posted = registry.postGuestMessage('guest-pres03', 'Tamu', 'Sudah dijawab?');
     if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
-    const replied = registry.replyToGuestMessage(posted.message.id, 'difia', 'Sudah, ini jawabannya.');
+    const replied = registry.replyToGuestMessage(posted.message.id, 'nayla', 'Sudah, ini jawabannya.');
     expect(replied).not.toBeNull();
     // Inside the window the recent message still counts…
     expect(registry.isGuestActive()).toBe(true);

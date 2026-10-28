@@ -8,11 +8,12 @@ import {
 } from "../../stores/useGuestPresenceStore";
 import { movement } from "../../world/movement";
 import { cancelWanderFor } from "../wander/WanderDirector";
+import { isInBriefing } from "../../stores/useBriefingStore";
 
 /**
- * Difia reception standby director (dashboard scene only).
+ * Nayla reception standby director (dashboard scene only).
  *
- * Difia's home is the reception desk. While a guest chat is active she
+ * Nayla's home is the reception desk. While a guest chat is active she
  * must be on standby AT reception: she WALKS (never teleports) to the
  * receptionist chair and SITS there (activity "seated", pose "desk" —
  * the same seated fake desk agents use, so no typing pose: her status
@@ -32,12 +33,12 @@ import { cancelWanderFor } from "../wander/WanderDirector";
  * How the pieces fit:
  * - Presence comes from useGuestPresenceStore (Worker route, with a
  *   local-widget fallback for old Workers — see that store).
- * - Wander suppression lives in WanderDirector (it skips Difia for new
+ * - Wander suppression lives in WanderDirector (it skips Nayla for new
  *   trips AND for return-home while guestActive) plus cancelWanderFor
  *   here, so a wander trip in progress never pulls her off standby.
  * - Prayer is handled in PrayerDirector: a prayer pose in progress is
  *   allowed to finish its current phase, then released (never yanked
- *   mid-pose), and no new prayer cycle starts for Difia while active.
+ *   mid-pose), and no new prayer cycle starts for Nayla while active.
  * - Meetings and non-idle statuses (working, recovering, …) are never
  *   interrupted: summoning waits until she is idle and free.
  * - On release (guestActive clears) she is NOT teleported anywhere —
@@ -48,7 +49,7 @@ import { cancelWanderFor } from "../wander/WanderDirector";
  * in the dashboard, so that is where standby is visible.
  */
 
-const DIFIA_ID = "difia";
+const NAYLA_ID = "nayla";
 const TICK_MS = 4000;
 /** Gentle stroll, same speed as the wander system. */
 const SUMMON_SPEED = 1.2;
@@ -60,20 +61,20 @@ const SUMMON_SPEED = 1.2;
  * via aisle-3. The existing reception fallback spawn (-2.4, 7.8) is NOT
  * reused: it sits inside the counter footprint.
  */
-export const DIFIA_STANDBY_SPOT = { x: -4, z: 5.5 } as const;
+export const NAYLA_STANDBY_SPOT = { x: -4, z: 5.5 } as const;
 /**
  * The receptionist chair itself: GamingChair in Reception.tsx, same
  * coordinates and facing. Sitting here means pose "desk" (model sunk
  * 0.18, as for desk agents) at exactly the chair's position.
  */
-export const DIFIA_STANDBY_CHAIR = { x: -4, z: 6.7 } as const;
+export const NAYLA_STANDBY_CHAIR = { x: -4, z: 6.7 } as const;
 /** South (+z), toward the counter and the entrance beyond it. */
-export const DIFIA_STANDBY_FACING = 0;
+export const NAYLA_STANDBY_FACING = 0;
 
 /** Within this distance of the chair she counts as "seated at standby". */
 const AT_CHAIR_DIST = 0.5;
 
-/** True while Difia is routed to / sitting at standby by this director. */
+/** True while Nayla is routed to / sitting at standby by this director. */
 let summoned = false;
 
 /**
@@ -86,11 +87,11 @@ let summoned = false;
  * straight leg stays clear of the counter footprint.
  */
 function sitOnChair(): void {
-  movement.moveTo(DIFIA_ID, [{ x: DIFIA_STANDBY_CHAIR.x, z: DIFIA_STANDBY_CHAIR.z }], {
+  movement.moveTo(NAYLA_ID, [{ x: NAYLA_STANDBY_CHAIR.x, z: NAYLA_STANDBY_CHAIR.z }], {
     speed: SUMMON_SPEED,
     arriveActivity: "seated",
     arrivePose: "desk",
-    arriveFacing: DIFIA_STANDBY_FACING,
+    arriveFacing: NAYLA_STANDBY_FACING,
   });
 }
 
@@ -104,8 +105,8 @@ function inActiveMeeting(id: string): boolean {
 
 function tick(): void {
   const active = useGuestPresenceStore.getState().guestActive;
-  const difia = useAgentStore.getState().agents[DIFIA_ID];
-  if (!difia) {
+  const nayla = useAgentStore.getState().agents[NAYLA_ID];
+  if (!nayla) {
     summoned = false;
     return;
   }
@@ -114,29 +115,32 @@ function tick(): void {
     summoned = false;
     return;
   }
-  // Guest active: Difia belongs at reception — unless she is busy.
-  if (difia.status !== "idle") return;
-  if (inActiveMeeting(DIFIA_ID)) return;
-  if (!movement.isRegistered(DIFIA_ID)) return;
+  // Guest active: Nayla belongs at reception — unless she is busy.
+  if (nayla.status !== "idle") return;
+  if (inActiveMeeting(NAYLA_ID)) return;
+  // Briefing owns her while she is in the Project Room — never yank
+  // her back to reception mid-briefing.
+  if (isInBriefing(NAYLA_ID)) return;
+  if (!movement.isRegistered(NAYLA_ID)) return;
   // Prayer finishes first (PrayerDirector releases her at the next phase
   // boundary and never starts a new cycle while active) — never yank her
   // mid-pose, or the motion reads as broken.
-  const presence = usePresenceStore.getState().presences[DIFIA_ID];
+  const presence = usePresenceStore.getState().presences[NAYLA_ID];
   if (presence?.prayerPose) return;
-  const pos = movement.getPosition(DIFIA_ID);
+  const pos = movement.getPosition(NAYLA_ID);
   if (!pos) return;
   const atChair =
     Math.hypot(
-      pos.x - DIFIA_STANDBY_CHAIR.x,
-      pos.z - DIFIA_STANDBY_CHAIR.z,
+      pos.x - NAYLA_STANDBY_CHAIR.x,
+      pos.z - NAYLA_STANDBY_CHAIR.z,
     ) <= AT_CHAIR_DIST;
-  if (atChair && !movement.isMoving(DIFIA_ID)) {
+  if (atChair && !movement.isMoving(NAYLA_ID)) {
     // Seated at standby: make sure she faces the entrance and stays
     // seated even if she arrived here some other way.
-    movement.setFacing(DIFIA_ID, DIFIA_STANDBY_FACING);
+    movement.setFacing(NAYLA_ID, NAYLA_STANDBY_FACING);
     const p = presence;
     if (p?.pose !== "desk" || p?.activity !== "seated") {
-      usePresenceStore.getState().setPresence(DIFIA_ID, {
+      usePresenceStore.getState().setPresence(NAYLA_ID, {
         activity: "seated",
         pose: "desk",
       });
@@ -144,15 +148,15 @@ function tick(): void {
     summoned = true;
     return;
   }
-  if (movement.isMoving(DIFIA_ID) && summoned) return; // already en route
+  if (movement.isMoving(NAYLA_ID) && summoned) return; // already en route
   // Aligned north of the chair (staging spot or the corridor between
   // staging and chair): take the short straight leg straight into it.
   // This leg never enters the counter footprint (north edge z 6.85).
   const alignedNorth =
-    Math.abs(pos.x - DIFIA_STANDBY_CHAIR.x) < 0.6 &&
-    pos.z >= DIFIA_STANDBY_SPOT.z &&
-    pos.z <= DIFIA_STANDBY_CHAIR.z;
-  cancelWanderFor(DIFIA_ID);
+    Math.abs(pos.x - NAYLA_STANDBY_CHAIR.x) < 0.6 &&
+    pos.z >= NAYLA_STANDBY_SPOT.z &&
+    pos.z <= NAYLA_STANDBY_CHAIR.z;
+  cancelWanderFor(NAYLA_ID);
   summoned = true;
   if (alignedNorth) {
     sitOnChair();
@@ -162,20 +166,20 @@ function tick(): void {
   // Cancel any wander trip first so the wander return-home tick never
   // pulls her off standby.
   movement.navigateTo(
-    DIFIA_ID,
-    DIFIA_STANDBY_SPOT.x,
-    DIFIA_STANDBY_SPOT.z,
+    NAYLA_ID,
+    NAYLA_STANDBY_SPOT.x,
+    NAYLA_STANDBY_SPOT.z,
     {
       speed: SUMMON_SPEED,
       arriveActivity: "standing",
       arrivePose: "free",
-      arriveFacing: DIFIA_STANDBY_FACING,
+      arriveFacing: NAYLA_STANDBY_FACING,
       onArrive: () => {
         // Guest may have left while she walked here; the tick owns
         // routing from now on, so only sit if standby is still wanted
         // and she is not mid-prayer.
         if (!useGuestPresenceStore.getState().guestActive) return;
-        if (usePresenceStore.getState().presences[DIFIA_ID]?.prayerPose) return;
+        if (usePresenceStore.getState().presences[NAYLA_ID]?.prayerPose) return;
         sitOnChair();
       },
     },

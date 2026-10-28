@@ -268,7 +268,8 @@ describe('receptionist key resolution (admin-panel key wins, env secret fallback
 
 describe('worker roster section for the receptionist', () => {
   const agents = [
-    { name: 'Difia', role: 'Receptionist', status: 'idle', currentTask: 'Standing by at the reception desk' },
+    { name: 'Nayla', role: 'Customer Service', status: 'idle', currentTask: 'Standing by at the reception desk' },
+    { name: 'Difia', role: 'Project Manager', status: 'idle', currentTask: 'Standing by in the Project Room' },
     { name: 'Kirana', role: 'Writer', status: 'working', currentTask: 'Menulis artikel' },
     { name: 'Reno', role: 'Software Engineering', status: 'idle', currentTask: '' },
   ];
@@ -276,7 +277,8 @@ describe('worker roster section for the receptionist', () => {
   it('renders one line per worker with name, role, status, and task', () => {
     const section = buildWorkerRosterSection(agents);
     expect(section).toContain('DAFTAR WORKER KANTOR');
-    expect(section).toContain('- Difia (Receptionist) — idle — Standing by at the reception desk');
+    expect(section).toContain('- Nayla (Customer Service) — idle — Standing by at the reception desk');
+    expect(section).toContain('- Difia (Project Manager) — idle — Standing by in the Project Room');
     expect(section).toContain('- Kirana (Writer) — working — Menulis artikel');
     expect(section).toContain('- Reno (Software Engineering) — idle');
   });
@@ -331,13 +333,34 @@ describe('worker roster section for the receptionist', () => {
   });
 });
 
+describe('receptionist persona rules (professional, no fake promises)', () => {
+  it('forbids invented prices/deadlines and the fake "sudah dicatat" claim', () => {
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('jangan pernah menyebut angka apa pun');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('jangan pernah mengarang tenggat');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('tidak ada sistem tiket');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).not.toContain('tawarkan untuk mencatat');
+  });
+
+  it('is Nayla, Customer Service, escalating to Difia the Project Manager', () => {
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('Kamu adalah Nayla, Customer Service');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('Difia, Project Manager');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).not.toContain('Kamu adalah Difia');
+  });
+
+  it('requires a concrete next step: confirm the request, ask the missing detail, route via this thread', () => {
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('ulangi permintaan itu dalam satu kalimat');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('tanyakan detail yang kurang');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('lewat chat ini juga');
+  });
+});
+
 describe('worker roster section gender', () => {
   it('includes gender in Indonesian when known', () => {
     const section = buildWorkerRosterSection([
-      { name: 'Difia', role: 'Receptionist', status: 'idle', currentTask: '', gender: 'female' },
+      { name: 'Nayla', role: 'Customer Service', status: 'idle', currentTask: '', gender: 'female' },
       { name: 'Reno', role: 'Software Engineering', status: 'idle', currentTask: '', gender: 'male' },
     ]);
-    expect(section).toContain('- Difia (Receptionist, perempuan) — idle');
+    expect(section).toContain('- Nayla (Customer Service, perempuan) — idle');
     expect(section).toContain('- Reno (Software Engineering, laki-laki) — idle');
   });
 

@@ -7,6 +7,7 @@ import { movement } from "../../world/movement";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../../world/layout";
 import { PANTRY_CHAIR_SLOTS } from "../../world/building/rooms/Pantry";
 import { QIBLA_FACING } from "../../world/characters/facing";
+import { isInBriefing } from "../../stores/useBriefingStore";
 
 /**
  * Idle wandering director (simulated behavior).
@@ -130,12 +131,13 @@ function tick(): void {
   }
 
   // 1. Send wanderers home when their stroll is over.
-  // Reception standby: while a guest chat is active, Difia's return-home
+  // Reception standby: while a guest chat is active, Nayla's return-home
   // is suspended — the ReceptionDirector owns her position until the
   // guest activity ends, and a wander trip must never pull her off the
   // desk mid-chat. (New trips are excluded below, in the candidates.)
   for (const [id, s] of states) {
-    if (id === "difia" && useGuestPresenceStore.getState().guestActive) continue;
+    if (id === "nayla" && useGuestPresenceStore.getState().guestActive) continue;
+    if (isInBriefing(id)) continue;
     if (s.returnAt !== null && now >= s.returnAt && !movement.isMoving(id)) {
       const agent = agents[id];
       s.returnAt = null;
@@ -166,9 +168,10 @@ function tick(): void {
   const candidates = Object.values(agents).filter((a) => {
     if (a.status !== "idle") return false;
     if (inMeeting.has(a.id)) return false;
-    // Reception standby: Difia never starts a wander trip while a guest
+    // Reception standby: Nayla never starts a wander trip while a guest
     // chat is active (the ReceptionDirector routes her to the desk).
-    if (a.id === "difia" && useGuestPresenceStore.getState().guestActive) return false;
+    if (a.id === "nayla" && useGuestPresenceStore.getState().guestActive) return false;
+    if (isInBriefing(a.id)) return false;
     if (movement.isMoving(a.id)) return false;
     if (!movement.isRegistered(a.id)) return false;
     const s = getState(a.id);
@@ -252,7 +255,7 @@ export function _wanderTickForTests(): void {
 
 /**
  * Cancel any wander trip for one agent (used by the ReceptionDirector
- * when summoning Difia to standby, so the wander return-home tick never
+ * when summoning Nayla to standby, so the wander return-home tick never
  * pulls her off the desk mid-chat). Leaves a short cooldown so she is
  * not re-picked the instant the guest activity ends.
  */

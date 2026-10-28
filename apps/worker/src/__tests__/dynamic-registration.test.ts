@@ -94,7 +94,8 @@ describe('dynamic registration', () => {
       registry.list().filter((a) => a.source === 'live'),
     );
     expect(section).toContain('- Tara (Designer) — idle');
-    expect(section).toContain('- Difia (Receptionist, perempuan)');
+    expect(section).toContain('- Nayla (Customer Service, perempuan)');
+    expect(section).toContain('- Difia (Project Manager, perempuan)');
     expect(section).not.toContain('Nika');
   });
 
@@ -129,7 +130,7 @@ describe('dynamic registration', () => {
     expect(tara?.name).toBe('Tara');
     expect(tara?.role).toBe('Designer');
     expect(tara?.source).toBe('live');
-    expect(restored.list()).toHaveLength(4);
+    expect(restored.list()).toHaveLength(5);
   });
 
   it('normalizeAgentId trims and lowercases', () => {

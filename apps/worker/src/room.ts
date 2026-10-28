@@ -162,7 +162,7 @@ export class AgentRoom extends DurableObject<Env> {
       }
     }
 
-    // Guest chat (visitor → Difia). POST + thread GET are public but
+    // Guest chat (visitor → Nayla). POST + thread GET are public but
     // rate-limited and cooldown-guarded; a visitor only ever sees their
     // own thread. Replies and the pending queue require AGENT_SECRET.
     if (pathname === '/api/guest-chat') {
@@ -187,7 +187,7 @@ export class AgentRoom extends DurableObject<Env> {
     }
     // Public by design: returns ONLY { guestActive } — a bare boolean
     // with no message content, guestIds, or guest names — so the
-    // dashboard can poll it without any credential to drive Difia's
+    // dashboard can poll it without any credential to drive Nayla's
     // reception standby. The full queue stays behind AGENT_SECRET below.
     if (request.method === 'GET' && pathname === '/api/guest-chat/presence') {
       return json({ guestActive: this.registry.isGuestActive() });
@@ -201,7 +201,7 @@ export class AgentRoom extends DurableObject<Env> {
     if (guestReplyMatch && request.method === 'POST') {
       const authError = this.requireAgentAuth(request);
       if (authError) return authError;
-      return this.handleGuestReply(request, decodeURIComponent(guestReplyMatch[1] ?? ''), 'difia');
+      return this.handleGuestReply(request, decodeURIComponent(guestReplyMatch[1] ?? ''), 'nayla');
     }
 
     // Internal guest-chat channel for the admin API (routes.ts): the
@@ -361,7 +361,7 @@ export class AgentRoom extends DurableObject<Env> {
   }
 
   /**
-   * POST /api/guest-chat — a visitor writes to Difia. Public, but
+   * POST /api/guest-chat — a visitor writes to Nayla. Public, but
    * per-IP rate-limited (same window as agent events) and guarded by a
    * 15 s per-thread cooldown so one guest cannot flood the queue.
    */
@@ -404,7 +404,7 @@ export class AgentRoom extends DurableObject<Env> {
 
   /**
    * Ask the configured AI receptionist endpoint for a reply to one guest
-   * message and store it as Difia. Best-effort only: every failure path
+   * message and store it as Nayla. Best-effort only: every failure path
    * returns silently, leaving the message pending for the poller. The
    * double-reply guard in replyToGuestMessage also protects the case
    * where the poller answered first.
@@ -440,18 +440,18 @@ export class AgentRoom extends DurableObject<Env> {
       );
       const text = await requestReceptionistReply(config, history, target.text, undefined, undefined, roster);
       if (!text) return;
-      const replied = this.registry.replyToGuestMessage(messageId, 'difia', text);
+      const replied = this.registry.replyToGuestMessage(messageId, 'nayla', text);
       if (replied) await this.persist();
     } catch {
       // Best-effort: never surface receptionist failures to the guest path.
     }
   }
 
-  /** Shared reply path: agent bearer auth posts as Difia, admin as admin. */
+  /** Shared reply path: agent bearer auth posts as Nayla, admin as admin. */
   private async handleGuestReply(
     request: Request,
     messageId: string,
-    from: 'difia' | 'admin',
+    from: 'nayla' | 'admin',
   ): Promise<Response> {
     let body: unknown;
     try {

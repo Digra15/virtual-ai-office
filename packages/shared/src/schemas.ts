@@ -143,16 +143,20 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
 };
 
 /**
- * Guest chat (visitor → Difia). Visitors chat with Difia the receptionist
- * (played by the main assistant, answering via the poller — replies arrive
- * within minutes, not seconds). Threads live in the Durable Object, NOT in
- * D1, so no migration is needed. `at`/`updatedAt` are server ms timestamps.
+ * Guest chat (visitor → Nayla, Customer Service). Visitors chat with
+ * Nayla the front desk (played by the main assistant, answering via the
+ * poller — replies arrive within minutes, not seconds). Threads live in
+ * the Durable Object, NOT in D1, so no migration is needed.
+ * `at`/`updatedAt` are server ms timestamps. The legacy 'difia' value
+ * stays in the enum so threads written before the 2026-10-28 identity
+ * swap (when Difia was the receptionist) still validate on read; new
+ * replies use 'nayla' only.
  */
 export const GuestChatMessageSchema = z.object({
   id: z.string(),
   guestId: z.string(),
   guestName: z.string(),
-  from: z.enum(['guest', 'difia', 'admin']),
+  from: z.enum(['guest', 'difia', 'nayla', 'admin']),
   text: z.string().min(1).max(1000),
   at: z.number().int(),
 });

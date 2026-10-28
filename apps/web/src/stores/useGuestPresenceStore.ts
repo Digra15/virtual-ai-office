@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { backendEnv } from "../env";
 
 /**
- * Guest-presence signal for Difia's reception standby (dashboard only).
+ * Guest-presence signal for Nayla's reception standby (dashboard only).
  *
  * The Worker route GET /api/guest-chat/presence returns a bare boolean —
  * no message content, guestIds, or guest names. This store polls it and
@@ -13,7 +13,7 @@ import { backendEnv } from "../env";
  *   back to the LOCAL signal only (this browser's widget open with a
  *   recent or unanswered local thread, reported by GuestChatWidget).
  * - Transient failure (offline, 5xx) → keep the previous signal, so a
- *   network blip never yanks Difia off the desk mid-chat.
+ *   network blip never yanks Nayla off the desk mid-chat.
  *
  * Fetch failures are deliberately silent: a missing route or a dropped
  * request must never spam the console or break the scene.

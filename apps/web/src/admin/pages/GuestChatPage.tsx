@@ -81,7 +81,7 @@ export function GuestChatPage() {
             {selected.messages.map((m) => (
               <p key={m.id} className="small">
                 <span className="muted">{new Date(m.at).toLocaleString()} · </span>
-                <strong>{m.from === "guest" ? m.guestName : m.from === "difia" ? "Difia" : "Admin"}: </strong>
+                <strong>{m.from === "guest" ? m.guestName : m.from === "nayla" ? "Nayla" : m.from === "difia" ? "Difia" : "Admin"}: </strong>
                 {m.text}
               </p>
             ))}

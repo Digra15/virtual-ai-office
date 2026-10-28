@@ -60,6 +60,10 @@ interface CutesAvatarProps {
   lying?: boolean;
   /** status ring color */
   color: string;
+  /** Briefing talking: show the "..." speech bubble above the head. */
+  talking?: boolean;
+  /** Briefing listening: gentle whole-model nod (see below). */
+  listening?: boolean;
   onClick?: () => void;
 }
 
@@ -74,10 +78,14 @@ export function CutesAvatar({
   walking,
   lying = false,
   color,
+  talking = false,
+  listening = false,
   onClick,
 }: CutesAvatarProps) {
   const group = useRef<Group>(null);
   const labelRef = useRef<Group>(null);
+  const modelRef = useRef<Group>(null);
+  const bubbleRef = useRef<Group>(null);
   // Model precedence (see modelPools.ts): per-id mapping first, then
   // the gender pool pick, then the legacy nika fallback. Every pool URL
   // is already a CUTES_MODEL value, so the preload below covers them.
@@ -176,19 +184,39 @@ export function CutesAvatar({
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+  // Base model pitch (prayer/typing/lying transforms) for the nod: the
+  // nod is a small whole-model pitch oscillation added on top of it —
+  // the same whole-model-fake family as prayer, because the CUTES rig
+  // has no head/neck joint to nod with. Talking bubble pulse lives on
+  // its own ref so it never disturbs the caption animation.
+  const basePitchRef = useRef(0);
   useFrame(({ clock }) => {
-    if (!labelRef.current) return;
-    if (reduceMotion) {
-      labelRef.current.position.y = 0;
-      labelRef.current.scale.setScalar(1);
-      labelRef.current.rotation.z = 0;
-      return;
-    }
     const t = clock.getElapsedTime();
-    labelRef.current.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
-    const s = 1 + Math.sin(t * 6) * 0.15;
-    labelRef.current.scale.setScalar(s);
-    labelRef.current.rotation.z = Math.sin(t * 4) * 0.15;
+    if (labelRef.current) {
+      if (reduceMotion) {
+        labelRef.current.position.y = 0;
+        labelRef.current.scale.setScalar(1);
+        labelRef.current.rotation.z = 0;
+      } else {
+        labelRef.current.position.y = Math.abs(Math.sin(t * 4)) * 0.15;
+        const s = 1 + Math.sin(t * 6) * 0.15;
+        labelRef.current.scale.setScalar(s);
+        labelRef.current.rotation.z = Math.sin(t * 4) * 0.15;
+      }
+    }
+    if (modelRef.current) {
+      modelRef.current.rotation.x =
+        listening && !reduceMotion && !lying
+          ? basePitchRef.current + Math.sin(t * 3.5) * 0.08
+          : basePitchRef.current;
+    }
+    if (bubbleRef.current) {
+      const s = reduceMotion ? 1 : 1 + Math.sin(t * 6) * 0.18;
+      bubbleRef.current.scale.setScalar(s);
+      bubbleRef.current.position.y = reduceMotion
+        ? 0
+        : Math.abs(Math.sin(t * 4)) * 0.08;
+    }
   });
 
   // Seated: sink the model so the chair seat is at hip level and the
@@ -238,6 +266,12 @@ export function CutesAvatar({
       : isTyping
         ? [TYPING_LEAN_X, 0, 0]
         : [0, 0, 0];
+  // Keep the nod's base pitch in sync with the current transform
+  // (prayer/typing/lying): the per-frame nod adds to this, never
+  // replaces it, so a listening agent mid-prayer still bows correctly.
+  useEffect(() => {
+    basePitchRef.current = modelRotation[0];
+  }, [modelRotation]);
   // Prayer outfit (mukena / sarung+peci, see prayerOutfit.tsx): only
   // while praying, never while lying (the two never coincide: prayer
   // only triggers in the musola, lying only on a recovery bed).
@@ -271,6 +305,7 @@ export function CutesAvatar({
         <meshBasicMaterial color={color} transparent opacity={0.9} />
       </mesh>
       <group
+        ref={modelRef}
         position={modelPosition}
         scale={modelScale}
         rotation={modelRotation}
@@ -297,6 +332,26 @@ export function CutesAvatar({
           {name}
         </Text>
       </Billboard>
+      {/* Talking bubble: only while this agent is the briefing
+          speaker. The "..." is an indicator, never dialogue text —
+          real words live in the bottom dialogue strip (BriefingDirector),
+          so the bubble can never present invented speech as real. */}
+      {talking && !lying && (
+        <Billboard position={[0, hudNameY + 0.55, 0]}>
+          <group ref={bubbleRef}>
+            <Text
+              fontSize={0.3}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              outlineWidth={0.05}
+              outlineColor="#000000"
+            >
+              ...
+            </Text>
+          </group>
+        </Billboard>
+      )}
       {/* Animated activity caption below the name. Sleeping agents
           keep "zZ" (see activityLabel); everyone else shows what they
           are doing: working, thinking, waiting, eating, praying… */}

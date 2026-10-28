@@ -124,6 +124,6 @@ describe('runtime site settings', () => {
     expect(registry.markOfflineSweep(registry.getSiteConfig().offlineTimeoutMs)).toHaveLength(0);
 
     registry.setSiteConfig({ ...DEFAULT_SITE_CONFIG, officeName: 'X', announcement: '', offlineTimeoutMs: 30_000 });
-    expect(registry.markOfflineSweep(registry.getSiteConfig().offlineTimeoutMs)).toHaveLength(3);
+    expect(registry.markOfflineSweep(registry.getSiteConfig().offlineTimeoutMs)).toHaveLength(4);
   });
 });

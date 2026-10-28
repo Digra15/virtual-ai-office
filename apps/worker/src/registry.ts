@@ -56,14 +56,19 @@ export interface UpsertResult {
 }
 
 /**
- * The 3 founder live agents — always seeded on boot. They are NOT a closed
+ * The founder live agents — always seeded on boot. They are NOT a closed
  * list: any authenticated report auto-registers further live seats (see
- * upsertFromEvent). Difia is the receptionist; Kirana writes; Reno codes.
- * All three are played by the same assistant (coordinator + one subagent
- * per seat).
+ * upsertFromEvent). Nayla is Customer Service at the reception desk;
+ * Difia is the Project Manager in the Project Room; Kirana writes; Reno
+ * codes. All are played by the same assistant (coordinator + one subagent
+ * per seat). NOTE: seedLiveAgents never overwrites an existing seat, so
+ * a live seat restored from a pre-swap snapshot keeps its old identity
+ * until it is updated by an authenticated report (vao.py register) —
+ * the seeds only describe the roster for a fresh boot.
  */
 export const LIVE_SEEDS: SeedAgent[] = [
-  { id: 'difia', name: 'Difia', role: 'Receptionist', workstationId: 'reception', status: 'idle', currentTask: 'Standing by at the reception desk', progress: null, gender: 'female' },
+  { id: 'nayla', name: 'Nayla', role: 'Customer Service', workstationId: 'reception', status: 'idle', currentTask: 'Standing by at the reception desk', progress: null, gender: 'female' },
+  { id: 'difia', name: 'Difia', role: 'Project Manager', workstationId: 'project', status: 'idle', currentTask: 'Standing by in the Project Room', progress: null, gender: 'female' },
   { id: 'kirana', name: 'Kirana', role: 'Writer', workstationId: 'ws-01', status: 'idle', currentTask: 'Standing by for writing work', progress: null, gender: 'female' },
   { id: 'reno', name: 'Reno', role: 'Software Engineering', workstationId: 'ws-02', status: 'idle', currentTask: 'Standing by for coding work', progress: null, gender: 'male' },
 ];
@@ -87,7 +92,7 @@ export function normalizeAgentId(agentId: string): string {
  * 1..50 chars. This is what stops a junk seat like `--help` (born when
  * a CLI flag was passed as a seat id, 2026-10-27) from ever being
  * created: flags, spaces, and symbols fail here, before upsertFromEvent.
- * The three founder seats (difia, kirana, reno) all match this pattern.
+ * The founder seats (nayla, difia, kirana, reno) all match this pattern.
  */
 export function isValidAgentId(agentId: string): boolean {
   return /^[a-z][a-z0-9_-]{0,49}$/.test(agentId);
@@ -253,7 +258,7 @@ export class AgentRegistry {
   }
 
   /**
-   * Seed the 3 live agents (idempotent — never overwrites existing agents).
+   * Seed the founder live agents (idempotent — never overwrites existing agents).
    * Live agents are always labeled `source: 'live'`. Founder seats created
    * before gender existed get their seed gender backfilled, but only
    * when no gender was ever reported (an explicitly reported gender is
@@ -309,7 +314,7 @@ export class AgentRegistry {
    * Remove one seat by id, including its queued tasks. Returns true when
    * a seat was removed, false when the id was unknown (the DELETE route
    * maps false to 404). No founder exception by design: the operator
-   * decides which seats live or die, including difia/kirana/reno. The
+   * decides which seats live or die, including nayla/difia/kirana/reno. The
    * caller must persist afterwards so the removal survives restarts.
    */
   removeAgent(id: string): boolean {
@@ -490,10 +495,11 @@ export class AgentRegistry {
   }
 
   /**
-   * Guest chat (visitor → Difia). Threads are keyed by the client-generated
+   * Guest chat (visitor → Nayla). Threads are keyed by the client-generated
    * guestId; a visitor can only ever read their own thread (enforced by
-   * the route handler passing their guestId back). Replies from Difia (the
+   * the route handler passing their guestId back). Replies from Nayla (the
    * assistant, via the poller) or from an admin append to the same thread.
+   * Pre-swap threads may still carry 'difia' replies (see schemas.ts).
    */
   postGuestMessage(
     guestId: string,
@@ -545,7 +551,7 @@ export class AgentRegistry {
   }
 
   /**
-   * Guest messages that have no Difia/admin reply after them, with the
+   * Guest messages that have no Nayla/admin reply after them, with the
    * thread owner attached — this is what the poller answers.
    */
   pendingGuestMessages(): Array<{ guestId: string; guestName: string; message: GuestChatMessage }> {
@@ -597,16 +603,16 @@ export class AgentRegistry {
   }
 
   /**
-   * Append a Difia/admin reply to the thread owning the message.
+   * Append a Nayla/admin reply to the thread owning the message.
    * Returns null for an unknown message AND for a second reply to the
-   * same messageId from the SAME from-value (difia/admin separately) —
+   * same messageId from the SAME from-value (nayla/admin separately) —
    * this is the double-reply guard that stops the AI endpoint and the
    * poller ever answering one message twice. A follow-up from a
    * DIFFERENT from-value is still allowed.
    */
   replyToGuestMessage(
     messageId: string,
-    from: 'difia' | 'admin',
+    from: 'nayla' | 'admin',
     text: string,
   ): { thread: GuestThread; reply: GuestChatMessage } | null {
     for (const thread of this.guestThreads.values()) {
@@ -618,7 +624,7 @@ export class AgentRegistry {
       const reply: GuestChatMessage = {
         id: `${now}-${this.guestCounter}`,
         guestId: thread.guestId,
-        guestName: from === 'difia' ? 'Difia' : 'Admin',
+        guestName: from === 'nayla' ? 'Nayla' : 'Admin',
         from,
         text,
         at: now,

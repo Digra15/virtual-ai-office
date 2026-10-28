@@ -12,7 +12,7 @@ const GREETED_KEY = "vao-guest-greeted";
 const POLL_MS = 15_000;
 
 /**
- * Visitor chat with Difia the receptionist (no login). The greeting is
+ * Visitor chat with Nayla, Customer Service (no login). The greeting is
  * client-side only — it is never stored as a server message. Replies come
  * from the AI receptionist endpoint (when configured) and arrive within
  * seconds via the 15 s poll below, with the 1-minute poller as backstop
@@ -20,8 +20,8 @@ const POLL_MS = 15_000;
  * honestly while a guest message is still unanswered. A failed send is
  * reported, never faked as sent.
  */
-export const DIFIA_GREETING =
-  "Halo! Selamat datang di Virtual AI Office. Saya Difia, resepsionis di sini. Ada yang bisa saya bantu?";
+export const NAYLA_GREETING =
+  "Halo! Selamat datang di Virtual AI Office. Saya Nayla, Customer Service di sini. Ada yang bisa saya bantu?";
 
 function getOrCreateGuestId(): string {
   try {
@@ -98,7 +98,7 @@ export function GuestChatWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // Poll while the panel is open; first open also shows Difia's greeting.
+  // Poll while the panel is open; first open also shows Nayla's greeting.
   useEffect(() => {
     if (!open) return;
     try {
@@ -167,9 +167,9 @@ export function GuestChatWidget() {
   return (
     <div className="guest-chat">
       {open && (
-        <div className="guest-chat-panel" role="dialog" aria-label="Chat dengan Difia">
+        <div className="guest-chat-panel" role="dialog" aria-label="Chat dengan Nayla">
           <div className="guest-chat-header">
-            <span className="guest-chat-title">💬 Difia — Resepsionis</span>
+            <span className="guest-chat-title">💬 Nayla — Customer Service</span>
             <button
               type="button"
               className="guest-chat-close"
@@ -181,20 +181,20 @@ export function GuestChatWidget() {
           </div>
           <div className="guest-chat-list" ref={listRef}>
             {showGreeting && (
-              <div className="guest-chat-msg guest-chat-msg-difia">
-                <span className="guest-chat-sender">Difia</span>
-                <span>{DIFIA_GREETING}</span>
+              <div className="guest-chat-msg guest-chat-msg-nayla">
+                <span className="guest-chat-sender">Nayla</span>
+                <span>{NAYLA_GREETING}</span>
               </div>
             )}
             {messages.map((m) => (
               <div
                 key={m.id}
                 className={`guest-chat-msg ${
-                  m.from === "guest" ? "guest-chat-msg-guest" : "guest-chat-msg-difia"
+                  m.from === "guest" ? "guest-chat-msg-guest" : "guest-chat-msg-nayla"
                 }`}
               >
                 <span className="guest-chat-sender">
-                  {m.from === "guest" ? m.guestName : m.from === "difia" ? "Difia" : "Admin"}
+                  {m.from === "guest" ? m.guestName : m.from === "nayla" ? "Nayla" : m.from === "difia" ? "Difia" : "Admin"}
                 </span>
                 <span>{m.text}</span>
               </div>
@@ -205,7 +205,7 @@ export function GuestChatWidget() {
           </div>
           {awaitingReply && (
             <p className="guest-chat-pending" role="status">
-              Difia akan membalas segera
+              Nayla akan membalas segera
             </p>
           )}
           {error && (
@@ -234,14 +234,14 @@ export function GuestChatWidget() {
               <input
                 type="text"
                 className="guest-chat-input"
-                placeholder="Tulis pesan untuk Difia…"
+                placeholder="Tulis pesan untuk Nayla…"
                 value={draft}
                 maxLength={1000}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void send();
                 }}
-                aria-label="Pesan untuk Difia"
+                aria-label="Pesan untuk Nayla"
               />
               <button
                 type="button"
@@ -258,7 +258,7 @@ export function GuestChatWidget() {
       <button
         type="button"
         className="guest-chat-fab"
-        aria-label="Chat dengan Difia"
+        aria-label="Chat dengan Nayla"
         onClick={() => setOpen((v) => !v)}
       >
         💬

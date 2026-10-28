@@ -1865,6 +1865,45 @@ input {
   background: var(--gc-border);
 }
 
+/* Same staff-side bubble as the legacy difia class, for Nayla. */
+.guest-chat-msg-nayla {
+  align-self: flex-start;
+  background: var(--gc-border);
+}
+
+/* Project Room briefing dialogue strip (BriefingDirector): fixed at
+ * the bottom of the viewport, RPG-style — speaker name + real task
+ * text only, never invented dialogue. */
+.briefing-strip {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  max-width: min(640px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: var(--shadow-float);
+}
+
+.briefing-strip-speaker {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.briefing-strip-text {
+  overflow-wrap: anywhere;
+}
+
 .guest-chat-msg-guest {
   align-self: flex-end;
   background: var(--gc-primary);

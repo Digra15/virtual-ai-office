@@ -66,6 +66,15 @@ function slotFor(workstationId: string): DeskSlot | null {
 }
 
 /**
+ * Project Room boss chair (ProjectRoom.tsx): the PM's home. It sits
+ * NORTH of the boss desk (-11.5, 5.5) and faces south, the opposite of
+ * the workspace desks (chair south of desk, facing north) — so it must
+ * NOT go through the desk-chair logic below. This special case is the
+ * only way a "project" workstation resolves.
+ */
+export const PM_HOME = { x: -11.5, z: 4.8, facing: 0 } as const;
+
+/**
  * World-space floor position for an agent's workstation.
  * Unknown workstation ids fall back to a deterministic slot in a spare
  * lobby grid so the avatar still appears somewhere sensible.
@@ -73,6 +82,7 @@ function slotFor(workstationId: string): DeskSlot | null {
 export function AGENT_SPAWN_POSITION(
   workstationId: string,
 ): [number, number, number] {
+  if (workstationId === "project") return [PM_HOME.x, 0, PM_HOME.z];
   const slot = slotFor(workstationId);
   // Spawn at the CHAIR (south of desk, z+0.95), not the desk center.
   // The visual inner-group also offsets +0.95, so the logical position
@@ -96,6 +106,7 @@ export function AGENT_SPAWN_POSITION(
  *  carries a PI turn so the figure faces desk-local -z (its monitor).
  *  Unknown ids face the room (0). */
 export function AGENT_FACING(workstationId: string): number {
+  if (workstationId === "project") return PM_HOME.facing;
   const slot = slotFor(workstationId);
   // Agent sits south of the desk (chair side), must face NORTH toward the monitors.
   // rotation.y = PI faces -z (north); slot.rotationY is the desk's, not the agent's.

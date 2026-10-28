@@ -8,6 +8,7 @@ import {
   usePresenceStore,
 } from "../../stores/usePresenceStore";
 import { useOccupancyStore } from "../../stores/useOccupancyStore";
+import { useBriefingStore } from "../../stores/useBriefingStore";
 import { AGENT_FACING, AGENT_SPAWN_POSITION } from "../layout";
 
 interface AgentAvatarProps {
@@ -43,6 +44,17 @@ export const AgentAvatar = memo(function AgentAvatar({
   const outerRef = useRef<import("three").Group>(null);
   const presence =
     usePresenceStore((s) => s.presences[agent.id]) ?? DEFAULT_PRESENCE;
+  // Briefing talking/listening: the store's speaker talks, the other
+  // participant nods. Only the two briefing participants get these
+  // props, so nobody else ever shows a talking bubble.
+  const briefing = useBriefingStore((s) => s.briefing);
+  const speakerId = useBriefingStore((s) => s.speakerId);
+  const isBriefingParticipant =
+    briefing !== null &&
+    (briefing.visitorId === agent.id || agent.id === "difia");
+  const talking = isBriefingParticipant && speakerId === agent.id;
+  const listening =
+    isBriefingParticipant && speakerId !== null && speakerId !== agent.id;
 
   // Register the scene-graph root with the movement system on mount.
   // The registry sets the initial desk transform immediately.
@@ -87,6 +99,8 @@ export const AgentAvatar = memo(function AgentAvatar({
         walking={walking}
         lying={lying}
         color={color}
+        talking={talking}
+        listening={listening}
       />
     </group>
   );
