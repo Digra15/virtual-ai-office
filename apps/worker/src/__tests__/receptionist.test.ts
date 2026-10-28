@@ -372,6 +372,17 @@ describe('receptionist persona rules (professional, no fake promises)', () => {
     );
     expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('tidak boleh diulang di balasan berikutnya');
   });
+
+  it('bans claiming there is no way to contact Difia — same trap as "saya catat"', () => {
+    // The prompt must contain the ban in its prohibitive form…
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('tidak punya cara untuk menghubungi Difia');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('diteruskan secara otomatis ke Difia');
+    // …and must never present the live-transcript claim as something
+    // to say: the first-person affirmative form must not appear.
+    expect(RECEPTIONIST_SYSTEM_PROMPT).not.toContain('saya tidak punya cara untuk menghubungi Difia');
+    // …and must never invent progress it cannot see.
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('Jangan mengarang progres yang tidak kamu lihat');
+  });
 });
 
 describe('worker roster section gender', () => {

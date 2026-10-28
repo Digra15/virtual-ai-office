@@ -191,3 +191,14 @@ export const GuestReplySchema = z.object({
 });
 
 export type GuestReply = z.infer<typeof GuestReplySchema>;
+
+/**
+ * Follow-up body (agent bearer auth only). Deliberately roomier than
+ * GuestReplySchema: a follow-up carries corrections and final deliveries
+ * (e.g. a news summary), which legitimately run longer than a chat reply.
+ */
+export const GuestFollowupSchema = z.object({
+  text: z.string().min(1).max(2000),
+});
+
+export type GuestFollowup = z.infer<typeof GuestFollowupSchema>;

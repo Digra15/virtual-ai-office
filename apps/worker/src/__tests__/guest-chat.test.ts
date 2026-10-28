@@ -237,3 +237,34 @@ describe('guest presence (reception standby signal)', () => {
     expect(legacyRestored.isGuestActive()).toBe(true);
   });
 });
+
+describe('guest follow-up (corrections and final deliveries)', () => {
+  it('appends a Nayla follow-up to an already-answered thread without touching old messages', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-fol01', 'Rafi', 'coba dong follow up ke difia');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    const replied = registry.replyToGuestMessage(posted.message.id, 'nayla', 'Jawaban pertama.');
+    expect(replied).not.toBeNull();
+    // The normal reply path is now closed for that message (guard intact).
+    expect(registry.replyToGuestMessage(posted.message.id, 'nayla', 'Jawaban kedua.')).toBeNull();
+    // But a follow-up still reaches the thread, as Nayla, preserving history.
+    const followup = registry.appendGuestFollowup('guest-fol01', 'Koreksi: pesananmu sudah diteruskan ke Difia.');
+    expect(followup).not.toBeNull();
+    expect(followup?.followup.from).toBe('nayla');
+    expect(followup?.followup.guestName).toBe('Nayla');
+    expect(followup?.thread.messages).toHaveLength(3);
+    expect(followup?.thread.messages[0]?.text).toBe('coba dong follow up ke difia');
+    expect(followup?.thread.messages[1]?.text).toBe('Jawaban pertama.');
+    expect(followup?.thread.messages[2]?.text).toBe('Koreksi: pesananmu sudah diteruskan ke Difia.');
+  });
+
+  it('allows repeated follow-ups and returns null for an unknown guest', () => {
+    const registry = new AgentRegistry();
+    const posted = registry.postGuestMessage('guest-fol02', 'Rafi', 'Halo');
+    if ('cooldownMs' in posted) throw new Error('unexpected cooldown');
+    expect(registry.appendGuestFollowup('guest-fol02', 'Pertama.')).not.toBeNull();
+    expect(registry.appendGuestFollowup('guest-fol02', 'Kedua.')).not.toBeNull();
+    expect(registry.getGuestThread('guest-fol02')?.messages).toHaveLength(3);
+    expect(registry.appendGuestFollowup('guest-tidak-ada', 'Hai')).toBeNull();
+  });
+});

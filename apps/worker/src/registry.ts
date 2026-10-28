@@ -652,6 +652,37 @@ export class AgentRegistry {
     return null;
   }
 
+  /**
+   * Append a Nayla follow-up to a thread by guestId, regardless of
+   * whether earlier messages were already answered. This is the
+   * separate follow-up path — it deliberately does NOT go through
+   * replyToGuestMessage's double-reply guard, which must stay intact
+   * for normal replies: a correction or a final delivery (e.g. a
+   * summary) has to reach a thread whose every guest message already
+   * has a Nayla reply. Existing messages are never modified or
+   * deleted. Returns null for an unknown guestId.
+   */
+  appendGuestFollowup(
+    guestId: string,
+    text: string,
+  ): { thread: GuestThread; followup: GuestChatMessage } | null {
+    const thread = this.guestThreads.get(guestId);
+    if (!thread) return null;
+    const now = this.nextGuestAt();
+    this.guestCounter += 1;
+    const followup: GuestChatMessage = {
+      id: `${now}-${this.guestCounter}`,
+      guestId: thread.guestId,
+      guestName: 'Nayla',
+      from: 'nayla',
+      text,
+      at: now,
+    };
+    thread.messages.push(followup);
+    thread.updatedAt = now;
+    return { thread: this.copyThread(thread), followup: { ...followup } };
+  }
+
   private copyThread(thread: GuestThread): GuestThread {
     return { ...thread, messages: thread.messages.map((m) => ({ ...m })) };
   }

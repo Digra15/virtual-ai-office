@@ -18,6 +18,7 @@ import {
   ADMIN_BROADCAST_TYPES,
   EventPostSchema,
   GuestChatPostSchema,
+  GuestFollowupSchema,
   GuestReplySchema,
   SiteConfigSchema,
   TaskPostSchema,
@@ -222,6 +223,20 @@ export class AgentRoom extends DurableObject<Env> {
       const authError = this.requireAgentAuth(request);
       if (authError) return authError;
       return this.handleGuestReply(request, decodeURIComponent(guestReplyMatch[1] ?? ''), 'nayla');
+    }
+    // Follow-up path (Bearer-only, never public): append a Nayla
+    // message to a thread by guestId, regardless of whether earlier
+    // messages were already answered. This is NOT a second reply — it
+    // never touches replyToGuestMessage's double-reply guard, which
+    // stays intact for normal replies. It exists for exactly two
+    // cases: correcting a wrong Nayla reply, and delivering a final
+    // result (e.g. a summary) to a thread whose every guest message
+    // already has a reply. Unknown guestId → 404.
+    const guestFollowupMatch = pathname.match(/^\/api\/guest-chat\/([^/]+)\/followup$/);
+    if (guestFollowupMatch && request.method === 'POST') {
+      const authError = this.requireAgentAuth(request);
+      if (authError) return authError;
+      return this.handleGuestFollowup(request, decodeURIComponent(guestFollowupMatch[1] ?? ''));
     }
 
     // Internal guest-chat channel for the admin API (routes.ts): the
@@ -495,6 +510,25 @@ export class AgentRoom extends DurableObject<Env> {
     }
     await this.persist();
     return json({ reply: result.reply, thread: result.thread }, 201);
+  }
+
+  private async handleGuestFollowup(request: Request, guestId: string): Promise<Response> {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const parsed = GuestFollowupSchema.safeParse(body);
+    if (!parsed.success) {
+      return json({ error: 'Invalid followup', details: parsed.error.flatten() }, 400);
+    }
+    const result = this.registry.appendGuestFollowup(guestId, parsed.data.text);
+    if (!result) {
+      return json({ error: `Unknown guest: ${guestId}` }, 404);
+    }
+    await this.persist();
+    return json({ followup: result.followup, thread: result.thread }, 201);
   }
 
   /** Internal-secret auth for Worker→DO admin forwarding (see publish). */
