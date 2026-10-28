@@ -16,12 +16,17 @@ import { create } from "zustand";
  * - Same-session Kanban: a task newly added to useTaskStore while the
  *   dashboard scene is mounted, with an assignee other than Difia, is
  *   a PM instruction briefing for that assignee.
- * - Programmatic: startBriefing(visitorId, text, kind) — the entry point
- *   the future poller bridge will call when a guest order becomes a PM
- *   task. There is NO automatic guest-order trigger today: guest threads
- *   live in the Worker, the dashboard does not poll them, and task
- *   creation in the Worker broadcasts nothing to the scene — so the
- *   director must not pretend a guest chat started a briefing.
+ * - Guest-order signal: when the Worker briefing boolean is true
+ *   (Difia has a pending "Guest request:" task, created by the poller
+ *   bridge from a completed guest thread) AND the guest is quiet,
+ *   Nayla reports to Difia in the Project Room. The signal carries no
+ *   guest content, so a report briefing's strip shows only the
+ *   generic caption — its text field stays empty by design.
+ * - Programmatic: startBriefing(visitorId, text, kind) — still
+ *   available for other callers. The dashboard never reads guest
+ *   threads itself (no bearer secret in the browser) and Worker task
+ *   creation broadcasts nothing to the scene, so a briefing can only
+ *   start from the Kanban trigger, the briefing boolean, or this call.
  */
 export type BriefingKind = "report" | "instruction";
 

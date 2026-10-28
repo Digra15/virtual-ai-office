@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BRIEF_GUEST_CHAIR,
+  GUEST_BRIEFING_STRIP_TEXT,
   _briefingTickForTests,
   _endBriefingTalkForTests,
   _resetBriefingForTests,
@@ -10,6 +11,7 @@ import { useMeetingStore } from "../../stores/useMeetingStore";
 import { usePresenceStore } from "../../stores/usePresenceStore";
 import { useTaskStore } from "../../stores/useTaskStore";
 import { useBriefingStore } from "../../stores/useBriefingStore";
+import { useGuestPresenceStore } from "../../stores/useGuestPresenceStore";
 import { movement } from "../../world/movement";
 import type { AgentInfo } from "@virtual-ai-office/shared";
 
@@ -60,6 +62,14 @@ describe("briefing director (Project Room)", () => {
     usePresenceStore.setState({ presences: {} });
     useMeetingStore.setState({ meetings: [], activeMeetingId: null });
     useTaskStore.setState({ tasks: [] });
+    useGuestPresenceStore.setState({
+      guestActive: false,
+      briefingActive: false,
+      remoteActive: null,
+      remoteUnavailable: false,
+      localActive: false,
+      briefingUnavailable: false,
+    });
     for (const id of ["difia", "nayla", "kirana", "reno"]) {
       movement.unregister(id);
     }
@@ -159,6 +169,86 @@ describe("briefing director (Project Room)", () => {
     _briefingTickForTests(); // snapshots, including the pre-existing task
     _briefingTickForTests();
     expect(useBriefingStore.getState().briefing).toBeNull();
+  });
+
+  it("starts a guest-order report briefing from the signal only when the guest is quiet", () => {
+    useGuestPresenceStore.setState({ briefingActive: true, guestActive: false });
+    _briefingTickForTests(); // creates the briefing (flow starts on the next tick)
+    _briefingTickForTests(); // starts the flow: Nayla walks to the guest chair
+    const briefing = useBriefingStore.getState().briefing;
+    expect(briefing?.visitorId).toBe("nayla");
+    expect(briefing?.kind).toBe("report");
+    // No guest content in the briefing: the strip caption is generic.
+    expect(briefing?.text).toBe("");
+    expect(GUEST_BRIEFING_STRIP_TEXT).toBe("Membahas pesanan tamu");
+    // Walk Nayla from the reception chair to the guest chair.
+    for (let i = 0; i < 2000; i++) {
+      if (!movement.isMoving("nayla") && !movement.isMoving("difia")) break;
+      movement.update(0.1);
+    }
+    expect(movement.isMoving("nayla")).toBe(false);
+    const pos = movement.getPosition("nayla");
+    expect(pos).not.toBeNull();
+    expect(
+      Math.hypot(
+        (pos as { x: number; z: number }).x - BRIEF_GUEST_CHAIR.x,
+        (pos as { x: number; z: number }).z - BRIEF_GUEST_CHAIR.z,
+      ),
+    ).toBeLessThanOrEqual(0.5);
+    // Report briefing: the visitor (Nayla) speaks, the PM listens.
+    expect(useBriefingStore.getState().speakerId).toBe("nayla");
+  });
+
+  it("does not start a signal briefing while the guest is still active", () => {
+    useGuestPresenceStore.setState({ briefingActive: true, guestActive: true });
+    _briefingTickForTests();
+    expect(useBriefingStore.getState().briefing).toBeNull();
+    // Once the guest goes quiet, the same signal starts it.
+    useGuestPresenceStore.setState({ guestActive: false });
+    _briefingTickForTests();
+    expect(useBriefingStore.getState().briefing?.visitorId).toBe("nayla");
+  });
+
+  it("does not restart a finished signal briefing until the signal clears", () => {
+    useGuestPresenceStore.setState({ briefingActive: true, guestActive: false });
+    _briefingTickForTests(); // creates the briefing
+    _briefingTickForTests(); // starts the flow
+    for (let i = 0; i < 2000; i++) {
+      if (!movement.isMoving("nayla") && !movement.isMoving("difia")) break;
+      movement.update(0.1);
+    }
+    expect(useBriefingStore.getState().speakerId).toBe("nayla");
+    _endBriefingTalkForTests();
+    expect(useBriefingStore.getState().briefing).toBeNull();
+    // Signal still on: no restart.
+    _briefingTickForTests();
+    expect(useBriefingStore.getState().briefing).toBeNull();
+    // Signal clears, then rises again: a new episode may brief.
+    useGuestPresenceStore.setState({ briefingActive: false });
+    _briefingTickForTests();
+    useGuestPresenceStore.setState({ briefingActive: true });
+    _briefingTickForTests();
+    expect(useBriefingStore.getState().briefing?.visitorId).toBe("nayla");
+  });
+
+  it("leaves Nayla in place after a report briefing instead of routing her home", () => {
+    useGuestPresenceStore.setState({ briefingActive: true, guestActive: false });
+    _briefingTickForTests(); // creates the briefing
+    _briefingTickForTests(); // starts the flow
+    for (let i = 0; i < 2000; i++) {
+      if (!movement.isMoving("nayla") && !movement.isMoving("difia")) break;
+      movement.update(0.1);
+    }
+    _endBriefingTalkForTests();
+    expect(movement.isMoving("nayla")).toBe(false);
+    const pos = movement.getPosition("nayla");
+    expect(pos).not.toBeNull();
+    expect(
+      Math.hypot(
+        (pos as { x: number; z: number }).x - BRIEF_GUEST_CHAIR.x,
+        (pos as { x: number; z: number }).z - BRIEF_GUEST_CHAIR.z,
+      ),
+    ).toBeLessThanOrEqual(0.5);
   });
 
   it("keeps an empty strip text empty — never invents dialogue", () => {

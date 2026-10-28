@@ -594,6 +594,22 @@ export class AgentRegistry {
     return false;
   }
 
+  /**
+   * Public briefing signal (privacy-safe, same shape as presence): true
+   * exactly when Difia the Project Manager has a pending task whose
+   * title starts with "Guest request:" — the marker the poller bridge
+   * uses when it turns a completed guest order into a PM task. The
+   * dashboard reads ONLY this boolean: no guest ids, names, message
+   * text, or task titles ever leave through it, so a guest-order
+   * briefing can start in the scene without leaking guest content to
+   * a public endpoint.
+   */
+  isBriefingActive(): boolean {
+    return this.listTasks('difia', 'pending').some((t) =>
+      t.title.startsWith('Guest request:'),
+    );
+  }
+
   /** True when the message exists in any thread. */
   guestMessageExists(messageId: string): boolean {
     for (const thread of this.guestThreads.values()) {

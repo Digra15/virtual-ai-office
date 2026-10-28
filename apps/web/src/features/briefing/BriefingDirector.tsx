@@ -3,7 +3,10 @@ import { useAgentStore } from "../../stores/useAgentStore";
 import { useMeetingStore } from "../../stores/useMeetingStore";
 import { usePresenceStore } from "../../stores/usePresenceStore";
 import { useTaskStore } from "../../stores/useTaskStore";
-import { useGuestPresenceStore } from "../../stores/useGuestPresenceStore";
+import {
+  GUEST_PRESENCE_POLL_MS,
+  useGuestPresenceStore,
+} from "../../stores/useGuestPresenceStore";
 import { useBriefingStore, type Briefing } from "../../stores/useBriefingStore";
 import { movement } from "../../world/movement";
 import {
@@ -28,15 +31,29 @@ import { cancelWanderFor } from "../wander/WanderDirector";
  * TRIGGER (honest, and its limit): this director watches useTaskStore
  * for a task ADDED AFTER it mounts, assigned to someone other than
  * Difia. That is the same-session Kanban assignment a PM makes while
- * the dashboard scene is open. It is NOT a guest-order trigger and
- * must never be presented as one: guest threads live in the Worker,
- * the dashboard does not poll them, and Worker task creation
- * broadcasts nothing to the scene, so a guest order cannot start a
- * briefing on its own today. The programmatic entry point for the
- * future poller bridge is useBriefingStore.startBriefing(visitorId,
- * text, kind) — a bridge run may call it when it turns a guest thread
- * into a PM task (TODO, parent phase). Until then, briefings only
- * start from the Kanban trigger or that store call.
+ * the dashboard scene is open. It ALSO watches the Worker briefing
+ * signal (useGuestPresenceStore.briefingActive, polled every 30 s
+ * like presence, dashboard only): when that boolean is true AND the
+ * guest is quiet (guestActive false), Nayla walks to the Project Room
+ * to report a guest order to Difia. Nayla must never abandon an
+ * active conversation — she finishes the chat first, and guestActive
+ * only clears 5 minutes after the last guest message, so a report
+ * briefing always waits for quiet.
+ *
+ * PRIVACY RULE for guest-order briefings: the briefing signal carries
+ * NO guest content (no ids, names, message text, or task titles), so
+ * the dialogue strip for a report briefing shows ONLY the generic
+ * caption "Membahas pesanan tamu" — never guest message text, never
+ * a task title derived from guest content. The specific instruction
+ * stays in the Difia PM task, which only the office side reads.
+ * (Kanban instruction briefings are different: their strip text is
+ * the human-entered task title, which is already office-side data.)
+ *
+ * What this director does NOT do: it does not read guest threads
+ * (the dashboard has no bearer secret and must never fetch them),
+ * and it does not create PM tasks. The poller bridge is what turns a
+ * completed guest thread into a "Guest request:" PM task; this
+ * director only reacts to the resulting boolean signal.
  *
  * ROUTE (table-safe): the Project Room table is a box x -12.4..-10.6,
  * z 5.05..5.95, and the waypoint graph's final leg from proj-in
@@ -64,6 +81,14 @@ const BRIEF_SPEED = 1.2;
 export const BRIEF_TALK_MS = 8000;
 /** Guest chair used by every briefing (deterministic, one at a time). */
 export const BRIEF_GUEST_CHAIR = { x: -12.5, z: 6.4 } as const;
+/** Stable id for a guest-order report briefing (one per signal episode). */
+export const GUEST_BRIEFING_ID = "guest-briefing" as const;
+/**
+ * Generic dialogue-strip caption for guest-order report briefings.
+ * The ONLY strip text allowed for such briefings (privacy rule above):
+ * it names the kind of conversation, never the guest's order itself.
+ */
+export const GUEST_BRIEFING_STRIP_TEXT = "Membahas pesanan tamu" as const;
 /** North-facing (toward the boss chair). */
 export const BRIEF_GUEST_FACING = Math.PI;
 /** Open south-east corner of the Project Room, clear of the table. */
@@ -75,6 +100,13 @@ let activeId: string | null = null;
 let talkingUntil = 0;
 let initialTaskIds: Set<string> | null = null;
 const briefedTaskIds = new Set<string>();
+/**
+ * True once the current guest-order signal episode has had its
+ * briefing. Without this, the director would restart a report briefing
+ * on every tick until the PM task is completed (the signal stays true
+ * until then). Reset when the signal clears.
+ */
+let guestBriefingCompleted = false;
 
 function inActiveMeeting(id: string): boolean {
   const meetings = useMeetingStore.getState().meetings;
@@ -176,12 +208,12 @@ function startVisitorLeg(briefing: Briefing): void {
 }
 
 function returnVisitor(briefing: Briefing): void {
-  // Nayla with an active guest chat belongs to the ReceptionDirector
-  // from here on — a home trip would fight its next tick.
-  if (
-    briefing.visitorId === "nayla" &&
-    useGuestPresenceStore.getState().guestActive
-  ) {
+  // Nayla never gets a home trip from a briefing: she belongs to the
+  // ReceptionDirector while a guest chat is active, and to wander
+  // otherwise — and her lobby-grid spawn sits inside the counter
+  // footprint, so routing her "home" would walk her into the counter.
+  // Leave her where she stands; the next owner picks her up.
+  if (briefing.visitorId === "nayla") {
     return;
   }
   const agent = useAgentStore.getState().agents[briefing.visitorId];
@@ -200,6 +232,11 @@ function endTalking(): void {
   useBriefingStore.getState().endBriefing();
   phase = "idle";
   activeId = null;
+  // A finished report briefing must not restart while its signal
+  // episode is still active (the signal only clears when the PM task
+  // is completed). Kanban briefings are unaffected: they are keyed by
+  // task id in briefedTaskIds, not by this flag.
+  if (briefing?.kind === "report") guestBriefingCompleted = true;
   if (briefing) returnVisitor(briefing);
 }
 
@@ -228,7 +265,31 @@ function tick(): void {
         text: next.title,
         kind: "instruction",
       });
+      return;
     }
+    // Guest-order signal trigger: the Worker boolean is true (Difia
+    // has a pending "Guest request:" task) AND the guest is quiet.
+    // Quiet is mandatory — Nayla must not abandon an active
+    // conversation to walk to the Project Room. While the signal is
+    // on but the guest is still active, the tick simply waits; while
+    // the signal is off, the episode guard resets so a later signal
+    // episode can brief again. If Nayla is busy (moving, meeting,
+    // prayer, non-idle), canStart is false and the tick retries —
+    // the episode is only marked complete when a briefing actually
+    // ran and ended (see endTalking).
+    const signal = useGuestPresenceStore.getState();
+    if (!signal.briefingActive) {
+      guestBriefingCompleted = false;
+      return;
+    }
+    if (signal.guestActive || guestBriefingCompleted) return;
+    if (!canStart("nayla")) return;
+    store.startBriefing({
+      id: GUEST_BRIEFING_ID,
+      visitorId: "nayla",
+      text: "",
+      kind: "report",
+    });
     return;
   }
   // A briefing started externally (store API) with no flow running yet.
@@ -248,21 +309,38 @@ function tick(): void {
  */
 export function BriefingDirector() {
   useEffect(() => {
+    const store = useGuestPresenceStore.getState();
+    void store.fetchBriefing();
+    const pollId = window.setInterval(
+      () => void useGuestPresenceStore.getState().fetchBriefing(),
+      GUEST_PRESENCE_POLL_MS,
+    );
     const tickId = window.setInterval(tick, TICK_MS);
-    return () => window.clearInterval(tickId);
+    return () => {
+      window.clearInterval(pollId);
+      window.clearInterval(tickId);
+    };
   }, []);
   const briefing = useBriefingStore((s) => s.briefing);
   const speakerId = useBriefingStore((s) => s.speakerId);
   if (!briefing || !speakerId) return null;
   const speaker = useAgentStore((s) => s.agents[speakerId]);
+  // Report briefings show ONLY the generic caption (privacy rule):
+  // the signal carries no guest content, so no guest text may appear
+  // here even though briefing.text is empty. Instruction briefings
+  // show their real human-entered task title, or "..." when empty.
+  const stripText =
+    briefing.kind === "report"
+      ? GUEST_BRIEFING_STRIP_TEXT
+      : briefing.text.trim()
+        ? briefing.text
+        : "...";
   return (
     <div className="briefing-strip" role="status" aria-live="polite">
       <span className="briefing-strip-speaker">
         {speaker?.name ?? speakerId}
       </span>
-      <span className="briefing-strip-text">
-        {briefing.text.trim() ? briefing.text : "..."}
-      </span>
+      <span className="briefing-strip-text">{stripText}</span>
     </div>
   );
 }
@@ -279,6 +357,7 @@ export function _resetBriefingForTests(): void {
   talkingUntil = 0;
   initialTaskIds = null;
   briefedTaskIds.clear();
+  guestBriefingCompleted = false;
   useBriefingStore.getState().endBriefing();
 }
 

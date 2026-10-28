@@ -164,7 +164,9 @@ export class AgentRoom extends DurableObject<Env> {
 
     // Guest chat (visitor → Nayla). POST + thread GET are public but
     // rate-limited and cooldown-guarded; a visitor only ever sees their
-    // own thread. Replies and the pending queue require AGENT_SECRET.
+    // own thread. Replies, the pending queue, and the thread listing
+    // require AGENT_SECRET. The briefing signal below is public but
+    // returns a bare boolean only.
     if (pathname === '/api/guest-chat') {
       if (request.method === 'POST') {
         return this.handleGuestPost(request);
@@ -196,6 +198,24 @@ export class AgentRoom extends DurableObject<Env> {
       const authError = this.requireAgentAuth(request);
       if (authError) return authError;
       return json({ pending: this.registry.pendingGuestMessages() });
+    }
+    // Bearer-only thread listing for the poller bridge: same auth and
+    // same sensitivity as the pending queue (full message text), so it
+    // is NEVER public. The poller reads threads here, decides which
+    // ones contain a completed order, and turns those into Difia PM
+    // tasks — it must not enumerate threads any other way.
+    if (request.method === 'GET' && pathname === '/api/guest-chat/threads') {
+      const authError = this.requireAgentAuth(request);
+      if (authError) return authError;
+      return json({ threads: this.registry.listGuestThreads() });
+    }
+    // Public by design: returns ONLY { briefingActive } — a bare
+    // boolean, no guest ids, names, message text, or task titles — so
+    // the dashboard can start a guest-order briefing in the Project
+    // Room without leaking guest content. True exactly when Difia has
+    // a pending "Guest request:" task (see registry.isBriefingActive).
+    if (request.method === 'GET' && pathname === '/api/guest-chat/briefing') {
+      return json({ briefingActive: this.registry.isBriefingActive() });
     }
     const guestReplyMatch = pathname.match(/^\/api\/guest-chat\/([^/]+)\/reply$/);
     if (guestReplyMatch && request.method === 'POST') {

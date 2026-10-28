@@ -352,6 +352,26 @@ describe('receptionist persona rules (professional, no fake promises)', () => {
     expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('tanyakan detail yang kurang');
     expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('lewat chat ini juga');
   });
+
+  it('bans SAYING "saya catat" — the prohibition itself quotes the phrase, so test the form', () => {
+    // The prompt must contain the ban in its prohibitive form…
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('Jangan pernah berkata "saya catat"');
+    // …and must never present the phrase as something to say: the
+    // live transcript wording was "saya catat ya", an affirmative
+    // confirmation, which must not appear anywhere as a template.
+    expect(RECEPTIONIST_SYSTEM_PROMPT).not.toContain('saya catat ya');
+    expect(RECEPTIONIST_SYSTEM_PROMPT).not.toContain('Baik, saya catat');
+    // The confirmation it prescribes instead is a one-time repeat of
+    // the collected details, not a recording claim.
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('ulangi detail yang sudah terkumpul SEKALI saja sebagai konfirmasi');
+  });
+
+  it('bans repeating uncertainty once request details are complete', () => {
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain(
+      'jangan lagi berkata "belum tahu pasti apakah tim bisa mengerjakannya"',
+    );
+    expect(RECEPTIONIST_SYSTEM_PROMPT).toContain('tidak boleh diulang di balasan berikutnya');
+  });
 });
 
 describe('worker roster section gender', () => {

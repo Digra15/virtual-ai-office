@@ -105,6 +105,27 @@ describe('guest chat (visitor → Nayla)', () => {
     expect(registry.getGuestThread('guest-dbl02')?.messages).toHaveLength(3);
   });
 
+  it('briefing signal is true only for a pending Guest request task', () => {
+    const registry = new AgentRegistry();
+    expect(registry.isBriefingActive()).toBe(false);
+    // A non-marker task does not light the signal.
+    registry.createTask('difia', 'Tulis artikel X');
+    expect(registry.isBriefingActive()).toBe(false);
+    // A marker task for another agent does not light it either.
+    registry.createTask('kirana', 'Guest request: rangkuman');
+    expect(registry.isBriefingActive()).toBe(false);
+    const marker = registry.createTask('difia', 'Guest request: rangkuman ekonomi');
+    expect(registry.isBriefingActive()).toBe(true);
+    // Completing the marker task clears the signal again.
+    registry.completeTask('difia', marker.id);
+    expect(registry.isBriefingActive()).toBe(false);
+    // The public payload shape carries no content by construction:
+    // only the boolean is ever serialized for that route.
+    expect(JSON.stringify({ briefingActive: registry.isBriefingActive() })).toBe(
+      '{"briefingActive":false}',
+    );
+  });
+
   it('distinguishes unknown messages from already-replied ones', () => {
     const registry = new AgentRegistry();
     expect(registry.guestMessageExists('nope-1')).toBe(false);
