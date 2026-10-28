@@ -14,13 +14,20 @@ import { cancelWanderFor } from "../wander/WanderDirector";
  *
  * Difia's home is the reception desk. While a guest chat is active she
  * must be on standby AT reception: she WALKS (never teleports) to the
- * standby spot behind the counter, faces the entrance (south), and stays
- * there — no pantry trips, no toilet trips, no wandering — until the
- * guest activity ends. While no guest chat is active she roams like any
- * other idle agent.
+ * receptionist chair and SITS there (activity "seated", pose "desk" —
+ * the same seated fake desk agents use, so no typing pose: her status
+ * stays idle), facing the entrance (south), and stays there — no pantry
+ * trips, no toilet trips, no wandering — until the guest activity
+ * ends. While no guest chat is active she roams like any other idle
+ * agent.
  *
- * Standby is not frozen: she uses the existing Idle animation (activity
- * "standing", pose "free") and walks to reception when summoned.
+ * Two-stage route, because a direct pathfind to the chair clips the
+ * counter: the waypoint graph routes via lobby (0, 8.6), and the final
+ * lobby→chair leg cuts diagonally through the counter box. So she first
+ * walks to the staging spot north of the chair, then takes one short
+ * straight south leg into the chair. That leg never enters the counter
+ * footprint (the counter's north edge is z 6.85; the chair sits at
+ * z 6.7).
  *
  * How the pieces fit:
  * - Presence comes from useGuestPresenceStore (Worker route, with a
@@ -45,28 +52,47 @@ const DIFIA_ID = "difia";
 const TICK_MS = 4000;
 /** Gentle stroll, same speed as the wander system. */
 const SUMMON_SPEED = 1.2;
-/** Within this distance of the spot she counts as "at standby". */
-const AT_STANDBY_DIST = 0.5;
 
 /**
- * Standby spot: directly north of the reception counter (same x as its
- * center), in the open workspace south band. The geometrically obvious
- * spot right behind the counter — (-4, 6.x) — is enclosed by the counter
- * box (x -5.9..-2.1, z 6.85..7.95), the reception-chair circle (-4, 6.7)
- * and the plant (-1.6, 7.4): every lobby approach leg to it is blocked,
- * so the pathfinder would fall back to a straight leg that clips the
- * counter. (-4, 5.5) is the nearest cleanly walkable spot on the same
- * north axis: no obstacle within agent radius, reachable via aisle-3,
- * and facing south (0) she looks straight at the counter and the
- * entrance beyond it. The existing reception fallback spawn (-2.4, 7.8)
- * is NOT reused: it sits inside the counter footprint.
+ * Staging spot: directly north of the reception chair, in the open
+ * workspace south band. (-4, 5.5) is the nearest cleanly walkable spot
+ * on the chair's north axis: no obstacle within agent radius, reachable
+ * via aisle-3. The existing reception fallback spawn (-2.4, 7.8) is NOT
+ * reused: it sits inside the counter footprint.
  */
 export const DIFIA_STANDBY_SPOT = { x: -4, z: 5.5 } as const;
-/** South (+z), toward the entrance. */
+/**
+ * The receptionist chair itself: GamingChair in Reception.tsx, same
+ * coordinates and facing. Sitting here means pose "desk" (model sunk
+ * 0.18, as for desk agents) at exactly the chair's position.
+ */
+export const DIFIA_STANDBY_CHAIR = { x: -4, z: 6.7 } as const;
+/** South (+z), toward the counter and the entrance beyond it. */
 export const DIFIA_STANDBY_FACING = 0;
 
-/** True while Difia is routed to / standing at standby by this director. */
+/** Within this distance of the chair she counts as "seated at standby". */
+const AT_CHAIR_DIST = 0.5;
+
+/** True while Difia is routed to / sitting at standby by this director. */
 let summoned = false;
+
+/**
+ * Second stage: one short straight south leg from the staging corridor
+ * into the receptionist chair, arriving seated. This deliberately
+ * bypasses the waypoint pathfinder (movement.moveTo with an explicit
+ * path) — a pathfound route would come via lobby and clip the counter.
+ * Only ever called when she is already aligned north of the chair
+ * (staging spot, or the onArrive callback of the staging leg), so the
+ * straight leg stays clear of the counter footprint.
+ */
+function sitOnChair(): void {
+  movement.moveTo(DIFIA_ID, [{ x: DIFIA_STANDBY_CHAIR.x, z: DIFIA_STANDBY_CHAIR.z }], {
+    speed: SUMMON_SPEED,
+    arriveActivity: "seated",
+    arrivePose: "desk",
+    arriveFacing: DIFIA_STANDBY_FACING,
+  });
+}
 
 function inActiveMeeting(id: string): boolean {
   const meetings = useMeetingStore.getState().meetings;
@@ -99,23 +125,42 @@ function tick(): void {
   if (presence?.prayerPose) return;
   const pos = movement.getPosition(DIFIA_ID);
   if (!pos) return;
-  const atStandby =
+  const atChair =
     Math.hypot(
-      pos.x - DIFIA_STANDBY_SPOT.x,
-      pos.z - DIFIA_STANDBY_SPOT.z,
-    ) <= AT_STANDBY_DIST;
-  if (atStandby && !movement.isMoving(DIFIA_ID)) {
-    // Standing at standby: make sure she faces the entrance even if she
-    // arrived here some other way.
+      pos.x - DIFIA_STANDBY_CHAIR.x,
+      pos.z - DIFIA_STANDBY_CHAIR.z,
+    ) <= AT_CHAIR_DIST;
+  if (atChair && !movement.isMoving(DIFIA_ID)) {
+    // Seated at standby: make sure she faces the entrance and stays
+    // seated even if she arrived here some other way.
     movement.setFacing(DIFIA_ID, DIFIA_STANDBY_FACING);
+    const p = presence;
+    if (p?.pose !== "desk" || p?.activity !== "seated") {
+      usePresenceStore.getState().setPresence(DIFIA_ID, {
+        activity: "seated",
+        pose: "desk",
+      });
+    }
     summoned = true;
     return;
   }
   if (movement.isMoving(DIFIA_ID) && summoned) return; // already en route
-  // Route (or re-route) her to standby on foot. Cancel any wander trip
-  // first so the wander return-home tick never pulls her off standby.
+  // Aligned north of the chair (staging spot or the corridor between
+  // staging and chair): take the short straight leg straight into it.
+  // This leg never enters the counter footprint (north edge z 6.85).
+  const alignedNorth =
+    Math.abs(pos.x - DIFIA_STANDBY_CHAIR.x) < 0.6 &&
+    pos.z >= DIFIA_STANDBY_SPOT.z &&
+    pos.z <= DIFIA_STANDBY_CHAIR.z;
   cancelWanderFor(DIFIA_ID);
   summoned = true;
+  if (alignedNorth) {
+    sitOnChair();
+    return;
+  }
+  // Route (or re-route) her to the staging spot on foot, then sit.
+  // Cancel any wander trip first so the wander return-home tick never
+  // pulls her off standby.
   movement.navigateTo(
     DIFIA_ID,
     DIFIA_STANDBY_SPOT.x,
@@ -125,6 +170,14 @@ function tick(): void {
       arriveActivity: "standing",
       arrivePose: "free",
       arriveFacing: DIFIA_STANDBY_FACING,
+      onArrive: () => {
+        // Guest may have left while she walked here; the tick owns
+        // routing from now on, so only sit if standby is still wanted
+        // and she is not mid-prayer.
+        if (!useGuestPresenceStore.getState().guestActive) return;
+        if (usePresenceStore.getState().presences[DIFIA_ID]?.prayerPose) return;
+        sitOnChair();
+      },
     },
   );
 }

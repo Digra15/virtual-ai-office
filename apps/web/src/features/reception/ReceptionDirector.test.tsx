@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  DIFIA_STANDBY_CHAIR,
   DIFIA_STANDBY_FACING,
-  DIFIA_STANDBY_SPOT,
   _receptionTickForTests,
   _resetReceptionForTests,
 } from "./ReceptionDirector";
@@ -63,7 +63,7 @@ describe("reception director (Difia standby)", () => {
     setGuestActive(false);
   });
 
-  it("walks Difia to the standby spot, facing the entrance, when a guest is active", () => {
+  it("walks Difia to the receptionist chair and sits her there, facing the entrance, when a guest is active", () => {
     const group = mockGroup();
     movement.register("difia", group, -2.4, 7.8, Math.PI); // her reception spawn, facing north
     movement.register("kirana", mockGroup(), -4, -1.3, 0);
@@ -73,21 +73,40 @@ describe("reception director (Difia standby)", () => {
     _receptionTickForTests();
     expect(movement.isMoving("difia")).toBe(true);
 
-    // Walk the whole route (waypoints + destination, one hop per update).
+    // Walk the whole route (staging waypoints, then the short straight
+    // leg into the chair, one hop per update).
     for (let i = 0; i < 20; i++) movement.update(30);
     expect(movement.isMoving("difia")).toBe(false);
     const pos = movement.getPosition("difia");
     expect(pos).not.toBeNull();
     expect(
       Math.hypot(
-        (pos as { x: number; z: number }).x - DIFIA_STANDBY_SPOT.x,
-        (pos as { x: number; z: number }).z - DIFIA_STANDBY_SPOT.z,
+        (pos as { x: number; z: number }).x - DIFIA_STANDBY_CHAIR.x,
+        (pos as { x: number; z: number }).z - DIFIA_STANDBY_CHAIR.z,
       ),
     ).toBeLessThanOrEqual(0.5);
-    expect(usePresenceStore.getState().presences["difia"]?.activity).toBe("standing");
-    expect(usePresenceStore.getState().presences["difia"]?.pose).toBe("free");
+    expect(usePresenceStore.getState().presences["difia"]?.activity).toBe("seated");
+    expect(usePresenceStore.getState().presences["difia"]?.pose).toBe("desk");
     expect(DIFIA_STANDBY_FACING).toBe(0); // south, toward the entrance
     expect(group.rotation.set).toHaveBeenCalledWith(0, 0, 0);
+  });
+
+  it("sits Difia straight into the chair when she is already at the staging spot", () => {
+    movement.register("difia", mockGroup(), -4, 5.5, 0);
+    setGuestActive(true);
+    _receptionTickForTests();
+    expect(movement.isMoving("difia")).toBe(true);
+    for (let i = 0; i < 5; i++) movement.update(30);
+    expect(movement.isMoving("difia")).toBe(false);
+    const pos = movement.getPosition("difia");
+    expect(pos).not.toBeNull();
+    expect(
+      Math.hypot(
+        (pos as { x: number; z: number }).x - DIFIA_STANDBY_CHAIR.x,
+        (pos as { x: number; z: number }).z - DIFIA_STANDBY_CHAIR.z,
+      ),
+    ).toBeLessThanOrEqual(0.5);
+    expect(usePresenceStore.getState().presences["difia"]?.pose).toBe("desk");
   });
 
   it("does not move Difia when no guest chat is active", () => {
