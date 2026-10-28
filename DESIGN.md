@@ -6,9 +6,9 @@
 # diacak): Overview, Colors, Typography, Layout & Spacing, Elevation &
 # Depth, Shapes, Components, Do's and Don'ts.
 # ATURAN PAKAI: saat menulis kode UI, selalu rujuk nilai token di sini,
-# jangan hardcode warna/font/spasi. Token warna proyek (colors.*) AKAN
-# diisi dari audit Phase 5 (warna proyek yang sudah ada didahulukan) —
-# jangan dikarang sebelum audit.
+# jangan hardcode warna/font/spasi. Token warna proyek (colors.*) sudah
+# diisi Pass 2 dari audit Phase 5 (warna proyek yang sudah ada
+# didahulukan, bukan karangan).
 
 design:
   name: "Virtual AI Office"
@@ -16,34 +16,56 @@ design:
   description: "Dashboard monitoring 3D untuk agen AI + panel admin. Alat kerja, bukan halaman showcase."
 
 colors:
-  # TBD — diisi Phase 5 dari warna yang sudah ada di codebase (prioritas
-  # no-slop: warna proyek dulu, palet terkurasai kedua, tidak pernah acak).
-  # Struktur peran yang akan dipakai (bukan nilai):
-  # ground, surface (satu langkah nada dari ground), ink, muted,
-  # accent (di bawah 5% layar, hanya aksi + satu hal berulang),
-  # accent-ink, success, warning, error, info (+ varian bg/border/text).
-  # Tema gelap: satu ground nyaris-hitam (bukan navy/slate, bukan gradient).
-  # Violet/indigo: bukan brand wash; hanya satu hue data yang
-  # didokumentasikan perannya, bila dipakai.
-  ground: "TBD-audit"
-  surface: "TBD-audit"
-  ink: "TBD-audit"
-  muted: "TBD-audit"
-  accent: "TBD-audit"
-  accent-ink: "TBD-audit"
-  success: "TBD-audit"
-  warning: "TBD-audit"
-  error: "TBD-audit"
-  info: "TBD-audit"
+  # Diisi Pass 2 dari audit Phase 5 (warna proyek yang sudah ada di
+  # codebase, bukan karangan). Nilai-nilai ini sama dengan token :root
+  # di apps/web/src/index.css. Pengecualian terdokumentasi: ground
+  # #0b0f1a adalah nyaris-hitam bernuansa navy (bukan navy murni) —
+  # dipertahankan karena itu warna proyek yang sudah ada; gradient
+  # dekoratif #101a30 di latar .app/.admin-shell/.admin-gate masih ada
+  # (kini lewat token --bg-lift) dan belum dihapus di pass ini.
+  ground: "#0b0f1a"
+  surface: "#0f1524"
+  surfacePanel: "rgba(13, 19, 34, 0.94)"
+  surfaceBorder: "#1e2a44"
+  surfaceLift: "#101a30"
+  ink: "#e5ecf7"
+  muted: "#8b98b3 (6.60:1 di ground)"
+  faint: "#75859f (5.11:1 di ground, Pass 1)"
+  textDim: "#828fa9 (5.88:1 di ground, Pass 1)"
+  accent: "#38bdf8"
+  accentDim: "#0ea5e9"
+  accentInk: "#04121d (teks di atas fill accent)"
+  success: "#22c55e"
+  successBright: "#7dffa8"
+  warning: "#f59e0b"
+  warningGold: "#fcd34d"
+  warningSim: "#ffc107"
+  error: "#ef4444"
+  errorLight: "#fca5a5"
+  errorBright: "#ff7a7a"
+  info: "#38bdf8 (accent mengisi peran info; tidak ada token info terpisah)"
+  demoPurple: "#a855f7 (badge demo saja, bukan brand wash)"
+  guestChat:
+    bg: "#111827"
+    panel: "#1f2937"
+    border: "#374151"
+    subtle: "#4b5563"
+    text: "#f9fafb"
+    muted: "#9ca3af"
+    primary: "#1d4ed8"
+    error: "#f87171"
 
 typography:
   # Layar kerja (permukaan dominan): judul 18-32px, tubuh 14-16px,
   # tidak ada yang >=48px; meta/axis 11-12px, tidak ada yang <11px.
   # Halaman publik (bila ada): display >=4x tubuh, headline <=2 baris.
   fontFamily:
-    display: "TBD-audit"
-    body: "TBD-audit"
-    mono: "TBD-audit (hanya ID/angka/kode)"
+    # Pass 2: Inter sempat dideklarasikan tapi tidak pernah dimuat
+    # (render jatuh ke system stack). Token --font kini menamai stack
+    # itu secara eksplisit; tidak ada font eksternal yang dimuat.
+    display: 'system-ui, -apple-system, "Segoe UI", sans-serif'
+    body: 'system-ui, -apple-system, "Segoe UI", sans-serif'
+    mono: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace (hanya ID/angka/kode)'
   scale:
     title: "18-32px"
     body: "14-16px"
@@ -111,9 +133,15 @@ worker connector.
 
 ## 2. Colors
 
-**Status: TBD — diisi dari audit Phase 5.** Sesuai prioritas warna no-slop,
-warna proyek yang sudah ada di codebase dipakai dulu; palet terkurasai
-hanya bila tidak ada; kombinasi acak tidak pernah.
+**Status: terisi Pass 2 dari audit Phase 5 (lihat front matter).**
+Sesuai prioritas warna no-slop, warna proyek yang sudah ada di codebase
+dipakai dulu; palet terkurasai hanya bila tidak ada; kombinasi acak
+tidak pernah. Di CSS, semua warna hidup sebagai token `:root` — tidak
+ada literal hex/rgba di luar `:root` (kecuali komentar dokumentasi).
+Palet kedua khusus guest chat (`--gc-*`) didokumentasikan terpisah di
+front matter karena ia tidak memakai token utama. Bayangan elemen
+melayang dibatasi token `--shadow-float`
+(`0 2px 8px rgba(0,0,0,0.08)`, maksimum gate layar kerja).
 
 Peran yang akan dipakai: ground, surface (satu langkah nada dari ground),
 ink, muted, accent, accent-ink, success, warning, error, info (dengan
@@ -164,6 +192,10 @@ lewat surface yang lebih terang, bukan bayangan atau cahaya berwarna.
 ## 6. Shapes
 
 Keluarga tight: kontrol 6–8px, card 8px, chip 4px, tombol 6–10px.
+Token CSS Pass 2: `--radius: 8px` (semua pemakaian lama), ditambah
+`--radius-control: 8px` dan `--radius-chip: 4px` untuk pemakaian baru.
+Keluarga radius 9–16px ("soft tengah") sudah dihapus dari CSS di Pass 2;
+pill 999px dan lingkaran 50% dipertahankan (bukan bagian keluarga tengah).
 Tombol: solid fill atau border sederhana, bukan pill, bukan gradient.
 Input: border solid, focus ring sederhana, label di atas field. Ikon
 16–20px, monokrom atau warna halus, satu set per proyek, tanpa latar

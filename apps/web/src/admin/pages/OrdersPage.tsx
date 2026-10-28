@@ -62,7 +62,7 @@ function MarkPaidForm({
         provider: provider.trim(),
         providerRef: providerRef.trim(),
       });
-      toast("Order marked as paid", "ok");
+      toast("Payment recorded (unverified stub)", "ok");
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

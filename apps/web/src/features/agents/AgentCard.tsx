@@ -27,6 +27,9 @@ export function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
         />
         <span className="name">{agent.name}</span>
         <span className="role">{agent.role}</span>
+        {agent.source === "demo" && (
+          <span className="sim-badge">SIMULATED</span>
+        )}
       </div>
       {agent.currentTask ? (
         <div className="task" title={agent.currentTask}>

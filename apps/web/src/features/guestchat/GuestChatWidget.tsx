@@ -88,6 +88,16 @@ export function GuestChatWidget() {
     }
   }, []);
 
+  // Escape closes the panel (Phase 7: it previously did not).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   // Poll while the panel is open; first open also shows Difia's greeting.
   useEffect(() => {
     if (!open) return;

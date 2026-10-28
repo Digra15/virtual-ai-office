@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSettingsStore } from "../../stores/useSettingsStore";
 
 interface SettingsPanelProps {
@@ -21,6 +21,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
   const [apiDraft, setApiDraft] = useState(apiUrl);
   const [wsDraft, setWsDraft] = useState(wsUrl);
+
+  // Escape closes the modal (same as admin ConfirmDialog).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -75,9 +85,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             type="checkbox"
             checked={stressMode}
             onChange={toggleStressMode}
-            aria-label="Stress mode: add 22 simulated agents"
+            aria-label="Stress mode: add 12 simulated agents"
           />
-          Stress mode — add 22 simulated agents to the office
+          Stress mode — add 12 simulated agents to the office
         </label>
 
         <p className="hint">

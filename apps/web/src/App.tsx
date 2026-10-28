@@ -134,6 +134,29 @@ function Dashboard() {
   // off-canvas drawer; selecting an agent closes it so the detail panel
   // (inside the viewport) is never hidden behind the drawer.
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Phase 7: a closed mobile drawer must not stay keyboard-focusable.
+  // The drawer only exists below 768px (CSS media query); on desktop
+  // the sidebar is always visible, so inert applies only while the
+  // narrow query matches. Verified by code reasoning only (no browser
+  // test was run in this pass).
+  const [isNarrowDrawer, setIsNarrowDrawer] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 767px)").matches,
+  );
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = () => setIsNarrowDrawer(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
   const selectedId = useAgentStore((s) => s.selectedId);
   useEffect(() => {
     setSidebarOpen(false);
@@ -253,7 +276,10 @@ function Dashboard() {
         </div>
       )}
       <div className="main">
-        <aside className={`sidebar-left${sidebarOpen ? " open" : ""}`}>
+        <aside
+          className={`sidebar-left${sidebarOpen ? " open" : ""}`}
+          inert={isNarrowDrawer && !sidebarOpen}
+        >
           <StatCards />
           <AgentList />
         </aside>

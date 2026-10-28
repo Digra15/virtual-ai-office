@@ -696,6 +696,7 @@ export function drawPresentation(
   h: number,
   title: string,
   barColor: string,
+  subtitle = "laporan mingguan · tim difia",
 ): void {
   ctx.fillStyle = "#0f172a";
   ctx.fillRect(0, 0, w, h);
@@ -704,7 +705,7 @@ export function drawPresentation(
   ctx.fillRect(0, 0, w, 6);
 
   text(ctx, title, 36, 52, "800 28px system-ui, sans-serif", "#f8fafc");
-  text(ctx, "laporan mingguan · tim difia", 36, 76, "14px system-ui, sans-serif", "#64748b");
+  text(ctx, subtitle, 36, 76, "14px system-ui, sans-serif", "#64748b");
 
   const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"];
   const vals = [0.45, 0.7, 0.55, 0.85, 0.65, 1.0];
@@ -850,6 +851,7 @@ export type CozyTextureKind =
 
 export interface CozyTextureOpts {
   title?: string;
+  subtitle?: string;
   barColor?: string;
   colorA?: string;
   colorB?: string;
@@ -875,7 +877,15 @@ const DRAW: Record<CozyTextureKind, (ctx: Ctx2D, w: number, h: number, opts: Coz
   telemetry: (ctx, w, h) => drawTelemetry(ctx, w, h),
   keyboard: (ctx, w, h) => drawKeyboard(ctx, w, h),
   vitals: (ctx, w, h) => drawVitals(ctx, w, h),
-  presentation: (ctx, w, h, opts) => drawPresentation(ctx, w, h, opts.title ?? "Laporan", opts.barColor ?? DIFIA_PINK),
+  presentation: (ctx, w, h, opts) =>
+    drawPresentation(
+      ctx,
+      w,
+      h,
+      opts.title ?? "Laporan",
+      opts.barColor ?? DIFIA_PINK,
+      opts.subtitle,
+    ),
   tile: (ctx, w, h, opts) => drawTile(ctx, w, h, opts.colorA ?? "#e8e0d4", opts.colorB ?? "#d9cfbd"),
 };
 

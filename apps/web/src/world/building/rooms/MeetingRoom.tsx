@@ -33,10 +33,15 @@ const ConferenceTable = memo(function ConferenceTable() {
   );
 });
 
-/** Presentation screen on the north wall (z=-1.8), facing +Z into the room. */
+/** Presentation screen on the north wall (z=-1.8), facing +Z into the room.
+ * The chart is decorative: hardcoded illustrative bars, NOT live metrics.
+ * Labeled as such on the screen itself (subtitle) so it can never be
+ * read as real analytics. Feeding real data was disproportionate for a
+ * wall decoration; the honest label is the fix. */
 const PresentationScreen = memo(function PresentationScreen() {
   const tex = useCozyTexture("presentation", {
     title: "DIFIA AI ANALYTICS",
+    subtitle: "data ilustrasi · bukan metrik live",
     barColor: "#0284c7",
   });
   return (

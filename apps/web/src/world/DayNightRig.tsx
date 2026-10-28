@@ -106,6 +106,19 @@ export const DayNightRig = memo(function DayNightRig() {
   const cur = useRef<Lerped | null>(null);
   if (!cur.current) cur.current = makeLerped(initialNight);
   const target = useMemo(() => dayNightTargets(isNight), [isNight]);
+  // Reused target colors: useFrame previously allocated 4 new
+  // THREE.Color objects per frame (bg, sun, hemi sky, hemi ground).
+  // These are rebuilt only when the day/night target changes; lerp()
+  // never mutates its argument, so sharing them is safe.
+  const targetColors = useMemo(
+    () => ({
+      bg: new THREE.Color(target.bg),
+      sunColor: new THREE.Color(target.sunColor),
+      hemiSky: new THREE.Color(target.hemiSky),
+      hemiGround: new THREE.Color(target.hemiGround),
+    }),
+    [target],
+  );
 
   // scene.background + scene.fog share one Color instance we lerp in useFrame.
   useEffect(() => {
@@ -129,11 +142,11 @@ export const DayNightRig = memo(function DayNightRig() {
     if (!c) return;
     const t = target;
 
-    c.bg.lerp(new THREE.Color(t.bg), k);
-    c.sunColor.lerp(new THREE.Color(t.sunColor), k);
+    c.bg.lerp(targetColors.bg, k);
+    c.sunColor.lerp(targetColors.sunColor, k);
     c.sunIntensity += (t.sunIntensity - c.sunIntensity) * k;
-    c.hemiSky.lerp(new THREE.Color(t.hemiSky), k);
-    c.hemiGround.lerp(new THREE.Color(t.hemiGround), k);
+    c.hemiSky.lerp(targetColors.hemiSky, k);
+    c.hemiGround.lerp(targetColors.hemiGround, k);
     c.hemiIntensity += (t.hemiIntensity - c.hemiIntensity) * k;
     c.pointIntensity += (t.pointIntensity - c.pointIntensity) * k;
 

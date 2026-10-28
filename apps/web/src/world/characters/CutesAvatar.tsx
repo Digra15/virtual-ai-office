@@ -91,6 +91,18 @@ export function CutesAvatar({
   // graph. SkeletonUtils' clone rebinds the skeleton to cloned bones.
   const cloned = useMemo(() => cloneSkinned(scene), [scene]);
 
+  // Unmount cleanup (Pass 2): stop the per-instance mixer so it stops
+  // referencing the cloned root. Do NOT dispose the clone's geometries
+  // or materials: SkeletonUtils.clone() shares them with the useGLTF
+  // cache, and disposing them would corrupt every other avatar instance.
+  // The cloned skeleton itself is JS-only and is garbage-collected with
+  // this component.
+  useEffect(() => {
+    return () => {
+      mixer.stopAllAction();
+    };
+  }, [mixer]);
+
   // Static typing pose: only a working agent seated at its desk, never
   // while walking, lying, or praying (those take precedence below).
   const isTyping = pose === "desk" && status === "working" && !lying && !walking;

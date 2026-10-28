@@ -182,6 +182,11 @@ export const PolyModel = memo(function PolyModel({
   folder?: "poly-pizza" | "kenney" | "vehicles" | "accessories";
 }) {
   const { scene } = useGLTF(`/models/${folder}/${file}`);
+  // Pass 2 note: this clone shares geometries/materials/textures with
+  // the useGLTF cache, so there is deliberately NO dispose-on-unmount
+  // here — disposing them would corrupt every other instance using the
+  // same cached model. The clone graph itself is JS-only and is
+  // garbage-collected once R3F removes it from the scene on unmount.
   const cloned = useMemo(() => {
     const c = scene.clone(true);
     if (hideNodes) {

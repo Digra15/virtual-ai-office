@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AgentInfo } from "@virtual-ai-office/shared";
 import { useAgentStore } from "../../stores/useAgentStore";
 import {
@@ -32,6 +32,15 @@ export function SpawnPanel({ onClose }: { onClose: () => void }) {
   const [style, setStyle] = useState<string>("auto");
   const [error, setError] = useState<string | null>(null);
   const [spawnedId, setSpawnedId] = useState<string | null>(null);
+
+  // Escape closes the panel (same as admin ConfirmDialog).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const presets = getAllPresets();
 
